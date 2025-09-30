@@ -72,7 +72,7 @@ namespace GameHelper.RemoteObjects.Components
 
             if (ImGui.TreeNode("Cooldowns"))
             {
-                foreach(var (skillId, skillDetails) in this.ActiveSkillCooldowns)
+                foreach (var (skillId, skillDetails) in this.ActiveSkillCooldowns)
                 {
                     if (ImGui.TreeNode($"{skillId:X}"))
                     {
