@@ -8,7 +8,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Numerics;
+    using System.Reflection;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Components;
@@ -337,7 +340,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 }
 
                 entity?.UpdateNearby(this.Player);
-                return true; 
+                return true;
             });
         }
 
@@ -626,68 +629,214 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     ImGui.SameLine();
                     if (ImGui.SmallButton($"dump##{entity.Key}"))
                     {
-                        var filename = entity.Value.Path.Replace("/", "_") + ".txt";
-                        var contentToWrite = "============Path============\n";
-                        contentToWrite += entity.Value.Path + "\n";
-                        contentToWrite += "============OMP Mods========\n";
+                        string path = entity.Value.Path;
+                        string safeName = string.IsNullOrWhiteSpace(path) ? $"{entity.Value.Id}" : path.Replace("/", "_");
+
+                        // Helpers to robustly read "name" from unknown tuple/dictionary shapes.
+                        static string TryGetKeyName(object entry)
+                        {
+                            if (entry == null) return null;
+
+                            // Try Key (e.g., KeyValuePair<,>)
+                            var keyProp = entry.GetType().GetProperty("Key", BindingFlags.Public | BindingFlags.Instance);
+                            if (keyProp != null)
+                            {
+                                var keyVal = keyProp.GetValue(entry);
+                                return keyVal?.ToString();
+                            }
+
+                            // Try Item1 (e.g., ValueTuple<string, ...> or Tuple<string,...>)
+                            var item1Prop = entry.GetType().GetProperty("Item1", BindingFlags.Public | BindingFlags.Instance);
+                            if (item1Prop != null)
+                            {
+                                var item1Val = item1Prop.GetValue(entry);
+                                return item1Val?.ToString();
+                            }
+
+                            // Fallback
+                            return entry.ToString();
+                        }
+
+                        // Build a dictionary<string,int> from an unknown KVP/tuple-like collection
+                        static Dictionary<string, int> ToStringIntMap(IEnumerable<object> entries)
+                        {
+                            var result = new Dictionary<string, int>();
+                            if (entries == null) return result;
+
+                            foreach (var e in entries)
+                            {
+                                if (e == null) continue;
+
+                                // Try Key/Value properties first (KeyValuePair-like)
+                                var t = e.GetType();
+                                var keyProp = t.GetProperty("Key", BindingFlags.Public | BindingFlags.Instance);
+                                var valProp = t.GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
+                                if (keyProp != null && valProp != null)
+                                {
+                                    var k = keyProp.GetValue(e)?.ToString();
+                                    if (k == null) continue;
+                                    var vObj = valProp.GetValue(e);
+                                    if (vObj == null) continue;
+                                    int v;
+                                    if (vObj is int vi) v = vi;
+                                    else if (!int.TryParse(vObj.ToString(), out v)) continue;
+                                    result[k] = v;
+                                    continue;
+                                }
+
+                                // Otherwise, try tuple pattern: Item1 (key), Item2 (value)
+                                var item1 = t.GetProperty("Item1", BindingFlags.Public | BindingFlags.Instance)?.GetValue(e);
+                                var item2 = t.GetProperty("Item2", BindingFlags.Public | BindingFlags.Instance)?.GetValue(e);
+                                if (item1 != null && item2 != null)
+                                {
+                                    var k = item1.ToString();
+                                    int v;
+                                    if (item2 is int vi2) v = vi2;
+                                    else if (!int.TryParse(item2.ToString(), out v)) continue;
+                                    result[k] = v;
+                                    continue;
+                                }
+
+                                // Last resort: just ToString the whole entry as a key with value 1
+                                var s = e.ToString();
+                                if (!string.IsNullOrEmpty(s) && !result.ContainsKey(s))
+                                    result[s] = 1;
+                            }
+                            return result;
+                        }
+
+                        // -------- ObjectMagicProperties --------
+                        List<string> ompMods = null;
+                        Dictionary<string, int> ompModStats = null;
+                        string rarityStr = null;
+
                         if (entity.Value.TryGetComponent<ObjectMagicProperties>(out var omp))
                         {
-                            foreach (var (name, _) in omp.Mods)
+                            // Mods: enumerate without relying on Count
+                            if (omp.Mods != null)
                             {
-                                contentToWrite += name + "\n";
+                                var list = new List<string>();
+                                foreach (var m in omp.Mods)
+                                {
+                                    var name = TryGetKeyName(m);
+                                    if (!string.IsNullOrEmpty(name))
+                                        list.Add(name);
+                                }
+                                if (list.Count > 0) ompMods = list;
                             }
 
-                            contentToWrite += "==========Mods Stats============\n";
-                            foreach (var stat in omp.ModStats)
+                            // ModStats: enumerate unknown shapes into string->int
+                            if (omp.ModStats != null)
                             {
-                                contentToWrite += $"{stat.Key}: {stat.Value}\n";
+                                // Cast to object-enumerable safely
+                                var objs = omp.ModStats.Cast<object>();
+                                var map = ToStringIntMap(objs);
+                                if (map.Count > 0) ompModStats = map;
                             }
+
+                            rarityStr = omp.Rarity.ToString();
                         }
 
-                        contentToWrite += "============BUFF===========\n";
-                        if (entity.Value.TryGetComponent<Buffs>(out var buf))
+                        // -------- Buffs --------
+                        List<string> buffs = null;
+                        if (entity.Value.TryGetComponent<Buffs>(out var buf) && buf.StatusEffects != null)
                         {
-                            foreach (var se in buf.StatusEffects)
+                            var list = new List<string>();
+                            foreach (var se in buf.StatusEffects) // don’t check Count; enumerate directly
                             {
-                                contentToWrite += se.Key + "\n";
+                                // se might be KeyValuePair<string, T>
+                                var name = TryGetKeyName(se);
+                                if (!string.IsNullOrEmpty(name))
+                                    list.Add(name);
                             }
+                            if (list.Count > 0) buffs = list;
                         }
 
-                        contentToWrite += "=========Component List====\n";
-                        foreach (var compName in entity.Value.GetComponentNames())
-                        {
-                            contentToWrite += compName + "\n";
-                        }
+                        // -------- Components list --------
+                        var components = entity.Value.GetComponentNames()?.ToList();
 
-                        contentToWrite += "==========Stats Component============\n";
+                        // -------- Stats component (enum-ish keys -> string) --------
+                        Dictionary<string, int> statsByItems = null;
+                        Dictionary<string, int> statsByBuffs = null;
                         if (entity.Value.TryGetComponent<Stats>(out var stats))
                         {
-                            contentToWrite += "StatsChangedByItems\n";
-                            foreach (var stat in stats.StatsChangedByItems)
+                            if (stats.StatsChangedByItems != null)
                             {
-                                contentToWrite += $"{stat.Key}: {stat.Value}\n";
+                                var map = ToStringIntMap(stats.StatsChangedByItems.Cast<object>());
+                                if (map.Count > 0) statsByItems = map;
                             }
 
-                            contentToWrite += "StatsChangedByPlayerBuffAndActions\n";
-                            foreach (var stat in stats.StatsChangedByBuffAndActions)
+                            if (stats.StatsChangedByBuffAndActions != null)
                             {
-                                contentToWrite += $"{stat.Key}: {stat.Value}\n";
+                                var map = ToStringIntMap(stats.StatsChangedByBuffAndActions.Cast<object>());
+                                if (map.Count > 0) statsByBuffs = map;
                             }
                         }
 
-                        contentToWrite += "==========Actor Component============\n";
-                        if (entity.Value.TryGetComponent<Actor>(out var actor))
+                        // -------- Actor component --------
+                        List<String> activeSkills = null;
+                        if (entity.Value.TryGetComponent<Actor>(out var actor) && actor.ActiveSkills != null)
                         {
-                            contentToWrite += "ActiveSkillsOnEntity\n";
-                            contentToWrite += string.Join("\n", actor.ActiveSkills.Keys);
+                            var list = new List<string>();
+                            foreach (var kv in actor.ActiveSkills) // enumerate directly
+                            {
+                                var name = TryGetKeyName(kv);
+                                if (!string.IsNullOrEmpty(name))
+                                    list.Add(name);
+                            }
+                            if (list.Count > 0) activeSkills = list;
                         }
 
-                        contentToWrite += "===========================\n";
-                        Directory.CreateDirectory("entity_dumps");
-                        File.AppendAllText(Path.Join("entity_dumps", filename), contentToWrite);
-                    }
+                        // -------- Positions (Render) --------
+                        Vector3? worldPos = null;
+                        Vector2? gridPos = null;
+                        if (entity.Value.TryGetComponent<Render>(out var render))
+                        {
+                            worldPos = new Vector3(render.WorldPosition.X, render.WorldPosition.Y, render.WorldPosition.Z);
+                            gridPos = new Vector2(render.GridPosition.X, render.GridPosition.Y);
+                        }
 
-                    ImGuiHelper.ToolTip("Dump entity mods and buffs to file (if they exists).");
+                        // -------- Build payload --------
+                        var payload = new
+                        {
+                            EntityId = entity.Value.Id,
+                            Key = new { entity.Key.id },
+                            Path = path,
+                            Rarity = rarityStr,
+                            Position = new
+                            {
+                                World = worldPos.HasValue ? new { X = worldPos.Value.X, Y = worldPos.Value.Y, Z = worldPos.Value.Z } : null,
+                                Grid = gridPos.HasValue ? new { X = gridPos.Value.X, Y = gridPos.Value.Y } : null
+                            },
+                            ObjectMagicProperties = new
+                            {
+                                Mods = ompMods,
+                                ModStats = ompModStats
+                            },
+                            Buffs = buffs,
+                            Components = components,
+                            Stats = new
+                            {
+                                StatsChangedByItems = statsByItems,
+                                StatsChangedByBuffAndActions = statsByBuffs
+                            },
+                            Actor = new
+                            {
+                                ActiveSkillsOnEntity = activeSkills
+                            }
+                        };
+
+                        // -------- Serialize (pretty) --------
+                        var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                        string json = JsonSerializer.Serialize(payload, jsonOptions);
+
+                        // -------- Write to file + clipboard --------
+                        Directory.CreateDirectory("entity_dumps");
+                        var outPath = Path.Join("entity_dumps", safeName + ".json");
+                        File.WriteAllText(outPath, json);
+                        ImGui.SetClipboardText(json);
+                    }
+                    ImGuiHelper.ToolTip("Dump entity data as pretty-printed JSON (also copied to clipboard).");
                     if (isClicked)
                     {
                         entity.Value.ToImGui();

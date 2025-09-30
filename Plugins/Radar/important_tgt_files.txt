@@ -261,20 +261,20 @@
     "Metadata/Terrain/Jungle/AreaTransitions/DoryanisSanctumEntranceInt_01_01.tdtx:0-y:0": "Aggorat"
   },
   "G4_1_1": {
-    "Metadata/Terrain/Islands/Tiles/Island/Volcano/Goblins/Features/GoblinTownArena_01.tdtx:0-y:0": "Goblin Arena",
     "Metadata/Terrain/Islands/Tiles/Island/Volcano/Goblins/Features/GoblinMinesEntrance_01.tdtx:0-y:0": "Volcanic Warrens",
     "Metadata/Terrain/Islands/Tiles/Island/UnwalkableCliff/IsleOfKin/UnwalkableCliff_to_Ocean_CvSt_01.tdtx:0-y:0": "Quest - Treasure map?",
     "Metadata/Terrain/Islands/Tiles/Island/Volcano/SulphurRockVein_01.tdtx:0-y:0": "Voltaxic spire",
-    "Metadata/Terrain/Islands/Tiles/Island/Volcano/FailedDelveHub_01.tdtx:0-y:0": "Lesser jewellers orb",
+    "Metadata/Terrain/Islands/Tiles/Island/Volcano/Goblins/Features/GoblinTownArena_01.tdtx:6-y:7": "Goblin Arena (+2 Passive)",
     "Metadata/Terrain/Islands/Tiles/Island/Volcano/RhoaCamp_02.tdtx:0-y:0": "Rhoa - No reward?",
     "Metadata/Terrain/Islands/Tiles/Island/Volcano/RhoaCamp_01.tdtx:0-y:0": "Rhoa - No reward?",
-    "Metadata/Terrain/Islands/Tiles/Island/Volcano/BeastCamp_01.tdtx:0-y:0": "Rare - Good rewards"
+    "Metadata/Terrain/Islands/Tiles/Island/Volcano/BeastCamp_01.tdtx:0-y:0": "Rare - Good rewards",
+    "Metadata/Terrain/Islands/Tiles/Island/Volcano/FailedDelveHub_01.tdtx:5-y:9": "Lesser jewellers orb"
   },
   "G4_1_2": {
     "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/GoblinCaveEntrance_01.tdtx:0-y:0": "Isle of Kin",
-    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/GoblinCaveArena/GoblinCaveArena_02.tdtx:0-y:0": "Rares",
-    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/GoblinCaveArena/GoblinCaveArena_01.tdtx:0-y:0": "Goblin Arena1",
-    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/GoblinCave/ShrineLandmark_01.tdtx:0-y:0": "Shrine - No loot?"
+    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/GoblinCaveArena/GoblinCaveArena_01.tdtx:6-y:7": "Goblin Arena1",
+    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/GoblinCave/ShrineLandmark_01.tdtx:0-y:0": "Shrine - No loot?",
+    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/GoblinCaveArena/GoblinCaveArena_02.tdtx:7-y:6": "Rares"
   },
   "G4_2_1": {
     "Metadata/Terrain/Islands/Tiles/Island/KedgeBay/BossArena_01.tdtx:0-y:0": "Arena - Orb of Alchemy?",
@@ -299,8 +299,8 @@
     "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/SirenCoveEntrance_01.tdtx:0-y:0": "Whakapanu Island"
   },
   "G4_4_1": {
-    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Thickwall/CoralSinkhole/Arena/SudokuArena_03.tdtx:0-y:0": "Pay respects at end",
-    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/Spiral_Eighths/Sinkhole_Spiral_QuarterHeight_WalkableHalf_01.tdtx:0-y:0": "Hall of the dead"
+    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Thickwall/CoralSinkhole/Arena/SudokuArena_03.tdtx:20-y:7": "Pay respects at end",
+    "Metadata/Terrain/Islands/Tiles/CoralDungeon/Features/Spiral_Eighths/Sinkhole_Spiral_QuarterHeight_WalkableHalf_01.tdtx:4-y:4": "Hall of the dead"
   },
   "G4_4_2": {
     "Metadata/Terrain/Islands/Tiles/HallsOfTheDead/CaveWall/Halls_CaveWall_Hinekora_Door_01.tdtx:0-y:0": "3 Test Areas",
@@ -317,24 +317,26 @@
   },
   "G4_5_2": {
     "Metadata/Terrain/Islands/Tiles/Prison/Features/LowerPrison/Maximumprison.tdtx:0-y:0": "Boss",
-    "Metadata/Terrain/Islands/Tiles/Prison/Features/LowerPrison/Warden_Office.tdtx:0-y:0": "Warden office",
-    "Metadata/Terrain/Islands/Tiles/Prison/Features/dungeon_prison_chapel_01.tdtx:0-y:0": "Flask buff - Need key"
+    "Metadata/Terrain/Islands/Tiles/Prison/Features/dungeon_prison_chapel_01.tdtx:0-y:0": "Flask buff - Need key",
+    "Metadata/Terrain/Islands/Tiles/Prison/Features/LowerPrison/Warden_Office.tdtx:2-y:3": "Warden office"
   },
   "G4_8b": {
     "Metadata/Terrain/Islands/Tiles/TwilightIsland/Feature/TwilightArena.tdtx:0-y:0": "Boss",
-    "Metadata/Terrain/Islands/Tiles/TwilightIsland/Feature/TwilightLighthouse.tdtx:0-y:0": "Bell - Currency"
+    "Metadata/Terrain/Islands/Tiles/TwilightIsland/Feature/TwilightLighthouse.tdtx:0-y:0": "Bell - Currency",
+    "Metadata/Terrain/Islands/Tiles/TwilightIsland/Feature/TwilightOverlook.tdtx:3-y:8": "Bell (Rewards)",
+    "Metadata/Terrain/Islands/Tiles/TwilightIsland/Feature/bell_feature_01.tdtx:1-y:1": "Bell (Rewards)"
   },
   "G4_10": {
-    "Metadata/Terrain/Islands/Tiles/TwilightIsland/PrecursorRuins/Arena/BossArena_Forge_PCR_01.tdtx:0-y:0": "Boss",
-    "Metadata/Terrain/Islands/Tiles/TwilightIsland/DigSite/DigSiteFeature/Uncovered_Precursor_Feature_02.tdtx:0-y:0": "Chest"
+    "Metadata/Terrain/Islands/Tiles/TwilightIsland/DigSite/DigSiteFeature/Uncovered_Precursor_Feature_02.tdtx:0-y:0": "Chest",
+    "Metadata/Terrain/Islands/Tiles/TwilightIsland/PrecursorRuins/Arena/BossArena_Forge_PCR_01.tdtx:6-y:7": "Boss"
   },
   "G4_11_1b": {
-    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/Ngakanu/Medicine_Lady_01.tdtx:0-y:0": "Medicine lady",
-    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/Ngakanu/NgakanuToBloodFever_01.tdtx:0-y:0": "Heart of the Tribe"
+    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/Ngakanu/NgakanuToBloodFever_01.tdtx:0-y:0": "Heart of the Tribe",
+    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/Ngakanu/Medicine_Lady_01.tdtx:8-y:6": "Medicine lady"
   },
   "G4_11_2": {
-    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/ArenaCombined/ArenaCombined_01.tdtx:0-y:0": "Boss",
-    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/Whare_fill_02.tdtx:0-y:0": "Rare chests"
+    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/Whare_fill_02.tdtx:0-y:0": "Rare chests",
+    "Metadata/Terrain/Islands/Tiles/BloodFever/Features/ArenaCombined/ArenaCombined_01.tdtx:9-y:8": "Boss"
   },
   "P1_1": {
     "Metadata/Terrain/interlude/part1/p1_1/feature/forest_transition_01.tdtx:0-y:0": "Forest 1 of 2",
@@ -351,8 +353,9 @@
     "Metadata/Terrain/interlude/part1/p1_4/blackwood_transition_01.tdtx:0-y:0": "Blackwood",
     "Metadata/Terrain/interlude/part1/p1_4/holtondocktransition.tdtx:0-y:0": "Soul Ferryman - Sells runes",
     "Metadata/Terrain/interlude/part1/p1_4/holton_estate_transition_01.tdtx:0-y:0": "Holton Estate",
-    "Metadata/Terrain/Interlude/Part1/P1_4/Chaple_01.tdtx:0-y:0": "Bosses",
-    "Metadata/Terrain/Interlude/Part1/P1_4/Prison_entrance.tdtx:0-y:0": "Woven"
+    "Metadata/Terrain/Interlude/Part1/P1_4/Chaple_01.tdtx:7-y:11": "Bosses",
+    "Metadata/Terrain/Interlude/Part1/P1_4/Prison_entrance.tdtx:0-y:0": "Woven",
+    "Metadata/Terrain/Interlude/Part1/P1_4/Holton_Estate_Transition_01.tdtx:10-y:1": "Holten Estate"
   },
   "P1_5": {
     "Metadata/Terrain/Interlude/Part1/P1_5/Holten_Prison_Bossroom.tdtx:0-y:0": "Boss"
@@ -363,9 +366,13 @@
   },
   "P2_1": {
     "Metadata/Terrain/Interlude/Part2/P2_1/Dregs_Transition.tdtx:0-y:0": "Pools of Khatal",
-    "Metadata/Terrain/Interlude/Part2/P2_1/Forge_Transition.tdtx:0-y:0": "Forge",
-    "Metadata/Terrain/Interlude/Part2/P2_1/Salt_Waste_Bossroom.tdtx:0-y:0": "Boss",
-    "Metadata/Terrain/interlude/part2/p2_1/gates_exit_transition_01.tdtx:0-y:0": "Galai Gates"
+    "Metadata/Terrain/Interlude/Part2/P2_1/Titan_Forge.tdtx:4-y:5": "Forge",
+    "Metadata/Terrain/Interlude/Part2/P2_1/Salt_Waste_Bossroom.tdtx:14-y:11": "Bosses",
+    "Metadata/Terrain/interlude/part2/p2_1/gates_exit_transition_01.tdtx:0-y:0": "Galai Gates",
+    "Metadata/Terrain/Interlude/Part2/P2_1/forge_entrance.tdtx:2-y:2": "Forge Entrance",
+    "Metadata/Terrain/Interlude/Part2/P2_1/SaltWaste_Building_Landmark_01.tdtx:2-y:4": "Seal",
+    "Metadata/Terrain/Interlude/Part2/P2_1/Gates_Exit_transition_01.tdtx:7-y:3": "The Galai Gates",
+    "Metadata/Terrain/Desert/Oasis/Ruins/ruinwall_Tri_01.tdtx:1-y:2": "Torbik"
   },
   "P2_2": {
     "Metadata/Terrain/Interlude/Part2/P2_2/PenitentArchive_Exit.tdtx:0-y:0": "Exit"
@@ -385,7 +392,7 @@
     "Metadata/Terrain/Maps/SevenWaters/Tiles/BuildingWall/BuildingWall_X_01.tdtx:0-y:0": "Pillars - Buff choice"
   },
   "P2_7": {
-    "Metadata/Terrain/Interlude/Part2/P2_7/Qimah_bossroom.tdtx:0-y:0": "Boss",
+    "Metadata/Terrain/Interlude/Part2/P2_7/Qimah_bossroom.tdtx:11-y:7": "Boss",
     "Metadata/Terrain/Maps/SevenWaters/Tiles/BuildingWall/BuildingWall_X_01.tdtx:0-y:0": "Pillars - Buff choice"
   },
   "P3_1": {

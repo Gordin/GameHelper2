@@ -85,15 +85,6 @@ namespace GameHelper.Settings
                     ImGui.EndMenu();
                 }
 
-                if (ImGui.BeginMenu("Donate"))
-                {
-                    ImGuiHelper.DisplayTextAndCopyOnClick("BTC: bc1qf2nk0q8p30awmaahtyvzvrlnm6h55r3zc5g0nw (click to copy)",
-                        "bc1qf2nk0q8p30awmaahtyvzvrlnm6h55r3zc5g0nw");
-                    ImGuiHelper.DisplayTextAndCopyOnClick("ETH: 0xa3a44C5Cf64E5BcD74513Fd9627efa2101661f14 (click to copy)",
-                        "0xa3a44C5Cf64E5BcD74513Fd9627efa2101661f14");
-                    ImGui.EndMenu();
-                }
-
 #if DEBUG
                 ImGui.Checkbox("ImGui Demo Window", ref showImGuiDemo);
                 if (showImGuiDemo)
@@ -146,7 +137,7 @@ namespace GameHelper.Settings
         {
             ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
             ImGui.TextColored(color, "This is free software, if you purchased a copy you have been scammed");
-            ImGui.TextColored(color, "Download from github.com/KronosDesign/GameHelper2");
+            ImGui.TextColored(color, "Download from https://gitlab.com/arsenic2k/gamehelper2");
             ImGui.NewLine();
             ImGui.TextColored(Vector4.One, "Developer of this software is not responsible for " +
                               "any loss that may happen due to the usage of this software. Use this " +

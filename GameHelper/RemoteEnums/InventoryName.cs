@@ -46,7 +46,7 @@ namespace GameHelper.RemoteEnums
         Leaguestone1,
         BestiaryCrafting,
         IncursionSacrifice,
-        BetrayalUnveiling,
+        Unveiling1,
         ItemSynthesisInput,
         ItemSynthesisOutput,
         BlightCraftingInput,
@@ -114,6 +114,12 @@ namespace GameHelper.RemoteEnums
         ExpeditionDeal2,
         ExpeditionDeal3,
         UltimatumKeySacrifice1,
+        Ring3,
+        RecombinatorInput,
+        RecombinatorOutput,
+        EndgameSplinters1,
+        Chakra1,
+        CraftPredictionScratch
 #pragma warning restore CS1591, SA1602
     }
 }

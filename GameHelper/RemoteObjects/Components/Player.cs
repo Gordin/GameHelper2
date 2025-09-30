@@ -56,9 +56,10 @@ namespace GameHelper.RemoteObjects.Components
             if (hasAddressChanged)
             {
                 this.Name = reader.ReadStdWString(data.Name);
-                this.Xp = data.Xp;
-                this.Level = data.Level;
             }
+
+            this.Xp = data.Xp;
+            this.Level = data.Level;
         }
     }
 }
