@@ -1,0 +1,99 @@
+stages:
+  - build
+  - release
+
+variables:
+  DOTNET_VERSION: "8.0.x"
+
+build:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - VERSION=$(echo $CI_COMMIT_TAG | sed 's/^v//')
+    - dotnet build GameOverlay.sln --configuration Release -p:Version=$VERSION
+    - apt-get update -qq && apt-get install -y -qq zip
+    - cd GameHelper/bin/Release/net8.0/win-x64 && zip -r "../../../../../GameHelper-$CI_COMMIT_TAG.zip" . && cd ../../../../..
+    - echo "BUILD_JOB_ID=$CI_JOB_ID" > build.env
+  artifacts:
+    paths:
+      - "GameHelper-$CI_COMMIT_TAG.zip"
+    reports:
+      dotenv: build.env
+    expire_in: never
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: build
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - apk add --no-cache jq curl
+    - |
+      # Get previous tag
+      TAGS_RESPONSE=$(curl -s --header "JOB-TOKEN: $CI_JOB_TOKEN" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags?order_by=name&sort=desc")
+      PREV_TAG=$(echo "$TAGS_RESPONSE" | jq -r --arg current "$CI_COMMIT_TAG" '[.[] | select(.name != $current and (.name | test("^v"; "i")) ) | .name] | first // empty')
+      if [ -z "$PREV_TAG" ]; then
+        PREV_TAG="main"  # Fallback to main if no previous tag
+      fi
+      echo "Previous tag/branch: $PREV_TAG"
+    - |
+      echo "## 📦️ Download: [GameHelper-$CI_COMMIT_TAG.zip]($CI_SERVER_URL/$CI_PROJECT_PATH/-/jobs/$BUILD_JOB_ID/artifacts/raw/GameHelper-$CI_COMMIT_TAG.zip)" > changelog.txt
+      echo "" >> changelog.txt
+      echo "---" >> changelog.txt
+      echo "" >> changelog.txt
+
+      echo "## 🚀 $CI_COMMIT_TAG Changelog" >> changelog.txt
+      echo "" >> changelog.txt
+      
+      # Fetch all merged MRs
+      MRS_RESPONSE=$(curl -s --header "JOB-TOKEN: $CI_JOB_TOKEN" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests?state=merged&per_page=100&order_by=merged_at&sort=desc")
+      
+      # Get comparison to find commits in range
+      COMPARE_RESPONSE=$(curl -s --header "JOB-TOKEN: $CI_JOB_TOKEN" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/compare?from=$PREV_TAG&to=$CI_COMMIT_TAG")
+      COMMIT_SHAS=$(echo "$COMPARE_RESPONSE" | jq -r '.commits[].id')
+      
+      # Process each MR
+      while read -r mr; do
+        mr_iid=$(echo "$mr" | jq -r '.iid')
+        mr_title=$(echo "$mr" | jq -r '.title')
+        mr_author=$(echo "$mr" | jq -r '.author.name')
+        merge_commit_sha=$(echo "$mr" | jq -r '.merge_commit_sha // empty')
+        
+        # Check if this MR's merge commit is in our range
+        if [ -n "$merge_commit_sha" ]; then
+          if echo "$COMMIT_SHAS" | grep -q "$merge_commit_sha" 2>/dev/null || true; then
+            # Get commits for this MR
+            MR_COMMITS=$(curl -s --header "JOB-TOKEN: $CI_JOB_TOKEN" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$mr_iid/commits")
+            
+            echo "### 🔀 $mr_title ([!$mr_iid]($CI_PROJECT_URL/-/merge_requests/$mr_iid)) by $mr_author" >> changelog.txt
+            
+            # List commits in this MR
+            echo "$MR_COMMITS" | jq -r '.[] | "- \(.title) ([`\(.short_id)`]('$CI_PROJECT_URL'/-/commit/\(.id)))"' >> changelog.txt
+            echo "" >> changelog.txt
+          fi
+        fi
+      done < <(echo "$MRS_RESPONSE" | jq -c '.[]')
+      
+      # Check if any MRs were found
+      if ! grep -q "^### " changelog.txt; then
+        echo "No merge requests found in this release." >> changelog.txt
+        echo "" >> changelog.txt
+      fi
+      
+      # Add full changelog link
+      echo "---" >> changelog.txt
+      echo "" >> changelog.txt
+      echo "**Full Changelog**: [$PREV_TAG...$CI_COMMIT_TAG]($CI_PROJECT_URL/-/compare/$PREV_TAG...$CI_COMMIT_TAG)" >> changelog.txt
+  release:
+    name: $CI_COMMIT_TAG
+    tag_name: $CI_COMMIT_TAG
+    description: changelog.txt
+    assets:
+      links:
+        - name: 'GameHelper-$CI_COMMIT_TAG.zip'
+          url: '$CI_SERVER_URL/$CI_PROJECT_PATH/-/jobs/$BUILD_JOB_ID/artifacts/raw/GameHelper-$CI_COMMIT_TAG.zip'

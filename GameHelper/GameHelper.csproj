@@ -44,7 +44,6 @@
   <Target Name="CopyDocumentationFiles" AfterTargets="Build">
     <Copy SourceFiles="$(SolutionDir)README.md" DestinationFolder="$(OutDir)" Condition="Exists('$(SolutionDir)README.md')" />
     <Copy SourceFiles="$(SolutionDir)LICENSE" DestinationFolder="$(OutDir)" Condition="Exists('$(SolutionDir)LICENSE')" />
-    <Copy SourceFiles="$(SolutionDir)VERSION.txt" DestinationFolder="$(OutDir)" Condition="Exists('$(SolutionDir)VERSION.txt')" />
   </Target>
 
 </Project>
