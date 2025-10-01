@@ -12,7 +12,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
-  <Target Name="CopyFiles" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+  <Target Name="CopyFiles" AfterTargets="Build">
     <Copy SourceFiles="$(OutDir)$(TargetName).exe;$(OutDir)$(TargetName).dll;$(OutDir)$(TargetName).runtimeconfig.json;$(OutDir)AsmResolver.PE.dll;$(OutDir)AsmResolver.PE.File.dll;$(OutDir)AsmResolver.dll;$(OutDir)AsmResolver.PE.Win32Resources.dll;" DestinationFolder="..\GameHelper\$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>
