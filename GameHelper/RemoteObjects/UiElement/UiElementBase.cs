@@ -89,9 +89,17 @@ namespace GameHelper.RemoteObjects.UiElement
         {
             get
             {
-                return UiElementBaseFuncs.IsVisibleChecker(this.flags) &&
-                    (this.parentAddress == IntPtr.Zero ||
-                    this.parents.GetParent(this.parentAddress).IsVisible);
+                if (!UiElementBaseFuncs.IsVisibleChecker(this.flags))
+                {
+                    return false;
+                }
+                if (this.parentAddress == IntPtr.Zero)
+                {
+                    return true;
+                }
+
+                // During transitions, parent might not be cached yet; treat as not visible rather than throw
+                return this.TryGetParent(out var parent) && parent != null && parent.IsVisible;
             }
         }
 
@@ -102,14 +110,23 @@ namespace GameHelper.RemoteObjects.UiElement
 
         public bool TryGetParent(out UiElementBase parent)
         {
-            if (this.parentAddress != IntPtr.Zero)
+            if (this.parentAddress == IntPtr.Zero)
             {
-                parent = this.parents.GetParent(this.parentAddress);
-                return true;
+                parent = null;
+                return false;
             }
 
-            parent = null;
-            return false;
+            try
+            {
+                parent = this.parents.GetParent(this.parentAddress);
+                return parent != null;
+            }
+            catch
+            {
+                // Parent not yet cached or cache chain in transition.
+                parent = null;
+                return false;
+            }
         }
 
         /// <summary>
@@ -228,12 +245,12 @@ namespace GameHelper.RemoteObjects.UiElement
         /// <returns>Returns position without applying current element scaling values.</returns>
         private Vector2 GetUnScaledPosition()
         {
-            if (this.parentAddress == IntPtr.Zero)
+            // During zone/state transitions, the parent cache can be temporarily empty.
+            if (!this.TryGetParent(out var myParent) || myParent == null)
             {
+                // Treat as root during the brief window; avoids hard crash.
                 return this.relativePosition;
             }
-
-            var myParent = this.parents.GetParent(this.parentAddress);
             var parentPos = myParent.GetUnScaledPosition();
             if (UiElementBaseFuncs.ShouldModifyPos(this.flags))
             {

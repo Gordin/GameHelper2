@@ -67,17 +67,25 @@ namespace GameHelper.Cache
 
         public UiElementBase GetParent(IntPtr address)
         {
-            if (this.cache.TryGetValue(address, out var parent))
+            if (address == IntPtr.Zero)
+            {
+                throw new ArgumentException("address must not be zero", nameof(address));
+            }
+
+            if (this.cache != null && this.cache.TryGetValue(address, out var parent))
             {
                 return parent;
             }
-            else if (this.grandparent.cache.TryGetValue(address, out var gParent))
+            else if (this.grandparent != null
+                && this.grandparent.cache != null
+                && this.grandparent.cache.TryGetValue(address, out var gParent))
             {
                 return gParent;
             }
             else
             {
-                throw new Exception($"UiElementBase with adress {address.ToInt64():X} not found.");
+                throw new KeyNotFoundException(
+                    $"UiElementBase with address 0x{address.ToInt64():X} not found in caches.");
             }
         }
 
