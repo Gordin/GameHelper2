@@ -50,6 +50,11 @@ namespace GameHelper.RemoteObjects.UiElement
         }
 
         /// <summary>
+        ///     Gets the scale factor of the UiElement (ratio of the current UiElement's height to the base UiElement's height).
+        /// </summary>
+        public float Scale => this.positionModifier.X;
+
+        /// <summary>
         ///     Gets the position of the Ui Element w.r.t the game UI.
         /// </summary>
         public virtual Vector2 Postion
