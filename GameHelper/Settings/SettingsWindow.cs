@@ -23,6 +23,8 @@ namespace GameHelper.Settings
     /// </summary>
     internal static class SettingsWindow
     {
+        private static bool _themeInitialized = false;
+
         private static Vector4 scammedColor = new(1f, 1f, 0f, 1f);
         private static bool isOverlayRunningLocal = true;
         private static bool isSettingsWindowVisible = true;
@@ -536,6 +538,13 @@ namespace GameHelper.Settings
         {
             if (ImGui.CollapsingHeader("General Config"))
             {
+                var theme = Core.GHSettings.ThemeColor;
+                if (ImGui.ColorEdit4("Theme Color", ref theme, ImGuiColorEditFlags.DisplayRGB | ImGuiColorEditFlags.AlphaBar))
+                {
+                    Core.GHSettings.ThemeColor = theme;
+                    ApplyTheme(theme);
+                }
+                ImGui.Separator();
 #if DEBUG
                 if (ImGui.Checkbox("Fix Taskbar not showing", ref Core.GHSettings.FixTaskbarNotShowing))
                 {
@@ -687,6 +696,54 @@ namespace GameHelper.Settings
             }
         }
 
+        private static void ApplyTheme(Vector4 baseColor)
+        {
+            var style = ImGui.GetStyle();
+            var colors = style.Colors;
+
+            Vector4 Shade(float f) => new(
+                Math.Clamp(baseColor.X * f, 0f, 1f),
+                Math.Clamp(baseColor.Y * f, 0f, 1f),
+                Math.Clamp(baseColor.Z * f, 0f, 1f),
+                baseColor.W);
+
+            colors[(int)ImGuiCol.CheckMark] = Shade(1.00f);
+            colors[(int)ImGuiCol.SliderGrab] = Shade(0.90f);
+            colors[(int)ImGuiCol.SliderGrabActive] = Shade(1.10f);
+
+            colors[(int)ImGuiCol.Button] = Shade(0.80f);
+            colors[(int)ImGuiCol.ButtonHovered] = Shade(0.95f);
+            colors[(int)ImGuiCol.ButtonActive] = Shade(1.10f);
+
+            colors[(int)ImGuiCol.Header] = Shade(0.65f);
+            colors[(int)ImGuiCol.HeaderHovered] = Shade(0.85f);
+            colors[(int)ImGuiCol.HeaderActive] = Shade(0.80f);
+
+            colors[(int)ImGuiCol.MenuBarBg] = Shade(0.55f);
+            colors[(int)ImGuiCol.PopupBg] = Shade(0.40f) with { W = 0.98f };
+
+            colors[(int)ImGuiCol.TitleBg] = Shade(0.45f);
+            colors[(int)ImGuiCol.TitleBgActive] = Shade(0.70f);
+            colors[(int)ImGuiCol.TitleBgCollapsed] = Shade(0.35f);
+
+            colors[(int)ImGuiCol.FrameBg] = Shade(0.35f) with { W = 1.0f };
+            colors[(int)ImGuiCol.FrameBgHovered] = Shade(0.45f) with { W = 1.0f };
+            colors[(int)ImGuiCol.FrameBgActive] = Shade(0.55f) with { W = 1.0f };
+
+            colors[(int)ImGuiCol.Tab] = Shade(0.70f);
+            colors[(int)ImGuiCol.TabHovered] = Shade(0.95f);
+            colors[(int)ImGuiCol.TabSelected] = Shade(1.05f);
+            //colors[(int)ImGuiCol.TabUnfocused] = Shade(0.60f);
+            //colors[(int)ImGuiCol.TabUnfocusedActive] = Shade(0.80f);
+
+            colors[(int)ImGuiCol.SeparatorHovered] = Shade(0.90f);
+            colors[(int)ImGuiCol.SeparatorActive] = Shade(1.10f);
+
+            colors[(int)ImGuiCol.ResizeGrip] = Shade(0.85f);
+            colors[(int)ImGuiCol.ResizeGripHovered] = Shade(1.00f);
+            colors[(int)ImGuiCol.ResizeGripActive] = Shade(1.15f);
+        }
+
         /// <summary>
         ///     Draws the Settings Window.
         /// </summary>
@@ -696,6 +753,13 @@ namespace GameHelper.Settings
             while (true)
             {
                 yield return new Wait(GameHelperEvents.OnRender);
+
+                if (!_themeInitialized)
+                {
+                    ApplyTheme(Core.GHSettings.ThemeColor);
+                    _themeInitialized = true;
+                }
+
                 if (Utils.IsKeyPressedAndNotTimeout(Core.GHSettings.MainMenuHotKey))
                 {
                     isSettingsWindowVisible = !isSettingsWindowVisible;

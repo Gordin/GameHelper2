@@ -4,13 +4,14 @@
 
 namespace GameHelper.Settings
 {
-    using System.Collections.Generic;
-    using System.IO;
     using ClickableTransparentOverlay;
     using ClickableTransparentOverlay.Win32;
     using GameHelper.RemoteEnums;
     using GameHelper.RemoteEnums.Entity;
     using Newtonsoft.Json;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Numerics;
 
     /// <summary>
     ///     Game Helper Core Settings.
@@ -223,5 +224,10 @@ namespace GameHelper.Settings
         ///     Gets a value indicating if user is running Taiwan client or not.
         /// </summary>
         public bool IsTaiwanClient = false;
+
+        /// <summary>
+        ///     Gets or sets the theme color.
+        /// </summary>
+        public Vector4 ThemeColor = new(0.173f, 0.435f, 0.659f, 1.00f);
     }
 }
