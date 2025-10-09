@@ -63,8 +63,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.AwakeEntities = new();
             this.EntityCaches = new()
             {
-                new("/LeagueDelirium/", 1094, 1094, this.AwakeEntities), // always keep this at index 0.
-                new("Breach", 1084, 1089, this.AwakeEntities),
+                new("/LeagueDelirium/", 1105, 1105, this.AwakeEntities), // always keep this at index 0.
+                new("Breach", 1100, 1100, this.AwakeEntities),
             };
 
             this.NetworkBubbleEntityCount = 0;
