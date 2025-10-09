@@ -18,7 +18,7 @@ namespace GameOffsets.Objects.States.InGameState
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct WorldAreaDetailsStruct
     {
-        [FieldOffset(0x90)] public IntPtr WorldAreaDetailsRowPtr; // WorldArea.dat Offsets
+        [FieldOffset(0x98)] public IntPtr WorldAreaDetailsRowPtr; // WorldArea.dat Offsets
     }
 
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
