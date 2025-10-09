@@ -14,9 +14,6 @@ namespace GameHelper
     using ImGuiNET;
     using System.Drawing;
     using Utils;
-    using System.IO;
-    using System.Security.AccessControl;
-    using System.Security.Principal;
 
     /// <summary>
     ///     Allows process manipulation. It uses the (time/event based) co-routines
@@ -152,6 +149,13 @@ namespace GameHelper
             }
         }
 
+        /// <summary>
+        ///     Finds the list of processes from the list of processes running on the system
+        ///     based on the GameOffsets.GameProcessName class.
+        /// </summary>
+        /// <returns>
+        ///     co-routine IWait.
+        /// </returns>
         private IEnumerator<Wait> FindAndOpen()
         {
             while (true)
@@ -247,10 +251,16 @@ namespace GameHelper
             this.showSelectGameMenu = true;
         }
 
+        /// <summary>
+        ///     Monitors the game process for changes.
+        /// </summary>
+        /// <returns>co-routine IWait.</returns>
         private IEnumerator<Wait> Monitor()
         {
             while (true)
             {
+                // Have to check MainWindowHandle because
+                // sometime HasExited returns false even when game isn't running..
                 if (this.Information.HasExited ||
                     this.Information.MainWindowHandle.ToInt64() <= 0x00 ||
                     this.closeForcefully)
@@ -267,6 +277,11 @@ namespace GameHelper
             }
         }
 
+        /// <summary>
+        ///     Finds the static addresses in the GameProcess based on the
+        ///     GameOffsets.StaticOffsetsPatterns file.
+        /// </summary>
+        /// <returns>co-routine IWait.</returns>
         private IEnumerator<Wait> FindStaticAddresses()
         {
             while (true)
@@ -291,6 +306,9 @@ namespace GameHelper
             }
         }
 
+        /// <summary>
+        ///     Opens the handle for the game process.
+        /// </summary>
         private bool Open()
         {
             this.Handle = new SafeMemoryHandle(this.Information.Id);
@@ -315,6 +333,9 @@ namespace GameHelper
             return true;
         }
 
+        /// <summary>
+        ///     Updates the Foreground Property of the GameProcess class.
+        /// </summary>
         private void UpdateIsForeground()
         {
             var foreground = GetForegroundWindow() == this.Information.MainWindowHandle;
@@ -322,18 +343,6 @@ namespace GameHelper
             {
                 this.Foreground = foreground;
                 CoroutineHandler.RaiseEvent(GameHelperEvents.OnForegroundChanged);
-            }
-        }
-
-        private void UpdateWindowRectangle()
-        {
-            GetClientRect(this.Information.MainWindowHandle, out var size);
-            ClientToScreen(this.Information.MainWindowHandle, out var pos);
-            var sizePos = size.ToRectangle(pos);
-            if (sizePos != this.WindowArea && sizePos.Size != Size.Empty)
-            {
-                this.WindowArea = sizePos;
-                CoroutineHandler.RaiseEvent(GameHelperEvents.OnMoved);
             }
         }
 
@@ -429,6 +438,21 @@ namespace GameHelper
             }
 
             return allow;
+        }
+
+        /// <summary>
+        ///     Gets the game process window area with reference to the monitor screen.
+        /// </summary>
+        private void UpdateWindowRectangle()
+        {
+            GetClientRect(this.Information.MainWindowHandle, out var size);
+            ClientToScreen(this.Information.MainWindowHandle, out var pos);
+            var sizePos = size.ToRectangle(pos);
+            if (sizePos != this.WindowArea && sizePos.Size != Size.Empty)
+            {
+                this.WindowArea = sizePos;
+                CoroutineHandler.RaiseEvent(GameHelperEvents.OnMoved);
+            }
         }
 
         [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
