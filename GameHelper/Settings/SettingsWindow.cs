@@ -62,7 +62,7 @@ namespace GameHelper.Settings
         {
             if (ImGui.BeginMenuBar())
             {
-                if (ImGui.BeginMenu("Toggle Plugins"))
+                if (Core.GHSettings.ShowTogglePlugins && ImGui.BeginMenu("Toggle Plugins"))
                 {
                     foreach (var container in PManager.Plugins)
                     {

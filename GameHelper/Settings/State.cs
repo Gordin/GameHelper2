@@ -226,6 +226,11 @@ namespace GameHelper.Settings
         public bool IsTaiwanClient = false;
 
         /// <summary>
+        ///    Gets or sets a value indicating whether to show the toggle plugins button on the main menu or not.
+        /// </summary>
+        public bool ShowTogglePlugins = false;
+
+        /// <summary>
         ///     Gets or sets the theme color.
         /// </summary>
         public Vector4 ThemeColor = new(0.173f, 0.435f, 0.659f, 1.00f);
