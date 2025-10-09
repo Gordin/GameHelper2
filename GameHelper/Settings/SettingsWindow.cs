@@ -23,7 +23,7 @@ namespace GameHelper.Settings
     /// </summary>
     internal static class SettingsWindow
     {
-        private static Vector4 color = new(1f, 1f, 0f, 1f);
+        private static Vector4 scammedColor = new(1f, 1f, 0f, 1f);
         private static bool isOverlayRunningLocal = true;
         private static bool isSettingsWindowVisible = true;
 
@@ -56,7 +56,7 @@ namespace GameHelper.Settings
                 int.MaxValue));
         }
 
-        private static void DrawManuBar()
+        private static void DrawMenuBar()
         {
             if (ImGui.BeginMenuBar())
             {
@@ -134,8 +134,8 @@ namespace GameHelper.Settings
         private static void DrawCoreSettings()
         {
             ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
-            ImGui.TextColored(color, "This is free software, if you purchased a copy you have been scammed.");
-            ImGui.TextColored(color, "Download from https://gitlab.com/arsenic2k/gamehelper2");
+            ImGui.TextColored(scammedColor, "This is free software, if you purchased a copy you have been scammed.");
+            ImGui.TextColored(scammedColor, "Download from https://gitlab.com/arsenic2k/gamehelper2");
             ImGui.NewLine();
 
             if (Core.Process?.TargetProcessUserHasReadAccess == true)
@@ -152,14 +152,6 @@ namespace GameHelper.Settings
                   $"when you close the overlay or hide it via {Core.GHSettings.MainMenuHotKey} button.");
 
             ImGui.PopTextWrapPos();
-#if DEBUG
-            ImGui.InputText("Party Leader Name", ref Core.GHSettings.LeaderName, 200);
-            DrawPoiWidget();
-            DrawMonstersToIgnore();
-            DrawNPCWidget();
-            DrawMiscObjWidget();
-            DrawNearbyWidget();
-#endif
             DrawInputConfigWidget();
             DrawGeneralConfig();
             DrawToolsConfig();
@@ -167,6 +159,27 @@ namespace GameHelper.Settings
 #if DEBUG
             DrawReloadPluginWidget();
 #endif
+            if (ImGui.CollapsingHeader("Legacy Settings"))
+            {
+                ImGui.Spacing();
+                ImGui.SameLine();
+                ImGui.InputText("Party Leader Name", ref Core.GHSettings.LeaderName, 200);
+                ImGui.Spacing();
+                ImGui.SameLine();
+                DrawPoiWidget();
+                ImGui.Spacing();
+                ImGui.SameLine();
+                DrawMonstersToIgnore();
+                ImGui.Spacing();
+                ImGui.SameLine();
+                DrawNPCWidget();
+                ImGui.Spacing();
+                ImGui.SameLine();
+                DrawMiscObjWidget();
+                ImGui.Spacing();
+                ImGui.SameLine();
+                DrawNearbyWidget();
+            }
         }
 
         private static void DrawNearbyWidget()
@@ -721,7 +734,7 @@ namespace GameHelper.Settings
                     continue;
                 }
 
-                DrawManuBar();
+                DrawMenuBar();
                 DrawTabs();
                 ImGui.End();
             }
