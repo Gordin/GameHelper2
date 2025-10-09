@@ -14,6 +14,9 @@ namespace GameHelper
     using ImGuiNET;
     using System.Drawing;
     using Utils;
+    using System.IO;
+    using System.Security.AccessControl;
+    using System.Security.Principal;
 
     /// <summary>
     ///     Allows process manipulation. It uses the (time/event based) co-routines
@@ -118,6 +121,17 @@ namespace GameHelper
         internal SafeMemoryHandle Handle { get; private set; }
 
         /// <summary>
+        ///     The NT account (DOMAIN\User or MACHINE\User) that the target process is running under.
+        /// </summary>
+        internal string TargetProcessUser { get; private set; } = string.Empty;
+
+        /// <summary>
+        ///     Whether the target process user (including group memberships) has effective read access
+        ///     to this application's folder. Null when unknown/not attached.
+        /// </summary>
+        internal bool? TargetProcessUserHasReadAccess { get; private set; } = null;
+
+        /// <summary>
         ///     Closes the handle for the game and releases all the resources.
         /// </summary>
         /// <param name="monitorForNewGame">
@@ -130,19 +144,14 @@ namespace GameHelper
             this.Foreground = false;
             this.Handle?.Dispose();
             this.Information?.Close();
+            this.TargetProcessUser = string.Empty;
+            this.TargetProcessUserHasReadAccess = null;
             if (monitorForNewGame)
             {
                 CoroutineHandler.Start(this.FindAndOpen());
             }
         }
 
-        /// <summary>
-        ///     Finds the list of processes from the list of processes running on the system
-        ///     based on the GameOffsets.GameProcessName class.
-        /// </summary>
-        /// <returns>
-        ///     co-routine IWait.
-        /// </returns>
         private IEnumerator<Wait> FindAndOpen()
         {
             while (true)
@@ -238,16 +247,10 @@ namespace GameHelper
             this.showSelectGameMenu = true;
         }
 
-        /// <summary>
-        ///     Monitors the game process for changes.
-        /// </summary>
-        /// <returns>co-routine IWait.</returns>
         private IEnumerator<Wait> Monitor()
         {
             while (true)
             {
-                // Have to check MainWindowHandle because
-                // sometime HasExited returns false even when game isn't running..
                 if (this.Information.HasExited ||
                     this.Information.MainWindowHandle.ToInt64() <= 0x00 ||
                     this.closeForcefully)
@@ -264,11 +267,6 @@ namespace GameHelper
             }
         }
 
-        /// <summary>
-        ///     Finds the static addresses in the GameProcess based on the
-        ///     GameOffsets.StaticOffsetsPatterns file.
-        /// </summary>
-        /// <returns>co-routine IWait.</returns>
         private IEnumerator<Wait> FindStaticAddresses()
         {
             while (true)
@@ -293,9 +291,6 @@ namespace GameHelper
             }
         }
 
-        /// <summary>
-        ///     Opens the handle for the game process.
-        /// </summary>
         private bool Open()
         {
             this.Handle = new SafeMemoryHandle(this.Information.Id);
@@ -304,15 +299,22 @@ namespace GameHelper
                 return false;
             }
 
+            try
+            {
+                this.UpdateTargetUserAccessStatus();
+            }
+            catch
+            {
+                this.TargetProcessUser = string.Empty;
+                this.TargetProcessUserHasReadAccess = null;
+            }
+
             Core.CoroutinesRegistrar.Add(CoroutineHandler.Start(
                 this.Monitor(), "[GameProcess] Monitoring Game Process"));
             CoroutineHandler.RaiseEvent(GameHelperEvents.OnOpened);
             return true;
         }
 
-        /// <summary>
-        ///     Updates the Foreground Property of the GameProcess class.
-        /// </summary>
         private void UpdateIsForeground()
         {
             var foreground = GetForegroundWindow() == this.Information.MainWindowHandle;
@@ -323,9 +325,6 @@ namespace GameHelper
             }
         }
 
-        /// <summary>
-        ///     Gets the game process window area with reference to the monitor screen.
-        /// </summary>
         private void UpdateWindowRectangle()
         {
             GetClientRect(this.Information.MainWindowHandle, out var size);
@@ -338,11 +337,113 @@ namespace GameHelper
             }
         }
 
+        private void UpdateTargetUserAccessStatus()
+        {
+            this.TargetProcessUser = string.Empty;
+            this.TargetProcessUserHasReadAccess = null;
+
+            var procHandle = this.Information.Handle;
+            if (procHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            if (!OpenProcessToken(procHandle, TOKEN_QUERY, out var token))
+            {
+                return;
+            }
+
+            try
+            {
+                using var id = new WindowsIdentity(token);
+                var userSid = id.User;
+                var account = userSid?.Translate(typeof(NTAccount)) as NTAccount;
+                this.TargetProcessUser = account?.Value ?? userSid?.Value ?? string.Empty;
+
+                var appDir = new DirectoryInfo(AppContext.BaseDirectory);
+                this.TargetProcessUserHasReadAccess = HasEffectiveReadAccess(appDir, id);
+            }
+            finally
+            {
+                CloseHandle(token);
+            }
+        }
+
+        private static bool HasEffectiveReadAccess(DirectoryInfo dir, WindowsIdentity identity)
+        {
+            var acl = dir.GetAccessControl(AccessControlSections.Access);
+            var rules = acl.GetAccessRules(true, true, typeof(SecurityIdentifier));
+
+            var sids = new HashSet<SecurityIdentifier>();
+            if (identity.User != null)
+            {
+                sids.Add(identity.User);
+            }
+            if (identity.Groups != null)
+            {
+                foreach (var g in identity.Groups)
+                {
+                    if (g is SecurityIdentifier sid)
+                    {
+                        sids.Add(sid);
+                    }
+                }
+            }
+
+            bool deny = false;
+            bool allow = false;
+
+            foreach (FileSystemAccessRule rule in rules)
+            {
+                if (!sids.Contains((SecurityIdentifier)rule.IdentityReference))
+                {
+                    continue;
+                }
+
+                var rights = rule.FileSystemRights;
+
+                bool targetsRead =
+                    rights.HasFlag(FileSystemRights.ReadData) ||
+                    rights.HasFlag(FileSystemRights.ListDirectory) ||
+                    rights.HasFlag(FileSystemRights.Read) ||
+                    rights.HasFlag(FileSystemRights.ReadAndExecute);
+
+                if (!targetsRead)
+                {
+                    continue;
+                }
+
+                if (rule.AccessControlType == AccessControlType.Deny)
+                {
+                    deny = true;
+                }
+                else if (rule.AccessControlType == AccessControlType.Allow)
+                {
+                    allow = true;
+                }
+            }
+
+            if (deny)
+            {
+                return false;
+            }
+
+            return allow;
+        }
+
         [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
 
         [DllImport("user32.dll")] private static extern bool ClientToScreen(IntPtr hWnd, out Point lpPoint);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr hObject);
+
+        private const uint TOKEN_QUERY = 0x0008;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT

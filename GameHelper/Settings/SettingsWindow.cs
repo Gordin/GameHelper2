@@ -45,9 +45,6 @@ namespace GameHelper.Settings
         private static bool showImGuiDemo = false;
 #endif
 
-        /// <summary>
-        ///     Initializes the Main Menu.
-        /// </summary>
         internal static void InitializeCoroutines()
         {
             HideOnStartCheck();
@@ -130,18 +127,22 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the currently selected settings on ImGui.
-        /// </summary>
         private static void DrawCoreSettings()
         {
             ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
             ImGui.TextColored(color, "This is free software, if you purchased a copy you have been scammed");
             ImGui.TextColored(color, "Download from https://gitlab.com/arsenic2k/gamehelper2");
             ImGui.NewLine();
+            if (Core.Process?.TargetProcessUserHasReadAccess == false)
+            {
+                ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f),
+                    "Warning: the target process has read access to GameHelper2 folder.");
+            }
+
             ImGui.TextColored(Vector4.One, "Developer of this software is not responsible for " +
-                              "any loss that may happen due to the usage of this software. Use this " +
-                              "software at your own risk.");
+                      "any loss that may happen due to the usage of this software. Use this " +
+                      "software at your own risk.");
+
             ImGui.NewLine();
             ImGui.TextColored(Vector4.One, "All Settings (including plugins) are saved automatically " +
                   $"when you close the overlay or hide it via {Core.GHSettings.MainMenuHotKey} button.");
@@ -174,15 +175,9 @@ namespace GameHelper.Settings
                     1f, Core.GHSettings.InnerCircle.Meaning, AreaInstanceConstants.NETWORK_BUBBLE_RADIUS);
                 ImGui.SameLine();
                 ImGui.Checkbox($"Visible##large", ref Core.GHSettings.OuterCircle.IsVisible);
-
-                // ImGui.SameLine(0f, 30f);
-                // ImGui.Checkbox($"Follow Mouse##{name}", ref value.FollowMouse);
             }
         }
 
-        /// <summary>
-        ///     Draws the ImGui widget for changing fonts.
-        /// </summary>
         private static void ChangeFontWidget()
         {
             if (ImGui.CollapsingHeader("Change Fonts"))
@@ -225,9 +220,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the ImGui widget for changing POI monsters.
-        /// </summary>
         private static void DrawPoiWidget()
         {
             var isOpened = ImGui.CollapsingHeader("Special Monster Tracker (A.K.A Monster POI)");
@@ -351,9 +343,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the ImGui widget for ignoring monsters.
-        /// </summary>
         private static void DrawMonstersToIgnore()
         {
             var isOpened = ImGui.CollapsingHeader("Ignore Monsters");
@@ -384,9 +373,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the ImGui widget for defining important NPCs.
-        /// </summary>
         private static void DrawNPCWidget()
         {
             var isOpened = ImGui.CollapsingHeader("Special NPC Metadata Paths");
@@ -417,9 +403,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the ImGui widget for defining important MiscellaneousObjects.
-        /// </summary>
         private static void DrawMiscObjWidget()
         {
             var isOpened = ImGui.CollapsingHeader("Special Objects Metadata Paths");
@@ -458,9 +441,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the ImGui widget for changing keyboard related settings
-        /// </summary>
         private static void DrawInputConfigWidget()
         {
             if (ImGui.CollapsingHeader("Input Config"))
@@ -477,9 +457,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the imgui widget for enabling/disabling tools.
-        /// </summary>
         private static void DrawToolsConfig()
         {
             if (ImGui.CollapsingHeader("Misc Tools"))
@@ -508,9 +485,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the imgui widget for showing misc config
-        /// </summary>
         private static void DrawMiscConfig()
         {
             if (ImGui.CollapsingHeader("Miscellaneous Config"))
@@ -560,14 +534,14 @@ namespace GameHelper.Settings
                 }
                 ImGui.SameLine();
 
-                for (var i = 2; i < 128; i*=2)
+                for (var i = 2; i < 128; i *= 2)
                 {
                     if (ImGui.RadioButton(i.ToString(), Core.GHSettings.EntityReaderMaxDegreeOfParallelism == i))
                     {
                         Core.GHSettings.EntityReaderMaxDegreeOfParallelism = i;
                     }
 
-                    if (i*2 < 128)
+                    if (i * 2 < 128)
                     {
                         ImGui.SameLine();
                     }
@@ -577,9 +551,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the imgui widget for reloading plugins
-        /// </summary>
         private static void DrawReloadPluginWidget()
         {
 #if DEBUG
@@ -611,9 +582,6 @@ namespace GameHelper.Settings
 #endif
         }
 
-        /// <summary>
-        ///     Draws the closing confirmation popup on ImGui.
-        /// </summary>
         private static void DrawConfirmationPopup()
         {
             ImGui.SetNextWindowPos(new Vector2(Core.Overlay.Size.Width / 3f, Core.Overlay.Size.Height / 3f));
@@ -639,9 +607,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Hides the overlay on startup.
-        /// </summary>
         private static void HideOnStartCheck()
         {
             if (Core.GHSettings.HideSettingWindowOnStart)
@@ -650,10 +615,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Draws the Settings Window.
-        /// </summary>
-        /// <returns>co-routine IWait.</returns>
         private static IEnumerator<Wait> RenderCoroutine()
         {
             while (true)
@@ -703,10 +664,6 @@ namespace GameHelper.Settings
             }
         }
 
-        /// <summary>
-        ///     Saves the GameHelper settings to disk.
-        /// </summary>
-        /// <returns>co-routine IWait.</returns>
         private static IEnumerator<Wait> SaveCoroutine()
         {
             while (true)
