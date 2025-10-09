@@ -14,6 +14,9 @@ namespace GameHelper
     using ImGuiNET;
     using System.Drawing;
     using Utils;
+    using System.IO;
+    using System.Security.AccessControl;
+    using System.Security.Principal;
 
     /// <summary>
     ///     Allows process manipulation. It uses the (time/event based) co-routines
