@@ -34,9 +34,7 @@ namespace GameHelper.Settings
         private static int filterGroup = 0;
 
         private static string specialNpcPath = string.Empty;
-
         private static string specialMiscObjPath = string.Empty;
-
         private static string monterPathToIgnore = string.Empty;
 
 #if DEBUG
@@ -62,7 +60,7 @@ namespace GameHelper.Settings
         {
             if (ImGui.BeginMenuBar())
             {
-                if (ImGui.BeginMenu("Enable Plugins"))
+                if (ImGui.BeginMenu("Toggle Plugins"))
                 {
                     foreach (var container in PManager.Plugins)
                     {
@@ -136,11 +134,11 @@ namespace GameHelper.Settings
         private static void DrawCoreSettings()
         {
             ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
-            ImGui.TextColored(color, "This is free software, if you purchased a copy you have been scammed");
+            ImGui.TextColored(color, "This is free software, if you purchased a copy you have been scammed.");
             ImGui.TextColored(color, "Download from https://gitlab.com/arsenic2k/gamehelper2");
             ImGui.NewLine();
 
-            if (Core.Process?.TargetProcessUserHasReadAccess == true)
+            if (Core.Process?.TargetProcessUserHasReadAccess == false)
             {
                 ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f),
                     "Warning: the target process has read access to the GameHelper2 folder.");
@@ -152,20 +150,23 @@ namespace GameHelper.Settings
             ImGui.NewLine();
             ImGui.TextColored(Vector4.One, "All Settings (including plugins) are saved automatically " +
                   $"when you close the overlay or hide it via {Core.GHSettings.MainMenuHotKey} button.");
-            ImGui.NewLine();
-            ImGui.Text($"Current Game State: {Core.States.GameCurrentState}");
+
             ImGui.PopTextWrapPos();
+#if DEBUG
             ImGui.InputText("Party Leader Name", ref Core.GHSettings.LeaderName, 200);
             DrawPoiWidget();
             DrawMonstersToIgnore();
             DrawNPCWidget();
             DrawMiscObjWidget();
             DrawNearbyWidget();
+#endif
             DrawInputConfigWidget();
+            DrawGeneralConfig();
             DrawToolsConfig();
-            DrawMiscConfig();
-            ChangeFontWidget();
+            DrawChangeFontWidget();
+#if DEBUG
             DrawReloadPluginWidget();
+#endif
         }
 
         private static void DrawNearbyWidget()
@@ -190,12 +191,12 @@ namespace GameHelper.Settings
         /// <summary>
         ///     Draws the ImGui widget for changing fonts.
         /// </summary>
-        private static void ChangeFontWidget()
+        private static void DrawChangeFontWidget()
         {
-            if (ImGui.CollapsingHeader("Change Fonts"))
+            if (ImGui.CollapsingHeader("Font and Language"))
             {
-                ImGui.InputText("Pathname", ref Core.GHSettings.FontPathName, 300);
-                ImGui.DragInt("Size", ref Core.GHSettings.FontSize, 0.1f, 13, 40);
+                ImGui.InputText("Font Path", ref Core.GHSettings.FontPathName, 300);
+                ImGui.DragInt("Font Size", ref Core.GHSettings.FontSize, 0.1f, 13, 40);
                 var languageChanged = ImGuiHelper.EnumComboBox("Language", ref Core.GHSettings.FontLanguage);
                 var customLanguage = ImGui.InputText("Custom Glyph Ranges", ref Core.GHSettings.FontCustomGlyphRange, 100);
                 ImGuiHelper.ToolTip("This is advance level feature. Do not modify this if you don't know what you are doing. " +
@@ -211,6 +212,8 @@ namespace GameHelper.Settings
                 {
                     Core.GHSettings.FontLanguage = FontGlyphRangeType.English;
                 }
+
+                ImGui.Checkbox("Is Taiwan client", ref Core.GHSettings.IsTaiwanClient);
 
                 if (ImGui.Button("Apply Changes"))
                 {
@@ -472,7 +475,7 @@ namespace GameHelper.Settings
         {
             if (ImGui.CollapsingHeader("Input Config"))
             {
-                ImGui.DragInt("Key Timeout", ref Core.GHSettings.KeyPressTimeout, 0.2f, 60, 300);
+                ImGui.DragInt("Key Timeout (ms)", ref Core.GHSettings.KeyPressTimeout, 0.2f, 60, 300);
                 ImGuiHelper.ToolTip("When GameOverlay press a key in the game, the key " +
                     "has to go to the GGG server for it to work. This process takes " +
                     "time equal to your latency x 3. During this time GameOverlay might " +
@@ -499,16 +502,14 @@ namespace GameHelper.Settings
                     ImGui.Spacing();
                     ImGui.SameLine();
                     ImGui.Checkbox("Hide when game is in background", ref Core.GHSettings.HidePerfStatsWhenBg);
-                    ImGui.Spacing();
-                    ImGui.SameLine();
-                    ImGui.Spacing();
                     ImGui.SameLine();
                     ImGui.Checkbox("Show minimum stats", ref Core.GHSettings.MinimumPerfStats);
                 }
 
-                ImGui.Checkbox("Game UiExplorer (GE)", ref Core.GHSettings.ShowGameUiExplorer);
-                ImGui.Checkbox("Data Visualization (DV)", ref Core.GHSettings.ShowDataVisualization);
                 ImGui.Checkbox("Performance Profiler", ref Core.GHSettings.ShowPerfProfiler);
+                ImGui.Checkbox("Data Visualization (DV)", ref Core.GHSettings.ShowDataVisualization);
+                ImGui.SameLine();
+                ImGui.Checkbox("Game UiExplorer (GE)", ref Core.GHSettings.ShowGameUiExplorer);
 #if DEBUG
                 ImGui.Checkbox("Krangled Passive Detector", ref Core.GHSettings.ShowKrangledPassiveDetector);
 #endif
@@ -516,12 +517,13 @@ namespace GameHelper.Settings
         }
 
         /// <summary>
-        ///     Draws the imgui widget for showing misc config
+        ///     Draws the imgui widget for showing general config
         /// </summary>
-        private static void DrawMiscConfig()
+        private static void DrawGeneralConfig()
         {
-            if (ImGui.CollapsingHeader("Miscellaneous Config"))
+            if (ImGui.CollapsingHeader("General Config"))
             {
+#if DEBUG
                 if (ImGui.Checkbox("Fix Taskbar not showing", ref Core.GHSettings.FixTaskbarNotShowing))
                 {
                     if (Core.States.GameCurrentState != GameStateTypes.GameNotLoaded)
@@ -532,13 +534,14 @@ namespace GameHelper.Settings
 
                 ImGui.Checkbox("Disable entity processing when in town or hideout",
                     ref Core.GHSettings.DisableEntityProcessingInTownOrHideout);
-                ImGui.Checkbox("Hide overlay settings upon start", ref Core.GHSettings.HideSettingWindowOnStart);
+#endif
+                ImGui.Checkbox("Hide this window on start", ref Core.GHSettings.HideSettingWindowOnStart);
                 ImGui.Checkbox("Close GameHelper when Game Exit", ref Core.GHSettings.CloseWhenGameExit);
                 if (ImGui.Checkbox("V-Sync", ref Core.Overlay.VSync))
                 {
                     Core.GHSettings.Vsync = Core.Overlay.VSync;
                 }
-
+                ImGui.SameLine();
                 ImGui.BeginDisabled(Core.Overlay.VSync);
                 if (ImGui.InputInt("FPS Limiter (0 to disable)", ref Core.GHSettings.FPSLimit))
                 {
@@ -554,8 +557,8 @@ namespace GameHelper.Settings
                 ImGui.Checkbox("Process all renderable entities", ref Core.GHSettings.ProcessAllRenderableEntities);
                 ImGuiHelper.ToolTip("WARNING: This is a debug only feature, it should not be used when actually playing the game." +
                     "It will greatly reduce the GH speed as well as increase crashes/gliches. Always keep it unchecked.");
-#endif
                 ImGui.Checkbox("Disable debug counters (do it on 6 man party + juiced maps only)", ref Core.GHSettings.DisableAllCounters);
+#endif
                 ImGui.Text("Entity MaxDegreeOfParallelism");
                 ImGuiHelper.ToolTip("This limits the entity reading algorithm to a set number of CPUs." +
                     " Select -1 to disable this limit. Use Task Manager CPU usage stat + Misc Tools -> performance stats" +
@@ -567,20 +570,34 @@ namespace GameHelper.Settings
                 }
                 ImGui.SameLine();
 
-                for (var i = 2; i < 128; i *= 2)
+                // detect logical processors (threads) and find the largest power of two <= that count
+                var logicalThreads = Math.Max(1, Environment.ProcessorCount);
+                int maxPow2 = 1;
+                while ((maxPow2 << 1) <= logicalThreads)
+                {
+                    maxPow2 <<= 1;
+                }
+
+                // if the saved value exceeds the cap (and isn't -1), clamp it to the cap
+                if (Core.GHSettings.EntityReaderMaxDegreeOfParallelism > maxPow2 &&
+                    Core.GHSettings.EntityReaderMaxDegreeOfParallelism != -1)
+                {
+                    Core.GHSettings.EntityReaderMaxDegreeOfParallelism = maxPow2;
+                }
+
+                // render options: 2, 4, 8, ... up to maxPow2 (only if >= 2)
+                for (int i = 2; i <= maxPow2; i <<= 1)
                 {
                     if (ImGui.RadioButton(i.ToString(), Core.GHSettings.EntityReaderMaxDegreeOfParallelism == i))
                     {
                         Core.GHSettings.EntityReaderMaxDegreeOfParallelism = i;
                     }
 
-                    if (i * 2 < 128)
+                    if ((i << 1) <= maxPow2)
                     {
                         ImGui.SameLine();
                     }
                 }
-
-                ImGui.Checkbox("Is Taiwan client", ref Core.GHSettings.IsTaiwanClient);
             }
         }
 
@@ -683,7 +700,7 @@ namespace GameHelper.Settings
 
                 ImGui.SetNextWindowSizeConstraints(new Vector2(800, 600), Vector2.One * float.MaxValue);
                 var isMainMenuExpanded = ImGui.Begin(
-                    $"Game Overlay Settings [ {Core.GetVersion()} ]",
+                    $"Game Overlay Settings [ {Core.GetVersion()} ] [ {Core.States.GameCurrentState} ]",
                     ref isOverlayRunningLocal,
                     ImGuiWindowFlags.MenuBar);
 
