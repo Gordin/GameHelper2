@@ -544,6 +544,12 @@ namespace GameHelper.Settings
                     Core.GHSettings.ThemeColor = theme;
                     ApplyTheme(theme);
                 }
+                ImGui.SameLine();
+                if (ImGui.Button("Reset"))
+                {
+                    Core.GHSettings.ThemeColor = State.DefaultThemeColor;
+                    ApplyTheme(Core.GHSettings.ThemeColor);
+                }
                 ImGui.Separator();
 #if DEBUG
                 if (ImGui.Checkbox("Fix Taskbar not showing", ref Core.GHSettings.FixTaskbarNotShowing))
