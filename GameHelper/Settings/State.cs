@@ -228,6 +228,7 @@ namespace GameHelper.Settings
         /// <summary>
         ///    Gets or sets a value indicating whether to show the toggle plugins button on the main menu or not.
         /// </summary>
+        [JsonIgnore]
         public bool ShowTogglePlugins = false;
 
         /// <summary>
