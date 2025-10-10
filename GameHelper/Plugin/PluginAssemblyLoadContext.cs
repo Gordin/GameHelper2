@@ -1,26 +1,62 @@
 ﻿namespace GameHelper.Plugin
 {
+    using System;
+    using System.Linq;
     using System.Reflection;
     using System.Runtime.Loader;
 
-    internal class PluginAssemblyLoadContext : AssemblyLoadContext
+    internal sealed class PluginAssemblyLoadContext : AssemblyLoadContext
     {
         private readonly AssemblyDependencyResolver resolver;
 
-        public PluginAssemblyLoadContext(string assemblyLocation)
+        // Assemblies that must be shared with the host
+        private static readonly string[] Shared =
         {
-            this.resolver = new AssemblyDependencyResolver(assemblyLocation);
+            "ClickableTransparentOverlay",
+            "Coroutine",
+            "GameHelper",
+            "GameOffsets",
+            "ImGui.NET",
+            "Newtonsoft.Json",
+            "SixLabors.ImageSharp",
+        };
+
+        public PluginAssemblyLoadContext(string assemblyLocation, bool isCollectible = true)
+            : base(isCollectible)
+        {
+            resolver = new AssemblyDependencyResolver(assemblyLocation);
+            Resolving += OnResolving;
         }
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
-            var path = this.resolver.ResolveAssemblyToPath(assemblyName);
-            if (path != null)
+            // Prefer the host's copy for shared assemblies
+            if (Shared.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
             {
-                return this.LoadFromAssemblyPath(path);
+                var hostAsm = AssemblyLoadContext.Default.Assemblies
+                    .FirstOrDefault(a => string.Equals(a.GetName().Name, assemblyName.Name, StringComparison.OrdinalIgnoreCase));
+                if (hostAsm != null)
+                    return hostAsm;
             }
 
+            var path = resolver.ResolveAssemblyToPath(assemblyName);
+            return path != null ? LoadFromAssemblyPath(path) : null;
+        }
+
+        private Assembly OnResolving(AssemblyLoadContext context, AssemblyName name)
+        {
+            if (Shared.Contains(name.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                return AssemblyLoadContext.Default.Assemblies
+                    .FirstOrDefault(a => string.Equals(a.GetName().Name, name.Name, StringComparison.OrdinalIgnoreCase));
+            }
             return null;
+        }
+
+        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+        {
+            var path = resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            return path != null ? LoadUnmanagedDllFromPath(path) : IntPtr.Zero;
         }
     }
 }
