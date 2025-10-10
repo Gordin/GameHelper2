@@ -49,7 +49,10 @@ namespace GameHelper
             {
                 try
                 {
-                    return (uint)this.Information.Id;
+                    var p = this.Information;
+                    if (p == null) return 0;
+
+                    return (uint)p.Id;
                 }
                 catch
                 {
