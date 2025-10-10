@@ -52,11 +52,5 @@
             }
             return null;
         }
-
-        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
-        {
-            var path = resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-            return path != null ? LoadUnmanagedDllFromPath(path) : IntPtr.Zero;
-        }
     }
 }
