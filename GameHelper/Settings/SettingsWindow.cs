@@ -150,7 +150,7 @@ namespace GameHelper.Settings
             ImGui.TextColored(scammedColor, "Download from https://gitlab.com/arsenic2k/gamehelper2");
             ImGui.NewLine();
 
-            if (Core.Process?.TargetProcessUserHasReadAccess == false)
+            if (Core.Process?.TargetProcessUserHasReadAccess == true)
             {
                 ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f),
                     "Warning: the target process has read access to the GameHelper2 folder.");
