@@ -10,6 +10,7 @@ namespace GameHelper.Settings
     using CoroutineEvents;
     using GameHelper.RemoteEnums;
     using GameHelper.RemoteEnums.Entity;
+    using GameHelper.RemoteObjects.Components;
     using GameOffsets.Objects.States.InGameState;
     using ImGuiNET;
     using Plugin;
@@ -19,6 +20,8 @@ namespace GameHelper.Settings
     using System.Linq;
     using System.Numerics;
     using Utils;
+    using Vortice.Direct3D11;
+    using static System.Net.WebRequestMethods;
 
     /// <summary>
     ///     Creates the MainMenu on the UI.
@@ -147,10 +150,20 @@ namespace GameHelper.Settings
             ImGui.TextColored(scammedColor, "Download from https://gitlab.com/arsenic2k/gamehelper2");
             ImGui.NewLine();
 
-            if (Core.Process?.TargetProcessUserHasReadAccess == true)
+            if (Core.Process?.TargetProcessUserHasReadAccess == false)
             {
                 ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f),
                     "Warning: the target process has read access to the GameHelper2 folder.");
+                ImGui.SameLine();
+                ImGui.TextLinkOpenURL("(Steps to Fix)",
+                    @"https://copilot.microsoft.com/?q=How can I run path of exile 2 in limited user mode? 
+                                                                After creating a user, make sure to tell me how to 
+                                                                deny all permissions to the Gamehelper folder to 
+                                                                this new user. Make sure I deny the permissions 
+                                                                before you tell me to run Path of Exile 2. The game 
+                                                                is running on steam. Refer me how to run it by using 
+                                                                steam in limited user (open steam with shift+right click, 
+                                                                different user), and also by shortcut.");
             }
 
             ImGui.TextColored(Vector4.One, "Developer of this software is not responsible for " +
