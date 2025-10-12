@@ -324,10 +324,10 @@ namespace GameHelper.Settings
                 ImGui.Separator();
 
                 var avail = ImGui.GetContentRegionAvail();
-                var leftWidth = Math.Max(200f, avail.X * 0.40f);
-                var rightWidth = Math.Max(260f, avail.X - leftWidth - ImGui.GetStyle().ItemSpacing.X);
+                var leftWidth = 10f;
+                var rightWidth = Math.Max(240f, avail.X - leftWidth - ImGui.GetStyle().ItemSpacing.X);
 
-                ImGui.BeginChild("dirs", new Vector2(leftWidth, 350));
+                ImGui.BeginChild("dirs", new Vector2(leftWidth, 240f));
                 IEnumerable<string> dirs = Enumerable.Empty<string>();
                 try { dirs = Directory.EnumerateDirectories(_fontBrowserDir).OrderBy(Path.GetFileName); } catch { }
                 foreach (var d in dirs)
@@ -342,7 +342,7 @@ namespace GameHelper.Settings
 
                 ImGui.SameLine();
 
-                ImGui.BeginChild("files", new Vector2(rightWidth, 350));
+                ImGui.BeginChild("files", new Vector2(rightWidth, 240));
                 IEnumerable<string> files = Enumerable.Empty<string>();
                 try
                 {
