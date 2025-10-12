@@ -4,19 +4,21 @@
 
 namespace GameHelper.Settings
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Numerics;
     using ClickableTransparentOverlay;
     using ClickableTransparentOverlay.Win32;
     using Coroutine;
     using CoroutineEvents;
+    using GameHelper.RemoteEnums;
+    using GameHelper.RemoteEnums.Entity;
+    using GameOffsets.Objects.States.InGameState;
     using ImGuiNET;
     using Plugin;
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using System.Numerics;
     using Utils;
-    using GameOffsets.Objects.States.InGameState;
-    using GameHelper.RemoteEnums.Entity;
-    using GameHelper.RemoteEnums;
 
     /// <summary>
     ///     Creates the MainMenu on the UI.
@@ -38,6 +40,11 @@ namespace GameHelper.Settings
         private static string specialNpcPath = string.Empty;
         private static string specialMiscObjPath = string.Empty;
         private static string monterPathToIgnore = string.Empty;
+
+        private static bool _fontSelectorOpen;
+        private static string _fontBrowserDir = string.Empty;
+        private static string _fontSearch = string.Empty;
+        private static string _fontSelectedPath = string.Empty;
 
 #if DEBUG
         private static string pluginForHotReload = string.Empty;
@@ -210,14 +217,47 @@ namespace GameHelper.Settings
         {
             if (ImGui.CollapsingHeader("Font and Language"))
             {
-                ImGui.InputText("Font Path", ref Core.GHSettings.FontPathName, 300);
+                ImGui.InputText("Font", ref Core.GHSettings.FontPathName, 300, ImGuiInputTextFlags.ReadOnly);
+                ImGui.SameLine();
+                if (ImGui.Button("Browse..."))
+                {
+                    _fontSelectorOpen = true;
+                    _fontSelectedPath = string.Empty;
+                    _fontSearch = string.Empty;
+
+                    try
+                    {
+                        var start = Core.GHSettings.FontPathName;
+                        var dir = (!string.IsNullOrEmpty(start) && Directory.Exists(Path.GetDirectoryName(start)))
+                                  ? Path.GetDirectoryName(start)
+                                  : Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
+                        _fontBrowserDir = string.IsNullOrEmpty(dir) ? Directory.GetCurrentDirectory() : dir;
+                    }
+                    catch
+                    {
+                        _fontBrowserDir = Directory.GetCurrentDirectory();
+                    }
+
+                    ImGui.OpenPopup("Font Selector");
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("Reset"))
+                {
+                    Core.GHSettings.FontPathName = Core.GHSettings.DefaultFontPathName;
+                    ApplyFont();
+                }
+
+                DrawFontSelectorPopup();
+
                 ImGui.DragInt("Font Size", ref Core.GHSettings.FontSize, 0.1f, 13, 40);
-                var languageChanged = ImGuiHelper.EnumComboBox("Language", ref Core.GHSettings.FontLanguage);
+
+                var languageChanged = ImGuiHelper.EnumComboBox("Glyph Language", ref Core.GHSettings.FontLanguage);
                 var customLanguage = ImGui.InputText("Custom Glyph Ranges", ref Core.GHSettings.FontCustomGlyphRange, 100);
                 ImGuiHelper.ToolTip("This is advance level feature. Do not modify this if you don't know what you are doing. " +
                     "Example usage:- If you have downloaded and pointed to the ArialUnicodeMS.ttf font, you can use " +
                     "0x0020, 0xFFFF, 0x00 text in this field to load all of the font texture in ImGui. Note the 0x00" +
                     " as the last item in the range.");
+
                 if (languageChanged)
                 {
                     Core.GHSettings.FontCustomGlyphRange = string.Empty;
@@ -232,21 +272,133 @@ namespace GameHelper.Settings
 
                 if (ImGui.Button("Apply Changes"))
                 {
-                    if (MiscHelper.TryConvertStringToImGuiGlyphRanges(Core.GHSettings.FontCustomGlyphRange, out var glyphranges))
+                    ApplyFont();
+                }
+            }
+        }
+
+        private static void ApplyFont()
+        {
+            if (MiscHelper.TryConvertStringToImGuiGlyphRanges(Core.GHSettings.FontCustomGlyphRange, out var glyphranges))
+            {
+                Core.Overlay.ReplaceFont(
+                    Core.GHSettings.FontPathName,
+                    Core.GHSettings.FontSize,
+                    glyphranges);
+            }
+            else
+            {
+                Core.Overlay.ReplaceFont(
+                    Core.GHSettings.FontPathName,
+                    Core.GHSettings.FontSize,
+                    Core.GHSettings.FontLanguage);
+            }
+        }
+
+        private static void DrawFontSelectorPopup()
+        {
+            if (!_fontSelectorOpen) return;
+
+            var open = true;
+            if (ImGui.BeginPopupModal("Font Selector", ref open, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                if (!Directory.Exists(_fontBrowserDir))
+                {
+                    try { _fontBrowserDir = Environment.GetFolderPath(Environment.SpecialFolder.Fonts); }
+                    catch { _fontBrowserDir = Directory.GetCurrentDirectory(); }
+                }
+
+                ImGui.InputText("Folder", ref _fontBrowserDir, 512);
+                ImGui.SameLine();
+                if (ImGui.Button("Up"))
+                {
+                    try
                     {
-                        Core.Overlay.ReplaceFont(
-                            Core.GHSettings.FontPathName,
-                            Core.GHSettings.FontSize,
-                            glyphranges);
+                        var parent = Directory.GetParent(_fontBrowserDir)?.FullName;
+                        if (!string.IsNullOrEmpty(parent)) _fontBrowserDir = parent;
                     }
-                    else
+                    catch { }
+                }
+
+                ImGui.InputText("Search", ref _fontSearch, 128);
+                ImGui.Separator();
+
+                var avail = ImGui.GetContentRegionAvail();
+                var leftWidth = Math.Max(200f, avail.X * 0.40f);
+                var rightWidth = Math.Max(260f, avail.X - leftWidth - ImGui.GetStyle().ItemSpacing.X);
+
+                ImGui.BeginChild("dirs", new Vector2(leftWidth, 350));
+                IEnumerable<string> dirs = Enumerable.Empty<string>();
+                try { dirs = Directory.EnumerateDirectories(_fontBrowserDir).OrderBy(Path.GetFileName); } catch { }
+                foreach (var d in dirs)
+                {
+                    var name = Path.GetFileName(d);
+                    if (ImGui.Selectable("[DIR] " + name))
                     {
-                        Core.Overlay.ReplaceFont(
-                            Core.GHSettings.FontPathName,
-                            Core.GHSettings.FontSize,
-                            Core.GHSettings.FontLanguage);
+                        _fontBrowserDir = d;
                     }
                 }
+                ImGui.EndChild();
+
+                ImGui.SameLine();
+
+                ImGui.BeginChild("files", new Vector2(rightWidth, 350));
+                IEnumerable<string> files = Enumerable.Empty<string>();
+                try
+                {
+                    files = Directory.EnumerateFiles(_fontBrowserDir, "*.*")
+                        .Where(f =>
+                        {
+                            var ext = Path.GetExtension(f).ToLowerInvariant();
+                            return ext == ".ttf" || ext == ".otf" || ext == ".ttc";
+                        })
+                        .Where(f => string.IsNullOrWhiteSpace(_fontSearch) ||
+                                    Path.GetFileName(f).Contains(_fontSearch, StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(Path.GetFileName);
+                }
+                catch { }
+
+                foreach (var f in files)
+                {
+                    var fn = Path.GetFileName(f);
+                    var isSelected = string.Equals(_fontSelectedPath, f, StringComparison.OrdinalIgnoreCase);
+                    if (ImGui.Selectable(fn, isSelected))
+                    {
+                        _fontSelectedPath = f;
+                    }
+
+                    if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+                    {
+                        _fontSelectedPath = f;
+                        Core.GHSettings.FontPathName = _fontSelectedPath;
+                        ImGui.CloseCurrentPopup();
+                        _fontSelectorOpen = false;
+                    }
+                }
+                ImGui.EndChild();
+
+                ImGui.Separator();
+                ImGui.BeginDisabled(string.IsNullOrEmpty(_fontSelectedPath));
+                if (ImGui.Button("Select"))
+                {
+                    Core.GHSettings.FontPathName = _fontSelectedPath;
+                    ImGui.CloseCurrentPopup();
+                    _fontSelectorOpen = false;
+                    ApplyFont();
+                }
+                ImGui.EndDisabled();
+                ImGui.SameLine();
+                if (ImGui.Button("Cancel"))
+                {
+                    ImGui.CloseCurrentPopup();
+                    _fontSelectorOpen = false;
+                }
+
+                ImGui.EndPopup();
+            }
+            else if (!open)
+            {
+                _fontSelectorOpen = false;
             }
         }
 
@@ -587,7 +739,7 @@ namespace GameHelper.Settings
                     "It will greatly reduce the GH speed as well as increase crashes/gliches. Always keep it unchecked.");
                 ImGui.Checkbox("Disable debug counters (do it on 6 man party + juiced maps only)", ref Core.GHSettings.DisableAllCounters);
 #endif
-                ImGui.Text("Entity MaxDegreeOfParallelism");
+                ImGui.Text("Multi-threading");
                 ImGuiHelper.ToolTip("This limits the entity reading algorithm to a set number of CPUs." +
                     " Select -1 to disable this limit. Use Task Manager CPU usage stat + Misc Tools -> performance stats" +
                     " to figure out best FPS to CPU usage ratio.");

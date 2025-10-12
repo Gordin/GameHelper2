@@ -90,6 +90,8 @@ namespace GameHelper.Settings
         /// </summary>
         public string FontPathName = @"C:\Windows\Fonts\msyh.ttc";
 
+        public readonly string DefaultFontPathName = @"C:\Windows\Fonts\msyh.ttc";
+
         /// <summary>
         ///     Gets the font size to load in ImGui.
         /// </summary>
@@ -98,8 +100,7 @@ namespace GameHelper.Settings
         /// <summary>
         ///     Gets the language that the font supports.
         /// </summary>
-        public FontGlyphRangeType FontLanguage = FontGlyphRangeType.ChineseSimplifiedCommon;
-
+        public FontGlyphRangeType FontLanguage = FontGlyphRangeType.English;
 
         /// <summary>
         ///     Gets the custom glyph range to load from the font texture. This is useful in case
