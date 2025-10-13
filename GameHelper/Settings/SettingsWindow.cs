@@ -152,7 +152,7 @@ namespace GameHelper.Settings
 
             if (Core.Process?.TargetProcessUserHasReadAccess == true)
             {
-                ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f),
+                ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f),
                     "Warning: the target process has read access to the GameHelper2 folder.");
                 ImGui.SameLine();
                 ImGui.TextLinkOpenURL("(Steps to Fix)",

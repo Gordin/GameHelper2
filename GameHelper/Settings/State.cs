@@ -235,9 +235,9 @@ namespace GameHelper.Settings
         /// <summary>
         ///     Gets or sets the theme color.
         /// </summary>
-        public Vector4 ThemeColor = new(0.173f, 0.435f, 0.659f, 1.00f);
+        public Vector4 ThemeColor = new(0.173f, 0.435f, 0.659f, 0.80f);
 
         [JsonIgnore]
-        public static readonly Vector4 DefaultThemeColor = new(0.173f, 0.435f, 0.659f, 1.00f);
+        public static readonly Vector4 DefaultThemeColor = new(0.173f, 0.435f, 0.659f, 0.80f);
     }
 }
