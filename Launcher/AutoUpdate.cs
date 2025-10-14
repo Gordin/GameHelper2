@@ -10,7 +10,7 @@
 
     public static class AutoUpdate
     {
-        private const string ReleasesApiUrl = "https://gitlab.com/api/v4/projects/arsenic2k%2FGameHelper2/releases";
+        private const string ReleasesApiUrl = "https://api.github.com/repos/derekShaheen/GameHelper2/releases/";
         
         private static readonly HttpClient HttpClient = new();
         private static string extractedPath;
@@ -170,10 +170,10 @@
                     var tagName = release["tag_name"]?.ToString();
                     if (tagName == version)
                     {
-                        var links = release["assets"]["links"] as JArray;
+                        var links = release["assets"] as JArray;
                         if (links?.Count > 0)
                         {
-                            return links[0]["url"]?.ToString();
+                            return links[0]["browser_download_url"]?.ToString();
                         }
                     }
                 }
