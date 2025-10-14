@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  DOTNET_VERSION: "8.0.x"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          dotnet build GameOverlay.sln --configuration Release -p:Version="$VERSION"
+
+      - name: Zip artifacts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zip
+          cd GameHelper/bin/Release/net8.0/win-x64
+          zip -r "../../../../../GameHelper-${GITHUB_REF_NAME}.zip" .
+          cd ../../../../..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamehelper-zip
+          path: GameHelper-${{ github.ref_name }}.zip
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gamehelper-zip
+
+      - name: Prepare tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine previous tag
+        id: prevtag
+        shell: bash
+        run: |
+          set -euo pipefail
+          CURRENT="${GITHUB_REF_NAME}"
+          if git tag --list | grep -qE '^v'; then
+            PREV="$(git tag --list --sort=-v:refname 'v*' | grep -v "^${CURRENT}$" | head -n1 || true)"
+          else
+            PREV=""
+          fi
+          if [ -z "$PREV" ]; then
+            PREV="main"
+          fi
+          echo "prev=$PREV" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          OWNER_REPO="${GITHUB_REPOSITORY}"
+          CUR="${GITHUB_REF_NAME}"
+          PREV="${{ steps.prevtag.outputs.prev }}"
+
+          DL_URL="https://github.com/${OWNER_REPO}/releases/download/${CUR}/GameHelper-${CUR}.zip"
+
+          {
+            echo "## 📦️ Download: [GameHelper-${CUR}.zip](${DL_URL})"
+            echo
+            echo "---"
+            echo
+            echo "## 🚀 ${CUR} Changelog"
+            echo
+          } > changelog.txt
+
+          COMMITS_JSON="$(gh api repos/${OWNER_REPO}/compare/${PREV}...${CUR})"
+          mapfile -t SHAS < <(echo "$COMMITS_JSON" | jq -r '.commits[].sha')
+
+          declare -A PR_SEEN
+          TMP_MR_FILE="$(mktemp)"
+
+          for sha in "${SHAS[@]}"; do
+            prs_json="$(gh api repos/${OWNER_REPO}/commits/${sha}/pulls --method GET -H 'Accept: application/vnd.github+json' || echo '[]')"
+            echo "$prs_json" | jq -c '.[]' >> "$TMP_MR_FILE"
+          done
+
+          if [ -s "$TMP_MR_FILE" ]; then
+            sort -u "$TMP_MR_FILE" | while read -r pr; do
+              number=$(echo "$pr" | jq -r '.number')
+              if [[ -n "${PR_SEEN[$number]+x}" ]]; then
+                continue
+              fi
+              PR_SEEN[$number]=1
+              title=$(echo "$pr" | jq -r '.title')
+              user=$(echo "$pr" | jq -r '.user.login')
+              echo "### 🔀 ${title} ([#${number}](https://github.com/${OWNER_REPO}/pull/${number})) by @${user}" >> changelog.txt
+              commits_in_pr="$(gh api repos/${OWNER_REPO}/pulls/${number}/commits)"
+              echo "$commits_in_pr" | jq -r '.[] | "- \(.commit.message | split("\n")[0]) ([`\(.sha[0:7])`](https://github.com/'"${OWNER_REPO}"'/commit/\(.sha)))"' >> changelog.txt
+              echo >> changelog.txt
+            done
+          fi
+
+          if ! grep -q "^### " changelog.txt; then
+            echo "No pull requests found in this release." >> changelog.txt
+            echo >> changelog.txt
+          fi
+
+          {
+            echo "---"
+            echo
+            echo "**Full Changelog**: [${PREV}...${CUR}](https://github.com/${OWNER_REPO}/compare/${PREV}...${CUR})"
+          } >> changelog.txt
+
+          echo "path=changelog.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.changelog.outputs.path }}
+          files: |
+            GameHelper-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
