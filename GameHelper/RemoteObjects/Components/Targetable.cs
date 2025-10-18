@@ -51,8 +51,7 @@ namespace GameHelper.RemoteObjects.Components
             var data = reader.ReadMemory<TargetableOffsets>(this.Address);
             this.OwnerEntityAddress = data.Header.EntityPtr;
             this.cache = data;
-            this.IsTargetable = data.IsTargetable && !data.HiddenfromPlayer &&
-                data.NeedsTrue && data.MeetsQuestState && !data.NeedsFalse;
+            this.IsTargetable = data.IsTargetable && !data.HiddenfromPlayer && data.MeetsQuestState;
         }
     }
 }
