@@ -16,6 +16,7 @@ namespace GameHelper.Settings
     using Plugin;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Numerics;
@@ -96,6 +97,11 @@ namespace GameHelper.Settings
                 }
 
 #if DEBUG
+                if (ImGui.MenuItem("Restart GameHelper"))
+                {
+                    RestartGameHelper();
+                }
+
                 ImGui.Checkbox("ImGui Demo Window", ref showImGuiDemo);
                 if (showImGuiDemo)
                 {
@@ -106,6 +112,50 @@ namespace GameHelper.Settings
                 ImGui.EndMenuBar();
             }
         }
+
+#if DEBUG
+        private static void RestartGameHelper()
+        {
+            try
+            {
+                CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
+
+                var current = Process.GetCurrentProcess();
+                var exePath = current.MainModule?.FileName;
+
+                if (!string.IsNullOrWhiteSpace(exePath) && System.IO.File.Exists(exePath))
+                {
+                    var args = Environment.GetCommandLineArgs().Skip(1);
+                    var argLine = string.Join(" ", args.Select(QuoteIfNeeded));
+
+                    var startInfo = new ProcessStartInfo(exePath)
+                    {
+                        UseShellExecute = false,
+                        WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory,
+                        Arguments = argLine
+                    };
+
+                    Process.Start(startInfo);
+                }
+            }
+            catch
+            {
+                // Ignore and still attempt to exit.
+            }
+            finally
+            {
+                Environment.Exit(0);
+            }
+        }
+
+        private static string QuoteIfNeeded(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "\"\"";
+            return s.Contains(' ') || s.Contains('\t') || s.Contains('"')
+                ? $"\"{s.Replace("\"", "\\\"")}\""
+                : s;
+        }
+#endif
 
         private static void DrawTabs()
         {
