@@ -112,7 +112,7 @@ namespace GameHelper.Settings
         /// <summary>
         ///     Gets or sets hotKey to show/hide the main menu.
         /// </summary>
-        public VK MainMenuHotKey = VK.F12;
+        public VK MainMenuHotKey = VK.F11;
 
         /// <summary>
         ///     Gets or sets a value indicating whether
