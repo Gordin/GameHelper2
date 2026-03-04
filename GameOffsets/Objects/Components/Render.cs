@@ -17,11 +17,12 @@ namespace GameOffsets.Objects.Components
         // Not sure if it's really X,Y,Z or something else. They all move
         // healthbar up/down. This might be useless.
         [FieldOffset(0x144)] public StdTuple3D<float> CharactorModelBounds;
+
         // [FieldOffset(0x00A0)] public StdWString ClassName;
 
         // Exactly the same as provided in the Positioned component.
         // [FieldOffset(0x00C0)] public float RotationCurrent;
         // [FieldOffset(0x00C4)] public float RotationFuture;
-        [FieldOffset(0x154)] public float TerrainHeight;
+        [FieldOffset(0x1B0)] public float TerrainHeight;
     }
 }
