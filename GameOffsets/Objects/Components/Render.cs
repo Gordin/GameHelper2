@@ -17,6 +17,7 @@ namespace GameOffsets.Objects.Components
         // Not sure if it's really X,Y,Z or something else. They all move
         // healthbar up/down. This might be useless.
         [FieldOffset(0x144)] public StdTuple3D<float> CharactorModelBounds;
+
         // [FieldOffset(0x00A0)] public StdWString ClassName;
 
         // Exactly the same as provided in the Positioned component.
