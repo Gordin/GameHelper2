@@ -43,6 +43,6 @@ namespace GameOffsets.Objects.Components
         [FieldOffset(0x18)] public int Value0;
         [FieldOffset(0x28)] public IntPtr ModsPtr; //// Mods.DAT file row
         [FieldOffset(0x30)] public IntPtr UselessPtr;
-
+        [FieldOffset(0x38)] public IntPtr UselessPtr2;
     }
 }
