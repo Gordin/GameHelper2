@@ -357,7 +357,7 @@ namespace Radar
 
         private void AddDefaultBossIcons(string iconPathName)
         {
-            this.BossIcons.TryAdd("Boss Arena", new IconPicker(iconPathName, 9, 2, 75, IconSize));
+            this.BossIcons.TryAdd("Boss Arena", new IconPicker(iconPathName, 6, 57, 75, IconSize));
         }
     }
 }
