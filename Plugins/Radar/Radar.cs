@@ -319,6 +319,15 @@ namespace Radar
                 var bossfiles = File.ReadAllText(this.BossArenaTgtPathName);
                 this.Settings.BossArenaTgts = JsonConvert.DeserializeObject
                     <Dictionary<string, string>>(bossfiles);
+                Console.WriteLine($"BossArenaTgts: loaded {this.Settings.BossArenaTgts.Count} entries");
+                foreach (var entry in this.Settings.BossArenaTgts)
+                {
+                    Console.WriteLine($"  BossArenaTgt: \"{entry.Key}\" -> \"{entry.Value}\"");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"BossArenaTgts: file not found at {this.BossArenaTgtPathName}");
             }
 
             this.Settings.AddDefaultIcons(this.DllDirectory);
@@ -524,7 +533,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, templeIcon, iconSizeMultiplier);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, templeIcon, iconSizeMultiplier, shiftUp: true);
                 }
                 else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
                 {
@@ -545,7 +554,8 @@ namespace Radar
             Render playerRender,
             List<Vector2> locations,
             IconPicker icon,
-            float iconSizeMultiplier)
+            float iconSizeMultiplier,
+            bool shiftUp = false)
         {
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
             for (var i = 0; i < locations.Count; i++)
@@ -562,11 +572,11 @@ namespace Radar
                     location - pPos, -playerRender.TerrainHeight + height);
                 var iconSizeMultiplierVector = new Vector2(iconSizeMultiplier);
                 iconSizeMultiplierVector *= icon.IconScale;
-                var verticalOffset = new Vector2(0, iconSizeMultiplierVector.Y);
+                var offset = shiftUp ? new Vector2(0, iconSizeMultiplierVector.Y) : Vector2.Zero;
                 fgDraw.AddImage(
                     icon.TexturePtr,
-                    mapCenter + fpos - iconSizeMultiplierVector - verticalOffset,
-                    mapCenter + fpos + iconSizeMultiplierVector - verticalOffset,
+                    mapCenter + fpos - iconSizeMultiplierVector - offset,
+                    mapCenter + fpos + iconSizeMultiplierVector - offset,
                     icon.UV0,
                     icon.UV1);
             }
@@ -850,6 +860,20 @@ namespace Radar
                 this.CleanUpRadarPluginCaches();
                 this.currentAreaName = Core.States.InGameStateObject.CurrentWorldInstance.AreaDetails.Id;
                 this.GenerateMapTexture();
+                this.LogBossArenaTgtMatches();
+            }
+        }
+
+        private void LogBossArenaTgtMatches()
+        {
+            var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            Console.WriteLine($"BossArena: area={this.currentAreaName}, TgtTilesLocations count={currentAreaInstance.TgtTilesLocations.Count}, BossArenaTgts count={this.Settings.BossArenaTgts.Count}");
+            foreach (var bossTgt in this.Settings.BossArenaTgts)
+            {
+                if (currentAreaInstance.TgtTilesLocations.ContainsKey(bossTgt.Key))
+                {
+                    Console.WriteLine($"  BossArena MATCH: \"{bossTgt.Key}\"");
+                }
             }
         }
 
@@ -1043,10 +1067,13 @@ namespace Radar
             }
 
             ImGui.NewLine();
-            ImGuiHelper.IEnumerableComboBox<string>("POI Path",
+            if (ImGuiHelper.IEnumerableComboBox<string>("POI Path",
                 tgttilesInArea.Keys.Where(k => string.IsNullOrEmpty(this.tmpTileFilter) ||
                 k.Contains(this.tmpTileFilter, StringComparison.OrdinalIgnoreCase)),
-                ref this.tmpTileName);
+                ref this.tmpTileName))
+            {
+                Console.WriteLine($"POI Path selected: {this.tmpTileName}");
+            }
             ImGui.InputText("POI Display Name", ref this.tmpDisplayName, 200);
             ImGui.Checkbox("Add for all Areas", ref this.addTileForAllAreas);
             ImGui.SameLine();
