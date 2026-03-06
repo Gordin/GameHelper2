@@ -30,6 +30,7 @@ namespace Radar
     /// </summary>
     public sealed class Radar : PCore<RadarSettings>
     {
+        private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
         private readonly string delveChestStarting = "Metadata/Chests/DelveChests/";
         private readonly Dictionary<uint, string> delveChestCache = new();
 
@@ -171,6 +172,11 @@ namespace Radar
                     "Expedition Icons",
                     this.Settings.ExpeditionIcons,
                     string.Empty);
+
+                this.Settings.DrawIconsSettingToImGui(
+                    "Temple Icons",
+                    this.Settings.TempleIcons,
+                    "Icons for Incursion Waygate devices (Vaal Ruins).");
             }
         }
 
@@ -240,6 +246,7 @@ namespace Radar
                 ImGui.PopStyleVar();
                 this.DrawLargeMap(largeMapRealCenter);
                 this.DrawTgtFiles(largeMapRealCenter);
+                this.DrawTgtIcons(largeMapRealCenter, largeMapModifiedZoom * 5f);
                 this.DrawMapIcons(largeMapRealCenter, largeMapModifiedZoom * 5f);
                 ImGui.End();
             }
@@ -258,6 +265,7 @@ namespace Radar
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
                 ImGui.Begin("###minimapRadar", ImGuiHelper.TransparentWindowFlags);
                 ImGui.PopStyleVar();
+                this.DrawTgtIcons(miniMapCenter, miniMap.Zoom);
                 this.DrawMapIcons(miniMapCenter, miniMap.Zoom);
                 ImGui.End();
             }
@@ -469,6 +477,51 @@ namespace Radar
                                 drawString(tile.Value, locations[i], strSize, this.Settings.EnablePOIBackground);
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        private void DrawTgtIcons(Vector2 mapCenter, float iconSizeMultiplier)
+        {
+            var fgDraw = ImGui.GetWindowDrawList();
+            var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
+            {
+                return;
+            }
+
+            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+
+            foreach (var tgtKV in currentAreaInstance.TgtTilesLocations)
+            {
+                if (tgtKV.Key.StartsWith(TempleTgtPrefix) && tgtKV.Key.EndsWith(":1-y:1"))
+                {
+                    if (!this.Settings.TempleIcons.TryGetValue("Vaal Ruins", out var templeIcon))
+                    {
+                        continue;
+                    }
+
+                    for (var i = 0; i < tgtKV.Value.Count; i++)
+                    {
+                        var location = tgtKV.Value[i];
+                        float height = 0;
+                        if (location.X < currentAreaInstance.GridHeightData[0].Length &&
+                            location.Y < currentAreaInstance.GridHeightData.Length)
+                        {
+                            height = currentAreaInstance.GridHeightData[(int)location.Y][(int)location.X];
+                        }
+
+                        var fpos = Helper.DeltaInWorldToMapDelta(
+                            location - pPos, -playerRender.TerrainHeight + height);
+                        var iconSizeMultiplierVector = new Vector2(iconSizeMultiplier);
+                        iconSizeMultiplierVector *= templeIcon.IconScale;
+                        fgDraw.AddImage(
+                            templeIcon.TexturePtr,
+                            mapCenter + fpos - iconSizeMultiplierVector,
+                            mapCenter + fpos + iconSizeMultiplierVector,
+                            templeIcon.UV0,
+                            templeIcon.UV1);
                     }
                 }
             }

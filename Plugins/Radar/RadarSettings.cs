@@ -146,6 +146,11 @@ namespace Radar
         public Dictionary<string, IconPicker> ExpeditionIcons = new();
 
         /// <summary>
+        /// Icons to display on the map. Temple includes the Incursion waygate devices.
+        /// </summary>
+        public Dictionary<string, IconPicker> TempleIcons = new();
+
+        /// <summary>
         /// Icons to display on the map. This list includes icons for
         /// OtherImportantObjects that are in custom category created by user
         /// </summary>
@@ -279,6 +284,7 @@ namespace Radar
             this.AddDefaultBreachIcons(basicIconPathName);
             this.AddDefaultDeliriumIcons(basicIconPathName);
             this.AddDefaultExpeditionIcons(basicIconPathName);
+            this.AddDefaultTempleIcons(basicIconPathName);
         }
 
         private void AddDefaultBaseGameIcons(string iconPathName)
@@ -330,6 +336,11 @@ namespace Radar
         private void AddDefaultExpeditionIcons(string iconPathName)
         {
             this.ExpeditionIcons.TryAdd("Generic Expedition Chests", new IconPicker(iconPathName, 5, 41, 30, IconSize));
+        }
+
+        private void AddDefaultTempleIcons(string iconPathName)
+        {
+            this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 75, IconSize));
         }
     }
 }
