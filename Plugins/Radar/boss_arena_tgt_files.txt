@@ -1,0 +1,6 @@
+{
+  "Metadata/Terrain/Maps/Bluff/Tiles/Feature/Beacon_01.tdtx:0-y:0": "Boss",
+  "Metadata/Terrain/Maps/LostTowers/Tiles/PillarArena01.tdtx:0-y:0": "Boss",
+  "Metadata/Terrain/Maps/Mesa/Tiles/Peak.tdtx:0-y:0": "Boss",
+  "Metadata/Terrain/Maps/Overgrown/Tiles/OvergrownRuinArena_01.tdtx:4-y:4": "Boss"
+}

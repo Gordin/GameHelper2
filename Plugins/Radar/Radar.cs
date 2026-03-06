@@ -31,6 +31,7 @@ namespace Radar
     public sealed class Radar : PCore<RadarSettings>
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
+
         private readonly string delveChestStarting = "Metadata/Chests/DelveChests/";
         private readonly Dictionary<uint, string> delveChestCache = new();
 
@@ -62,6 +63,8 @@ namespace Radar
         private string SettingPathname => Path.Join(this.DllDirectory, "config", "settings.txt");
 
         private string ImportantTgtPathName => Path.Join(this.DllDirectory, "important_tgt_files.txt");
+
+        private string BossArenaTgtPathName => Path.Join(this.DllDirectory, "boss_arena_tgt_files.txt");
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -177,6 +180,11 @@ namespace Radar
                     "Temple Icons",
                     this.Settings.TempleIcons,
                     "Icons for Incursion Waygate devices (Vaal Ruins).");
+
+                this.Settings.DrawIconsSettingToImGui(
+                    "Boss Icons",
+                    this.Settings.BossIcons,
+                    "Icons for map boss arenas.");
             }
         }
 
@@ -306,6 +314,13 @@ namespace Radar
                     <Dictionary<string, Dictionary<string, string>>>(tgtfiles);
             }
 
+            if (File.Exists(this.BossArenaTgtPathName))
+            {
+                var bossfiles = File.ReadAllText(this.BossArenaTgtPathName);
+                this.Settings.BossArenaTgts = JsonConvert.DeserializeObject
+                    <Dictionary<string, string>>(bossfiles);
+            }
+
             this.Settings.AddDefaultIcons(this.DllDirectory);
 
             this.onMove = CoroutineHandler.Start(this.OnMove());
@@ -327,6 +342,13 @@ namespace Radar
                 var tgtfiles = JsonConvert.SerializeObject(
                     this.Settings.ImportantTgts, Formatting.Indented);
                 File.WriteAllText(this.ImportantTgtPathName, tgtfiles);
+            }
+
+            if (this.Settings.BossArenaTgts.Count > 0)
+            {
+                var bossfiles = JsonConvert.SerializeObject(
+                    this.Settings.BossArenaTgts, Formatting.Indented);
+                File.WriteAllText(this.BossArenaTgtPathName, bossfiles);
             }
         }
 
@@ -502,28 +524,51 @@ namespace Radar
                         continue;
                     }
 
-                    for (var i = 0; i < tgtKV.Value.Count; i++)
-                    {
-                        var location = tgtKV.Value[i];
-                        float height = 0;
-                        if (location.X < currentAreaInstance.GridHeightData[0].Length &&
-                            location.Y < currentAreaInstance.GridHeightData.Length)
-                        {
-                            height = currentAreaInstance.GridHeightData[(int)location.Y][(int)location.X];
-                        }
-
-                        var fpos = Helper.DeltaInWorldToMapDelta(
-                            location - pPos, -playerRender.TerrainHeight + height);
-                        var iconSizeMultiplierVector = new Vector2(iconSizeMultiplier);
-                        iconSizeMultiplierVector *= templeIcon.IconScale;
-                        fgDraw.AddImage(
-                            templeIcon.TexturePtr,
-                            mapCenter + fpos - iconSizeMultiplierVector,
-                            mapCenter + fpos + iconSizeMultiplierVector,
-                            templeIcon.UV0,
-                            templeIcon.UV1);
-                    }
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, templeIcon, iconSizeMultiplier);
                 }
+                else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
+                {
+                    if (!this.Settings.BossIcons.TryGetValue("Boss Arena", out var bossIcon))
+                    {
+                        continue;
+                    }
+
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, bossIcon, iconSizeMultiplier);
+                }
+            }
+        }
+
+        private void DrawIconAtTgtLocations(
+            ImDrawListPtr fgDraw,
+            Vector2 mapCenter,
+            Vector2 pPos,
+            Render playerRender,
+            List<Vector2> locations,
+            IconPicker icon,
+            float iconSizeMultiplier)
+        {
+            var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            for (var i = 0; i < locations.Count; i++)
+            {
+                var location = locations[i];
+                float height = 0;
+                if (location.X < currentAreaInstance.GridHeightData[0].Length &&
+                    location.Y < currentAreaInstance.GridHeightData.Length)
+                {
+                    height = currentAreaInstance.GridHeightData[(int)location.Y][(int)location.X];
+                }
+
+                var fpos = Helper.DeltaInWorldToMapDelta(
+                    location - pPos, -playerRender.TerrainHeight + height);
+                var iconSizeMultiplierVector = new Vector2(iconSizeMultiplier);
+                iconSizeMultiplierVector *= icon.IconScale;
+                var verticalOffset = new Vector2(0, iconSizeMultiplierVector.Y);
+                fgDraw.AddImage(
+                    icon.TexturePtr,
+                    mapCenter + fpos - iconSizeMultiplierVector - verticalOffset,
+                    mapCenter + fpos + iconSizeMultiplierVector - verticalOffset,
+                    icon.UV0,
+                    icon.UV1);
             }
         }
 

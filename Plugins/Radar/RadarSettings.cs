@@ -151,6 +151,17 @@ namespace Radar
         public Dictionary<string, IconPicker> TempleIcons = new();
 
         /// <summary>
+        /// Icons to display on the map. Boss arena icons for endgame maps.
+        /// </summary>
+        public Dictionary<string, IconPicker> BossIcons = new();
+
+        /// <summary>
+        /// Gets the boss arena TGT paths and their display names.
+        /// </summary>
+        [JsonIgnore]
+        public Dictionary<string, string> BossArenaTgts = new();
+
+        /// <summary>
         /// Icons to display on the map. This list includes icons for
         /// OtherImportantObjects that are in custom category created by user
         /// </summary>
@@ -285,6 +296,7 @@ namespace Radar
             this.AddDefaultDeliriumIcons(basicIconPathName);
             this.AddDefaultExpeditionIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
+            this.AddDefaultBossIcons(basicIconPathName);
         }
 
         private void AddDefaultBaseGameIcons(string iconPathName)
@@ -341,6 +353,11 @@ namespace Radar
         private void AddDefaultTempleIcons(string iconPathName)
         {
             this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 75, IconSize));
+        }
+
+        private void AddDefaultBossIcons(string iconPathName)
+        {
+            this.BossIcons.TryAdd("Boss Arena", new IconPicker(iconPathName, 9, 2, 75, IconSize));
         }
     }
 }
