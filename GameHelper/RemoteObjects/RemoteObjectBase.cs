@@ -20,6 +20,7 @@ namespace GameHelper.RemoteObjects
     public abstract class RemoteObjectBase
     {
         private readonly bool forceUpdate;
+        private readonly object updateLock = new();
         private IntPtr address;
 
         /// <summary>
@@ -60,12 +61,24 @@ namespace GameHelper.RemoteObjects
         /// </summary>
         public IntPtr Address
         {
-            get => this.address;
+            get
+            {
+                lock (this.updateLock)
+                {
+                    return this.address;
+                }
+            }
+
             set
             {
-                var hasAddressChanged = this.address != value;
-                if (hasAddressChanged || this.forceUpdate)
+                lock (this.updateLock)
                 {
+                    var hasAddressChanged = this.address != value;
+                    if (!(hasAddressChanged || this.forceUpdate))
+                    {
+                        return;
+                    }
+
                     this.address = value;
                     if (value == IntPtr.Zero)
                     {

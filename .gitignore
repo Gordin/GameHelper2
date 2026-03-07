@@ -1,5 +1,6 @@
 .claude/
 
+*.vs
 *.un~
 *.cs~
 *.pdb

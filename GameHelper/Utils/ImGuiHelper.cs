@@ -7,6 +7,7 @@ namespace GameHelper.Utils
     using System;
     using System.Collections.Generic;
     using System.Numerics;
+    using System.Linq;
     using GameHelper.RemoteEnums;
     using GameOffsets.Natives;
     using ImGuiNET;
@@ -321,11 +322,17 @@ namespace GameHelper.Utils
         /// </summary>
         /// <param name="stats">stats dictionary reference</param>
         /// <param name="displayname">stats dictionary (human readable) name to display</param>
-        public static void StatsWidget(in Dictionary<GameStats, int> stats, string displayname)
+        public static void StatsWidget(Dictionary<GameStats, int> stats, string displayname)
         {
             if (ImGui.TreeNode(displayname))
             {
-                foreach (var stat in stats)
+                KeyValuePair<GameStats, int>[] snapshot;
+                lock (stats)
+                {
+                    snapshot = stats.ToArray();
+                }
+
+                foreach (var stat in snapshot)
                 {
                     ImGuiHelper.DisplayTextAndCopyOnClick($"{stat.Key}: {stat.Value}", $"{stat.Key}");
                 }

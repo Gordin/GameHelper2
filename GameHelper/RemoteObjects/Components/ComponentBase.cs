@@ -62,13 +62,16 @@ namespace GameHelper.RemoteObjects.Components
             return this.OwnerEntityAddress == parentEntityAddress;
         }
 
-        protected void StatUpdator(in Dictionary<GameStats, int> stats, StdVector statsptr)
+        protected void StatUpdator(Dictionary<GameStats, int> stats, StdVector statsptr)
         {
-            stats.Clear();
             var mystats = Core.Process.Handle.ReadStdVector<StatArrayStruct>(statsptr);
-            foreach (var newStat in mystats)
+            lock (stats)
             {
-                stats[(GameStats)newStat.key] = newStat.value;
+                stats.Clear();
+                foreach (var newStat in mystats)
+                {
+                    stats[(GameStats)newStat.key] = newStat.value;
+                }
             }
         }
     }
