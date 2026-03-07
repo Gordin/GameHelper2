@@ -146,6 +146,28 @@ namespace Radar
         public Dictionary<string, IconPicker> ExpeditionIcons = new();
 
         /// <summary>
+        /// Icons to display on the map. Temple includes the Incursion waygate devices.
+        /// </summary>
+        public Dictionary<string, IconPicker> TempleIcons = new();
+
+        /// <summary>
+        /// Icons to display on the map. Boss arena icons for endgame maps.
+        /// </summary>
+        public Dictionary<string, IconPicker> BossIcons = new();
+
+        /// <summary>
+        /// Gets the boss arena TGT paths and their display names.
+        /// </summary>
+        [JsonIgnore]
+        public Dictionary<string, string> BossArenaTgts = new();
+
+        /// <summary>
+        /// Gets the stairs TGT paths and their display names.
+        /// </summary>
+        [JsonIgnore]
+        public Dictionary<string, string> StairsTgts = new();
+
+        /// <summary>
         /// Icons to display on the map. This list includes icons for
         /// OtherImportantObjects that are in custom category created by user
         /// </summary>
@@ -279,6 +301,8 @@ namespace Radar
             this.AddDefaultBreachIcons(basicIconPathName);
             this.AddDefaultDeliriumIcons(basicIconPathName);
             this.AddDefaultExpeditionIcons(basicIconPathName);
+            this.AddDefaultTempleIcons(basicIconPathName);
+            this.AddDefaultBossIcons(basicIconPathName);
         }
 
         private void AddDefaultBaseGameIcons(string iconPathName)
@@ -304,6 +328,8 @@ namespace Radar
 
             this.BaseIcons.TryAdd("Yellow Bestiary Monster", new IconPicker(iconPathName, 6, 2, 35, IconSize));
             this.BaseIcons.TryAdd("Red Bestiary Monster", new IconPicker(iconPathName, 7, 2, 35, IconSize));
+
+            this.BaseIcons.TryAdd("Stairs", new IconPicker(iconPathName, 4, 1, 40, IconSize));
         }
 
         private void AddDefaultPOIMonsterIcons(string iconPathName)
@@ -330,6 +356,16 @@ namespace Radar
         private void AddDefaultExpeditionIcons(string iconPathName)
         {
             this.ExpeditionIcons.TryAdd("Generic Expedition Chests", new IconPicker(iconPathName, 5, 41, 30, IconSize));
+        }
+
+        private void AddDefaultTempleIcons(string iconPathName)
+        {
+            this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 75, IconSize));
+        }
+
+        private void AddDefaultBossIcons(string iconPathName)
+        {
+            this.BossIcons.TryAdd("Boss Arena", new IconPicker(iconPathName, 6, 57, 50, IconSize));
         }
     }
 }

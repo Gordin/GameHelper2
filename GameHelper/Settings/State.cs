@@ -212,7 +212,10 @@ namespace GameHelper.Settings
         ///     Gets or sets a list of monsters path to ignore.
         ///     The condition used is StartsWith so just provide enough to make the path unique.
         /// </summary>
-        public List<string> MonstersPathsToIgnore = new();
+        public List<string> MonstersPathsToIgnore = new()
+        {
+            "Metadata/Monsters/LeagueIncursionNew/Garrison/VaalTrainingDummy",
+        };
 
         /// <summary>
         ///     Gets or sets a value indiciating if user wants to process useless entities as well

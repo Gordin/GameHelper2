@@ -142,6 +142,7 @@ namespace Radar
                         var x = (int)(clicked.X / (w * this.iconDimension.X));
                         var y = (int)(clicked.Y / (h * this.iconDimension.Y));
                         this.Clicked = new Vector2(x, y);
+                        Console.WriteLine($"IconPicker: selected icon at column={x}, row={y}");
                         this.UpdateUV0UV1();
                         this.showPopUp = false;
                     }

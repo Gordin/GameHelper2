@@ -1,0 +1,11 @@
+{
+  "Metadata/Terrain/Maps/Bluff/Tiles/Feature/Beacon_01.tdtx:0-y:0": "Boss",
+  "Metadata/Terrain/Maps/LostTowers/Tiles/PillarArena01.tdtx:0-y:0": "Boss",
+  "Metadata/Terrain/Maps/Mesa/Tiles/Peak.tdtx:0-y:0": "Boss",
+  "Metadata/Terrain/Maps/Overgrown/Tiles/OvergrownRuinArena_01.tdtx:4-y:4": "Boss",
+  "Metadata/Terrain/Dungeon/Machinarium/BossWall01.tdtx:4-y:0": "Boss",
+  "Metadata/Terrain/Maps/UberDoryani/Tiles/Doryani_Arena_01.tdtx:7-y:7": "Boss",
+  "Metadata/Terrain/Jungle/SnakePit/MapAugury/AuguryArena.tdtx:7-y:7": "Boss",
+  "Metadata/Terrain/Maps/Spring/Tiles/SpringArena_01.tdtx:4-y:4": "Boss",
+  "Metadata/Terrain/Maps/SulphuricCaverns/Tiles/Features/SulphuricCaverns_Boss_01.tdtx:9-y:9": "Boss"
+}
