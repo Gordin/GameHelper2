@@ -15,7 +15,7 @@ namespace GameOffsets.Objects.UiElement
         // public StdVector ChildrensPtr; // both points to same children UiElements.
         // 4 childrens are cached here
 
-        [FieldOffset(0x120)] public StdTuple2D<float> PositionModifier;
+        [FieldOffset(0xF0)] public StdTuple2D<float> PositionModifier;
         // Following Ptr is basically pointing to InGameState+0xXXX.
         // No idea what InGameState+0xXXX is pointing to
         // [FieldOffset(0x0C0)] public IntPtr UnknownPtr;
