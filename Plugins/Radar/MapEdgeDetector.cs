@@ -1,7 +1,6 @@
 namespace Radar
 {
-    using System.Linq;
-
+    
     /// <summary>
     /// Detects if the current map location is map edge or not.
     /// </summary>
@@ -105,7 +104,12 @@ namespace Radar
 
         private int GetTileValueAt(int index, int shiftAmount)
         {
-            var data = mapWalkableData.ElementAtOrDefault(index);
+            if ((uint)index >= (uint)this.mapWalkableData.Length)
+            {
+                return 0;
+            }
+
+            var data = this.mapWalkableData[index];
             return (data >> shiftAmount) & 0xF;
         }
     }
