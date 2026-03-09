@@ -7,5 +7,13 @@
   "Metadata/Terrain/Maps/UberDoryani/Tiles/Doryani_Arena_01.tdtx:7-y:7": "Boss",
   "Metadata/Terrain/Jungle/SnakePit/MapAugury/AuguryArena.tdtx:7-y:7": "Boss",
   "Metadata/Terrain/Maps/Spring/Tiles/SpringArena_01.tdtx:4-y:4": "Boss",
-  "Metadata/Terrain/Maps/SulphuricCaverns/Tiles/Features/SulphuricCaverns_Boss_01.tdtx:9-y:9": "Boss"
+  "Metadata/Terrain/Maps/SulphuricCaverns/Tiles/Features/SulphuricCaverns_Boss_01.tdtx:9-y:9": "Boss",
+  "Metadata/Terrain/Woods/Features_Cairns/CairnBrecon.tdtx:1-y:1": "Boss",
+  "Metadata/Terrain/Maps/Cenotes/Tiles/CenotesArena01.tdtx:5-y:6": "Boss",
+  "Metadata/Terrain/Maps/Sump/Tiles/SumpArena.tdtx:5-y:5": "Boss",
+  "Metadata/Terrain/Maps/Penitentiary/Tiles/VillageArena_Garrison.tdtx:5-y:7": "Boss",
+  "Metadata/Terrain/Desert/Stromatolite/CcCc_ArenaGate.tdtx:0-y:0": "Boss",
+  "Metadata/Terrain/Maps/Rupture/Tiles/arena_01.tdtx:8-y:13": "Boss",
+  "Metadata/Terrain/Maps/Mesa/Tiles/PeakArena_01.tdtx:6-y:6": "Boss",
+  "Metadata/Terrain/Desert/Oasis/Features/OasisArena01.tdtx:7-y:13": "Boss"
 }
