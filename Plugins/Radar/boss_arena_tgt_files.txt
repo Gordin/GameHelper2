@@ -15,5 +15,6 @@
   "Metadata/Terrain/Desert/Stromatolite/CcCc_ArenaGate.tdtx:0-y:0": "Boss",
   "Metadata/Terrain/Maps/Rupture/Tiles/arena_01.tdtx:8-y:13": "Boss",
   "Metadata/Terrain/Maps/Mesa/Tiles/PeakArena_01.tdtx:6-y:6": "Boss",
-  "Metadata/Terrain/Desert/Oasis/Features/OasisArena01.tdtx:7-y:13": "Boss"
+  "Metadata/Terrain/Desert/Oasis/Features/OasisArena01.tdtx:7-y:13": "Boss",
+  "Metadata/Terrain/Woods/WideRiver/CcSM_01.tdtx:2-y:0": "Boss"
 }

@@ -206,7 +206,12 @@ namespace GameHelper.Settings
         /// <summary>
         ///     Gets or sets the custom categories (and its defination) for MiscellaneousObjects in the game.
         /// </summary>
-        public List<(string path, int group)> SpecialMiscObjPaths = new();
+        public List<(string path, int group)> SpecialMiscObjPaths = new()
+        {
+            ("Metadata/MiscellaneousObjects/Expedition/ExpeditionMarker", 100),
+            ("Metadata/MiscellaneousObjects/Expedition/ExpeditionRelic", 101),
+            ("Metadata/Terrain/Gallows/Leagues/Expedition/Objects/Expedition", 100),
+        };
 
         /// <summary>
         ///     Gets or sets a list of monsters path to ignore.
