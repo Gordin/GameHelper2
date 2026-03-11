@@ -186,6 +186,16 @@ namespace Radar
                     "Icons for Incursion Waygate devices (Vaal Ruins).");
 
                 this.Settings.DrawIconsSettingToImGui(
+                    "Expedition Marker Icons",
+                    this.Settings.ExpeditionMarkerIcons,
+                    "Icons for expedition markers, keyed by MinimapIcon name. Set size to 0 to disable.");
+
+                this.Settings.DrawIconsSettingToImGui(
+                    "Expedition Remnant Icons",
+                    this.Settings.ExpeditionRemnantIcons,
+                    "Icons for expedition remnants with specific mods. Set size to 0 to disable.");
+
+                this.Settings.DrawIconsSettingToImGui(
                     "Boss Icons",
                     this.Settings.BossIcons,
                     "Icons for map boss arenas.");
@@ -323,15 +333,6 @@ namespace Radar
                 var bossfiles = File.ReadAllText(this.BossArenaTgtPathName);
                 this.Settings.BossArenaTgts = JsonConvert.DeserializeObject
                     <Dictionary<string, string>>(bossfiles);
-                Console.WriteLine($"BossArenaTgts: loaded {this.Settings.BossArenaTgts.Count} entries");
-                foreach (var entry in this.Settings.BossArenaTgts)
-                {
-                    Console.WriteLine($"  BossArenaTgt: \"{entry.Key}\" -> \"{entry.Value}\"");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"BossArenaTgts: file not found at {this.BossArenaTgtPathName}");
             }
 
             if (File.Exists(this.StairsTgtPathName))
@@ -339,11 +340,6 @@ namespace Radar
                 var stairsfiles = File.ReadAllText(this.StairsTgtPathName);
                 this.Settings.StairsTgts = JsonConvert.DeserializeObject
                     <Dictionary<string, string>>(stairsfiles);
-                Console.WriteLine($"StairsTgts: loaded {this.Settings.StairsTgts.Count} entries");
-            }
-            else
-            {
-                Console.WriteLine($"StairsTgts: file not found at {this.StairsTgtPathName}");
             }
 
             this.Settings.AddDefaultIcons(this.DllDirectory);
@@ -750,7 +746,17 @@ namespace Radar
                                 DrawIcon(magicChestIcon);
                                 break;
                             case EntitySubtypes.ExpeditionChest:
-                                DrawIcon(expeditionChestIcon);
+                                if (entityValue.Path.Contains("LeagueFaction") &&
+                                    this.Settings.ExpeditionMarkerIcons.TryGetValue("Logbook", out var logbookIcon) &&
+                                    logbookIcon.IconScale > 0)
+                                {
+                                    DrawIcon(logbookIcon);
+                                }
+                                else
+                                {
+                                    DrawIcon(expeditionChestIcon);
+                                }
+
                                 break;
                             case EntitySubtypes.BreachChest:
                                 DrawIcon(breachChestIcon);
@@ -807,12 +813,47 @@ namespace Radar
                         DrawIcon(deliriumSpawnerIcon);
                         break;
                     case EntityTypes.OtherImportantObjects:
-                        if (!otherImportantObjects.TryGetValue(entityValue.EntityCustomGroup, out var mopoiIcon))
+                        if (entityValue.EntityCustomGroup == RadarSettings.ExpeditionMarkerGroup)
                         {
-                            mopoiIcon = otherImportantObjects[-1];
+                            if (entityValue.TryGetComponent<MinimapIcon>(out var minimapIcon) &&
+                                !string.IsNullOrEmpty(minimapIcon.IconName) &&
+                                RadarSettings.ExpeditionMarkerIconNameMap.TryGetValue(minimapIcon.IconName, out var displayName) &&
+                                this.Settings.ExpeditionMarkerIcons.TryGetValue(displayName, out var expMarkerIcon) &&
+                                expMarkerIcon.IconScale > 0)
+                            {
+                                DrawIcon(expMarkerIcon);
+                            }
+                        }
+                        else if (entityValue.EntityCustomGroup == RadarSettings.ExpeditionRemnantGroup)
+                        {
+                            if (entityValue.TryGetComponent<ObjectMagicProperties>(out var remnantOmp))
+                            {
+                                foreach (var modName in remnantOmp.ModNames)
+                                {
+                                    foreach (var (modSubstring, remnantDisplayName) in RadarSettings.ExpeditionRemnantModMap)
+                                    {
+                                        if (modName.Contains(modSubstring) &&
+                                            this.Settings.ExpeditionRemnantIcons.TryGetValue(remnantDisplayName, out var remnantIcon) &&
+                                            remnantIcon.IconScale > 0)
+                                        {
+                                            DrawIcon(remnantIcon);
+                                            goto doneRemnant;
+                                        }
+                                    }
+                                }
+                                doneRemnant:;
+                            }
+                        }
+                        else
+                        {
+                            if (!otherImportantObjects.TryGetValue(entityValue.EntityCustomGroup, out var mopoiIcon))
+                            {
+                                mopoiIcon = otherImportantObjects[-1];
+                            }
+
+                            DrawIcon(mopoiIcon);
                         }
 
-                        DrawIcon(mopoiIcon);
                         break;
                     case EntityTypes.Renderable:
                         fgDraw.AddCircleFilled(screenPos, 3f, 0xFFFFFFFF);

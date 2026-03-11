@@ -796,6 +796,24 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                             gridPos = new Vector2(render.GridPosition.X, render.GridPosition.Y);
                         }
 
+                        // -------- StateMachine component --------
+                        List<object> stateMachineStates = null;
+                        if (entity.Value.TryGetComponent<StateMachine>(out var sm) && sm.States != null)
+                        {
+                            stateMachineStates = new List<object>();
+                            foreach (var state in sm.States)
+                            {
+                                stateMachineStates.Add(new { state.Name, state.Value });
+                            }
+                        }
+
+                        // -------- MinimapIcon component --------
+                        string minimapIconName = null;
+                        if (entity.Value.TryGetComponent<MinimapIcon>(out var mIcon))
+                        {
+                            minimapIconName = mIcon.IconName;
+                        }
+
                         // -------- Build payload --------
                         var payload = new
                         {
@@ -815,6 +833,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                             },
                             Buffs = buffs,
                             Components = components,
+                            StateMachine = stateMachineStates,
+                            MinimapIconName = minimapIconName,
                             Stats = new
                             {
                                 StatsChangedByItems = statsByItems,

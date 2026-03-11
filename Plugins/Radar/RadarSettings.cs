@@ -168,6 +168,52 @@ namespace Radar
         public Dictionary<string, string> StairsTgts = new();
 
         /// <summary>
+        /// Icons for expedition markers, keyed by display name.
+        /// </summary>
+        public Dictionary<string, IconPicker> ExpeditionMarkerIcons = new();
+
+        /// <summary>
+        /// Icons for expedition remnants with specific mods.
+        /// </summary>
+        public Dictionary<string, IconPicker> ExpeditionRemnantIcons = new();
+
+        /// <summary>
+        /// The group number used for expedition markers in SpecialMiscObjPaths.
+        /// </summary>
+        [JsonIgnore]
+        public const int ExpeditionMarkerGroup = 100;
+
+        /// <summary>
+        /// The group number used for expedition remnants in SpecialMiscObjPaths.
+        /// </summary>
+        [JsonIgnore]
+        public const int ExpeditionRemnantGroup = 101;
+
+        /// <summary>
+        /// Maps mod name substrings to display names used as keys in ExpeditionRemnantIcons.
+        /// </summary>
+        [JsonIgnore]
+        public static readonly Dictionary<string, string> ExpeditionRemnantModMap = new()
+        {
+            { "ItemQuantityChest", "Chest Item Quantity Remnant" },
+        };
+
+        /// <summary>
+        /// Maps MinimapIcon.IconName to display name used as key in ExpeditionMarkerIcons.
+        /// </summary>
+        [JsonIgnore]
+        public static readonly Dictionary<string, string> ExpeditionMarkerIconNameMap = new()
+        {
+            { "RewardChestExpedition", "Splinter Chest" },
+            { "RewardChestArmour", "Armour Chest" },
+            { "RewardChestWeapon", "Weapon Chest" },
+            { "RewardChestTrinkets", "Trinkets Chest" },
+            { "RewardChestCurrency", "Currency Chest" },
+            { "RewardChestMaps", "Maps Chest" },
+            { "ExpeditionCavernEntrance", "Cavern Entrance" },
+        };
+
+        /// <summary>
         /// Icons to display on the map. This list includes icons for
         /// OtherImportantObjects that are in custom category created by user
         /// </summary>
@@ -301,6 +347,8 @@ namespace Radar
             this.AddDefaultBreachIcons(basicIconPathName);
             this.AddDefaultDeliriumIcons(basicIconPathName);
             this.AddDefaultExpeditionIcons(basicIconPathName);
+            this.AddDefaultExpeditionMarkerIcons(basicIconPathName);
+            this.AddDefaultExpeditionRemnantIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
             this.AddDefaultBossIcons(basicIconPathName);
         }
@@ -361,6 +409,23 @@ namespace Radar
         private void AddDefaultTempleIcons(string iconPathName)
         {
             this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 75, IconSize));
+        }
+
+        private void AddDefaultExpeditionMarkerIcons(string iconPathName)
+        {
+            this.ExpeditionMarkerIcons.TryAdd("Splinter Chest", new IconPicker(iconPathName, 4, 40, 90, IconSize));
+            this.ExpeditionMarkerIcons.TryAdd("Armour Chest", new IconPicker(iconPathName, 1, 39, 0, IconSize));
+            this.ExpeditionMarkerIcons.TryAdd("Weapon Chest", new IconPicker(iconPathName, 2, 39, 0, IconSize));
+            this.ExpeditionMarkerIcons.TryAdd("Trinkets Chest", new IconPicker(iconPathName, 0, 39, 0, IconSize));
+            this.ExpeditionMarkerIcons.TryAdd("Currency Chest", new IconPicker(iconPathName, 10, 38, 0, IconSize));
+            this.ExpeditionMarkerIcons.TryAdd("Maps Chest", new IconPicker(iconPathName, 13, 38, 0, IconSize));
+            this.ExpeditionMarkerIcons.TryAdd("Cavern Entrance", new IconPicker(iconPathName, 0, 2, 90, IconSize));
+            this.ExpeditionMarkerIcons.TryAdd("Logbook", new IconPicker(iconPathName, 4, 40, 90, IconSize));
+        }
+
+        private void AddDefaultExpeditionRemnantIcons(string iconPathName)
+        {
+            this.ExpeditionRemnantIcons.TryAdd("Chest Item Quantity Remnant", new IconPicker(iconPathName, 11, 40, 100, IconSize));
         }
 
         private void AddDefaultBossIcons(string iconPathName)
