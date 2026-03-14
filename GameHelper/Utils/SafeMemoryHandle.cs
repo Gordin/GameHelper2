@@ -146,6 +146,44 @@ namespace GameHelper.Utils
         }
 
         /// <summary>
+        ///     Reads the std::string. String read is in ASCII format.
+        /// </summary>
+        /// <param name="nativecontainer">native object of std::string.</param>
+        /// <returns>string.</returns>
+        internal string ReadStdString(StdString nativecontainer)
+        {
+            const int MaxAllowed = 1000;
+            if (nativecontainer.Length <= 0 ||
+                nativecontainer.Length > MaxAllowed ||
+                nativecontainer.Capacity <= 0 ||
+                nativecontainer.Capacity > MaxAllowed)
+            {
+                return string.Empty;
+            }
+
+            if (nativecontainer.Capacity <= 15)
+            {
+                var buffer = BitConverter.GetBytes(nativecontainer.Buffer.ToInt64());
+                var ret = Encoding.ASCII.GetString(buffer);
+                buffer = BitConverter.GetBytes(nativecontainer.ReservedBytes.ToInt64());
+                ret += Encoding.ASCII.GetString(buffer);
+                if (nativecontainer.Length < ret.Length)
+                {
+                    return ret[..nativecontainer.Length];
+                }
+                else
+                {
+                    return string.Empty;
+                }
+            }
+            else
+            {
+                var buffer = this.ReadMemoryArray<byte>(nativecontainer.Buffer, nativecontainer.Length);
+                return Encoding.ASCII.GetString(buffer);
+            }
+        }
+
+        /// <summary>
         ///     Reads the std::wstring. String read is in unicode format.
         /// </summary>
         /// <param name="nativecontainer">native object of std::wstring.</param>

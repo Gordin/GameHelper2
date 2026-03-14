@@ -1,5 +1,6 @@
 ﻿namespace GameHelper.RemoteObjects.Components
 {
+    using GameOffsets.Natives;
     using GameOffsets.Objects.Components;
     using ImGuiNET;
     using System;
@@ -8,7 +9,8 @@
     public class StateMachine : ComponentBase
     {
         public StateMachine(IntPtr address) : base(address) { }
-        private const int ValueSize = sizeof(long);
+
+        private const int StateStructSize = 0xC0;
 
         public IReadOnlyList<StateMachineState> States { get; private set; } = [];
 
@@ -27,25 +29,28 @@
         {
             var reader = Core.Process.Handle;
             var data = reader.ReadMemory<StateMachineComponentOffsets>(this.Address);
-
             this.OwnerEntityAddress = data.Header.EntityPtr;
-            long count = data.StatesValues.TotalElements(ValueSize);
 
-            var states = new List<StateMachineState>((int)count);
+            var stateValues = reader.ReadStdVector<long>(data.StatesValues);
+            var statesCount = stateValues.Length;
 
-            // Read all state values at once
-            int byteCount = (int)(count * ValueSize);
-            var valueBytes = reader.ReadMemoryArray<byte>(data.StatesValues.First, byteCount);
-
-            long[] values = new long[count];
-            Buffer.BlockCopy(valueBytes, 0, values, 0, byteCount);
-
-            for (long i = 0; i < count; i++)
-            { // gooby pls 
-                // cant figure out how to get state names  
-                states.Add(new StateMachineState("todo", values[i]));
+            var statesPtr = reader.ReadMemory<IntPtr>(data.StatesPtr + 0x10);
+            if (statesPtr == IntPtr.Zero)
+            {
+                this.States = [];
+                return;
             }
-            this.States = states;
+
+            var statesList = new List<StateMachineState>(statesCount);
+            for (var i = 0; i < statesCount; i++)
+            {
+                var stateNameAddr = statesPtr + i * StateStructSize;
+                var nativeContainer = reader.ReadMemory<StdString>(stateNameAddr);
+                var stateName = reader.ReadStdString(nativeContainer);
+                statesList.Add(new StateMachineState(stateName, stateValues[i]));
+            }
+
+            this.States = statesList;
         }
     }
 
@@ -56,5 +61,5 @@
 
         public override string ToString() => $"{Name}: {Value}";
     }
-
 }
+
