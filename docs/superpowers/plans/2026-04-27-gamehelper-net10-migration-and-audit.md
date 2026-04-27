@@ -2,11 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Migrate `GameHelper/` and `GameOffsets/` (134 C# files) from `net8.0` to `net10.0-windows` LTS with `Nullable` enabled and zero warnings, then produce a categorized bug-audit document covering 12 defect classes the compiler cannot detect.
+**Goal:** Migrate **all 9 csproj** in the repository (`GameHelper`, `GameOffsets`, `Launcher`, and 6 `Plugins/*`) from `net8.0` to `net10.0-windows` LTS with `Nullable` enabled and zero warnings on the whole solution, then produce a categorized bug-audit document covering 12 defect classes — but the audit is **only** for `GameHelper` + `GameOffsets` (134 C# files), per spec.
 
-**Architecture:** Two ordered phases on a single branch. Phase 1 is mechanical: bump TFM, enable diagnostics, run a fix-build-fix loop with `TreatWarningsAsErrors=true` until the build is green. Phase 2 walks each in-scope file group against a fixed 12-category checklist and appends findings to one audit markdown.
+**Architecture:** Two ordered phases on a single branch. Phase 1 migrates all 9 csproj uniformly, then runs one solution-wide fix-build-fix loop with `TreatWarningsAsErrors=true` until the build is green. Phase 2 walks each engine-core file group against a fixed 12-category checklist and appends findings to one audit markdown. Launcher + Plugins are migrated and compile-clean but receive no audit.
 
-**Tech Stack:** .NET 10 SDK 10.0.203 (already installed at `C:\Program Files\dotnet\dotnet.exe`), MSBuild via `dotnet build`, Newtonsoft.Json 13.0.3, ClickableTransparentOverlay 11.1.0, Coroutine 2.1.5, ProcessMemoryUtilities.Net 1.3.4. Spec: `docs/superpowers/specs/2026-04-27-gamehelper-net10-migration-and-audit-design.md`.
+**Tech Stack:** .NET 10 SDK 10.0.203 (installed at `C:\Program Files\dotnet\dotnet.exe`), MSBuild via `dotnet build`, Newtonsoft.Json 13.0.3, ClickableTransparentOverlay 11.1.0, Coroutine 2.1.5, ProcessMemoryUtilities.Net 1.3.4, AsmResolver.PE.Win32Resources 5.5.1 (Launcher), ImGui.NET 1.91.6.1 + System.Linq.Dynamic.Core 1.7.1 (plugins). Spec: `docs/superpowers/specs/2026-04-27-gamehelper-net10-migration-and-audit-design.md`.
+
+**Build-command bug found in pre-flight (Task 1):** `dotnet build` MUST NOT pass `-p:Platform=x64`. Several csproj declare `<OutputType>` only inside `'Configuration|Platform'=='X|AnyCPU'` `PropertyGroup`s; passing `-p:Platform=x64` makes those groups not match, leading to errors like CS2017. Use `dotnet build GameOverlay.sln -c <Config> --no-restore` (no `-p:Platform=…`) — `AnyCPU` is the default and the csproj emit x64 binaries via the conditional `<PlatformTarget>` declarations.
 
 ---
 
@@ -31,21 +33,31 @@ If `git status` shows unexpected modifications, stop and report. Do not start mi
 For every compiler/analyzer warning encountered:
 
 - **Mechanical fix allowed when** the original code unambiguously assumed a specific value (e.g. dereferencing a property the surrounding logic proves non-null). Examples: add `?` to a return type whose body has `return null;`, add `!` after a property access guarded by an `if (x != null)`, add `using System.Drawing;` if missing, fix obvious P/Invoke marshaling annotations the analyzer asks for.
-- **Defer to audit** when fixing requires a logic decision (e.g. "this could be null but the caller assumes not — what should we do on null?"). Action: silence the warning at the call site with `#pragma warning disable <CODE>` ... `#pragma warning restore <CODE>` and add a `// TODO: see audit F-XXX` comment. The corresponding finding **must** be added to the audit doc in Phase 2 with the matching ID.
 
-Track silenced-warning sites as you create them (a running list in your scratch). Phase 2 cross-references them.
+- **In `GameHelper/` or `GameOffsets/` (audit-in-scope), defer to audit** when fixing requires a logic decision (e.g. "this could be null but the caller assumes not — what should we do on null?"). Action: silence the warning at the call site with `#pragma warning disable <CODE>` ... `#pragma warning restore <CODE>` and add a `// TODO: see audit F-XXX` comment. The corresponding finding **must** be added to the audit doc in Phase 2 with the matching ID.
+
+- **In `Launcher/` or `Plugins/` (audit-out-of-scope), escalate** when fixing requires a logic decision. There is no audit doc to point to, and silently silencing warnings in non-audited code creates hidden tech debt the user can't easily find later. Action: report `BLOCKED` to the controller with the specific file:line, the warning code, and the question. The controller asks the user. Do NOT use `#pragma warning disable` here without explicit user approval.
+
+Track silenced-warning sites in `GameHelper/` + `GameOffsets/` as you create them (a running list in your scratch). Phase 2 cross-references them.
 
 ---
 
 ## File Structure
 
-### Phase 1 modifies
+### Phase 1 modifies (all 9 csproj)
 
 | File | Change |
 |------|--------|
-| `GameHelper/GameHelper.csproj` | TFM → `net10.0-windows`, add `<Nullable>enable</Nullable>`, `<LangVersion>latest</LangVersion>` |
-| `GameOffsets/GameOffsets.csproj` | TFM → `net10.0-windows`, add `<Nullable>enable</Nullable>`, `<LangVersion>latest</LangVersion>` |
-| Source files under `GameHelper/` and `GameOffsets/` | Mechanical compiler/analyzer fixes only |
+| `GameHelper/GameHelper.csproj` | TFM → `net10.0-windows`, add `<Nullable>enable</Nullable>`, `<LangVersion>latest</LangVersion>`, hoist `NoWarn 1591` to top-level |
+| `GameOffsets/GameOffsets.csproj` | Same |
+| `Launcher/Launcher.csproj` | Same |
+| `Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj` | Same |
+| `Plugins/HealthBars/HealthBars.csproj` | Same |
+| `Plugins/PreloadAlert/PreloadAlert.csproj` | Same |
+| `Plugins/Radar/Radar.csproj` | Same |
+| `Plugins/SamplePluginTemplate/Changeme/Changeme.csproj` | Same |
+| `Plugins/WorldDrawing/WorldDrawing.csproj` | Same |
+| Source files anywhere in the solution | Mechanical compiler/analyzer fixes only |
 
 ### Phase 1 creates
 
@@ -55,12 +67,16 @@ Track silenced-warning sites as you create them (a running list in your scratch)
 
 | File | Responsibility |
 |------|----------------|
-| `docs/audit/2026-04-27-bug-audit.md` | Categorized findings, severity-sorted, with index |
+| `docs/audit/2026-04-27-bug-audit.md` | Categorized findings, severity-sorted, with index. **Engine-core only** — no entries for Launcher or Plugins. |
 
-### Out of scope (do NOT modify)
+### Audit-out-of-scope (NOT audited; receive only mechanical migration cleanup)
 
-- `Launcher/` (entire directory)
-- `Plugins/` (entire directory; this is the user-plugins folder, not the host-side `GameHelper/Plugin/` which IS in scope)
+- `Launcher/` (the launcher Exe project)
+- `Plugins/` (the 6 user-loadable plugin projects)
+  - The host-side `GameHelper/Plugin/` (inside the GameHelper csproj) IS audit-in-scope.
+
+### Out of scope entirely (do NOT modify)
+
 - `GameOverlay.sln` (no edits required; csproj TFM changes are picked up automatically)
 - `.editorconfig`
 - `Directory.Build.props` (already pins `RuntimeIdentifier=win-x64` correctly)
@@ -96,8 +112,10 @@ Expected: "Restore complete" with 0 errors. Warnings about `Launcher` or `Plugin
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameHelper/GameHelper.csproj -c Debug -p:Platform=x64 --no-restore 2>&1 | tee /tmp/baseline-build.log
+dotnet build GameHelper/GameHelper.csproj -c Debug --no-restore 2>&1 | tee /tmp/baseline-build.log
 ```
+
+(NOTE: do NOT pass `-p:Platform=x64`. That makes MSBuild evaluate the conditional `<PropertyGroup>` blocks against `Platform==x64` — but the csproj declares `<OutputType>` only inside `Platform==AnyCPU` groups, so passing `x64` produces CS2017 errors. The csproj emit x64 binaries via the `<PlatformTarget>x64</PlatformTarget>` declarations inside the AnyCPU-conditional groups; build with default `Platform=AnyCPU`.)
 
 Expected: "Build succeeded" with 0 errors. Note the warning count (record in your notes; it's the baseline). If errors, **stop the plan** — the spec assumes net8.0 builds clean. Report failures back to the user.
 
@@ -120,20 +138,49 @@ No code changed; nothing to commit.
 
 # Phase 1 — Migration
 
-## Task 2: Migrate `GameOffsets.csproj` to `net10.0-windows`
+**Important:** plugins (under `Plugins/`) `<ProjectReference>` `GameHelper.csproj`. If GameHelper migrates to net10 while plugins stay on net8, plugin builds break (a net8 lib cannot consume a net10 reference). Therefore the migration must touch all 9 csproj **in a single commit** — there is no clean intermediate state.
+
+## Task 2: Migrate all 9 csproj to `net10.0-windows`
 
 **Files:**
 - Modify: `GameOffsets/GameOffsets.csproj`
+- Modify: `GameHelper/GameHelper.csproj`
+- Modify: `Launcher/Launcher.csproj`
+- Modify: `Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj`
+- Modify: `Plugins/HealthBars/HealthBars.csproj`
+- Modify: `Plugins/PreloadAlert/PreloadAlert.csproj`
+- Modify: `Plugins/Radar/Radar.csproj`
+- Modify: `Plugins/SamplePluginTemplate/Changeme/Changeme.csproj`
+- Modify: `Plugins/WorldDrawing/WorldDrawing.csproj`
 
-- [ ] **Step 1: Read current contents**
+For every csproj, perform the following operations:
+1. Change `<TargetFramework>net8.0</TargetFramework>` to `<TargetFramework>net10.0-windows</TargetFramework>`.
+2. Add `<Nullable>enable</Nullable>` and `<LangVersion>latest</LangVersion>` to the top-level `PropertyGroup`.
+3. If the csproj has `<GenerateDocumentationFile>true</GenerateDocumentationFile>` (which generates CS1591 warnings for missing XML doc), and `<NoWarn>` does NOT yet appear in the top-level `PropertyGroup`: add `<NoWarn>1701;1702; 1591</NoWarn>` to the top-level `PropertyGroup`. If `<NoWarn>` already exists in a conditional `PropertyGroup` (Debug/Release), hoist it to top-level so it covers Release too.
+
+These three operations are applied uniformly. The order of `PropertyGroup` elements should match the original file's style; do not reformat unrelated areas.
+
+- [ ] **Step 1: Read every csproj first**
 
 ```bash
-cat /c/Users/D/Desktop/GameHelper2/GameOffsets/GameOffsets.csproj
+for f in \
+  /c/Users/D/Desktop/GameHelper2/GameOffsets/GameOffsets.csproj \
+  /c/Users/D/Desktop/GameHelper2/GameHelper/GameHelper.csproj \
+  /c/Users/D/Desktop/GameHelper2/Launcher/Launcher.csproj \
+  /c/Users/D/Desktop/GameHelper2/Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj \
+  /c/Users/D/Desktop/GameHelper2/Plugins/HealthBars/HealthBars.csproj \
+  /c/Users/D/Desktop/GameHelper2/Plugins/PreloadAlert/PreloadAlert.csproj \
+  /c/Users/D/Desktop/GameHelper2/Plugins/Radar/Radar.csproj \
+  /c/Users/D/Desktop/GameHelper2/Plugins/SamplePluginTemplate/Changeme/Changeme.csproj \
+  /c/Users/D/Desktop/GameHelper2/Plugins/WorldDrawing/WorldDrawing.csproj; do
+  echo "=== $f ===";
+  cat "$f";
+done
 ```
 
-Confirm the file matches the snapshot below (it should). If not, reconcile with the user before proceeding.
+Sanity-check what's there before editing.
 
-- [ ] **Step 2: Replace file contents**
+- [ ] **Step 2: Replace `GameOffsets/GameOffsets.csproj`**
 
 Write the entire file as:
 
@@ -159,43 +206,7 @@ Write the entire file as:
 </Project>
 ```
 
-Notes:
-- `RunAnalyzersDuringBuild=false` preserved from the original.
-- `NoWarn 1591` (missing XML doc) hoisted from the Debug block to the top-level `PropertyGroup` so it also covers Release. This matters once Task 4 turns on `TreatWarningsAsErrors` for Release; otherwise CS1591 would error out on every undocumented public member.
-- `Nullable=enable` and `LangVersion=latest` added per spec.
-
-- [ ] **Step 3: Verify GameOffsets restores on net10.0-windows**
-
-```bash
-cd /c/Users/D/Desktop/GameHelper2
-dotnet restore GameOffsets/GameOffsets.csproj
-```
-
-Expected: "Restore complete" with 0 errors. There may be NU1701/NU1702 warnings about TFM-mismatched dependencies — note them but proceed.
-
-- [ ] **Step 4: Verify GameOffsets builds standalone (best-effort)**
-
-```bash
-cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameOffsets/GameOffsets.csproj -c Debug -p:Platform=x64 --no-restore
-```
-
-Expected: build may succeed or fail. **Failure is acceptable here** because we haven't yet enabled WAE — record any new errors/warnings to your notes. We will fix them during the cleanup loop in Task 5.
-
-## Task 3: Migrate `GameHelper.csproj` to `net10.0-windows`
-
-**Files:**
-- Modify: `GameHelper/GameHelper.csproj`
-
-- [ ] **Step 1: Read current contents**
-
-```bash
-cat /c/Users/D/Desktop/GameHelper2/GameHelper/GameHelper.csproj
-```
-
-Confirm the file matches the snapshot referenced in the spec. If altered unexpectedly, stop.
-
-- [ ] **Step 2: Replace file contents**
+- [ ] **Step 3: Replace `GameHelper/GameHelper.csproj`**
 
 Write the entire file as:
 
@@ -253,40 +264,96 @@ Write the entire file as:
 </Project>
 ```
 
-`TreatWarningsAsErrors=false` is **left at its current value** — it will be flipped to `true` for the cleanup loop in Task 4 and reverted in Task 6.
+- [ ] **Step 4: Edit `Launcher/Launcher.csproj`**
 
-- [ ] **Step 3: Restore on the new TFM**
+Edit the existing file in place (preserve its post-build `<Target>` blocks). Inside the top-level `<PropertyGroup>`:
+- Change `<TargetFramework>net8.0</TargetFramework>` → `<TargetFramework>net10.0-windows</TargetFramework>`
+- After the `<TargetFramework>` line, add `<Nullable>enable</Nullable>` and `<LangVersion>latest</LangVersion>`
+- Launcher does NOT have `<GenerateDocumentationFile>` set, so the NoWarn hoist isn't required. Skip step 3 of the uniform operations for this csproj.
+
+- [ ] **Step 5: Edit each plugin csproj**
+
+Apply all three uniform operations to each of these 6 files:
+- `Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj`
+- `Plugins/HealthBars/HealthBars.csproj`
+- `Plugins/PreloadAlert/PreloadAlert.csproj`
+- `Plugins/Radar/Radar.csproj`
+- `Plugins/SamplePluginTemplate/Changeme/Changeme.csproj`
+- `Plugins/WorldDrawing/WorldDrawing.csproj`
+
+Each plugin csproj has `<GenerateDocumentationFile>true</GenerateDocumentationFile>`, so the `NoWarn 1591` hoist IS required for each. Add `<NoWarn>1701;1702; 1591</NoWarn>` to the top-level `<PropertyGroup>` of each plugin csproj.
+
+Preserve any plugin-specific elements (`<EnableDynamicLoading>`, `<PlatformTarget>` in the conditional groups, `<ItemGroup>` with `<ProjectReference>` and `<PackageReference>`, post-build `<Target>` blocks) verbatim.
+
+- [ ] **Step 6: Restore on the new TFM (whole solution)**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet restore GameHelper/GameHelper.csproj
+dotnet restore GameOverlay.sln
 ```
 
 Expected: "Restore complete" with 0 errors. NU1701/NU1702 may appear (e.g. `ClickableTransparentOverlay` published as net8.0); these are forward-compatibility informational warnings — acceptable.
 
-- [ ] **Step 4: Commit the migration baseline**
+- [ ] **Step 7: Sanity check — solution builds (errors expected, warnings counted)**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-git add GameHelper/GameHelper.csproj GameOffsets/GameOffsets.csproj
-git commit -m "chore(net): migrate to .NET 10 LTS (net10.0-windows)
+dotnet build GameOverlay.sln -c Debug --no-restore 2>&1 | tee /tmp/post-migrate-build.log
+grep -cE 'error |warning ' /tmp/post-migrate-build.log
+```
 
-- TargetFramework: net8.0 → net10.0-windows in both projects
-- Enable Nullable reference types and LangVersion=latest
-- Package versions held; transitive deps restored on new TFM"
+The build may **fail** at this step — that's acceptable. Nullable annotation errors are expected because `Nullable=enable` is freshly turned on. Record:
+- The total error/warning count.
+- Whether the failure is in `GameHelper`/`GameOffsets` (audit-in-scope) or in `Launcher`/`Plugins` (audit-out-of-scope).
+
+We will fix these in Task 4. Don't fix anything yet.
+
+- [ ] **Step 8: Commit the migration**
+
+```bash
+cd /c/Users/D/Desktop/GameHelper2
+git add GameOffsets/GameOffsets.csproj GameHelper/GameHelper.csproj \
+        Launcher/Launcher.csproj \
+        Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj \
+        Plugins/HealthBars/HealthBars.csproj \
+        Plugins/PreloadAlert/PreloadAlert.csproj \
+        Plugins/Radar/Radar.csproj \
+        Plugins/SamplePluginTemplate/Changeme/Changeme.csproj \
+        Plugins/WorldDrawing/WorldDrawing.csproj
+git status --short    # verify only csproj files staged
+git commit -m "chore(net): migrate all 9 csproj to .NET 10 LTS (net10.0-windows)
+
+- TargetFramework: net8.0 → net10.0-windows uniformly across the solution
+  (GameHelper, GameOffsets, Launcher, and 6 Plugins).
+- Enable Nullable reference types and LangVersion=latest everywhere.
+- Hoist NoWarn 1591 (missing XML doc) to top-level PropertyGroup on
+  csproj that have GenerateDocumentationFile=true, so the warning is
+  also suppressed in Release once Task 3 turns on WAE.
+- Migration is single-commit because plugins ProjectReference GameHelper;
+  any partial state has broken plugin builds (TFM mismatch)."
 ```
 
 Expected: commit succeeds. Verify with `git log -1 --oneline` → prints the commit subject.
 
-## Task 4: Enable warnings-as-errors for the cleanup loop
+## Task 3: Enable warnings-as-errors across all 9 csproj
+
+This task applies WAE uniformly so the cleanup loop in Task 4 surfaces every warning as a hard error.
 
 **Files:**
-- Modify: `GameHelper/GameHelper.csproj` (Debug & Release `PropertyGroup`s)
-- Modify: `GameOffsets/GameOffsets.csproj` (Debug & Release `PropertyGroup`s)
+- Modify: all 9 csproj listed in Task 2.
 
-- [ ] **Step 1: Edit `GameHelper.csproj`**
+For each csproj, add `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` to the top-level `<PropertyGroup>`. (Top-level — not per-configuration — because we want it to apply to both Debug and Release uniformly during cleanup.)
 
-In the Debug `PropertyGroup`, change:
+For `GameHelper.csproj` specifically, the existing `<TreatWarningsAsErrors>false</TreatWarningsAsErrors>` line lives in the Debug `<PropertyGroup>`. Leave that line alone (it'll be inert because top-level `true` wins for Release; for Debug, MSBuild evaluation order means whichever `<PropertyGroup>` parses last wins. To avoid ambiguity, change the Debug `false` line to `true` as well, OR remove it. Easier: change it to `true` to match top-level intent.)
+
+- [ ] **Step 1: Edit GameHelper.csproj (top-level + Debug override)**
+
+Add to the top-level `<PropertyGroup>` (after `<GenerateDocumentationFile>true</GenerateDocumentationFile>`):
+```xml
+<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+```
+
+In the Debug `<PropertyGroup>`, change:
 ```xml
 <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 ```
@@ -295,33 +362,25 @@ to:
 <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 ```
 
-In the Release `PropertyGroup`, add (after `<PlatformTarget>x64</PlatformTarget>`):
-```xml
-<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-```
+- [ ] **Step 2: Edit the other 8 csproj**
 
-- [ ] **Step 2: Edit `GameOffsets.csproj`**
+For each of:
+- `GameOffsets/GameOffsets.csproj`
+- `Launcher/Launcher.csproj`
+- 6 plugin csproj
 
-In the Debug `PropertyGroup`, after `<NoWarn>1701;1702; 1591</NoWarn>`, add:
-```xml
-<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-```
-
-In the Release `PropertyGroup`, after `<PlatformTarget>x64</PlatformTarget>`, add:
-```xml
-<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-```
+Add `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` to the top-level `<PropertyGroup>` (after the existing `<NoWarn>` line where present, otherwise after `<LangVersion>` from Task 2).
 
 - [ ] **Step 3: Run a discovery build to capture the warning surface**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameHelper/GameHelper.csproj -c Debug -p:Platform=x64 --no-restore 2>&1 | tee /tmp/wae-discovery.log
+dotnet build GameOverlay.sln -c Debug --no-restore 2>&1 | tee /tmp/wae-discovery.log
 ```
 
 Expected: build **fails** with errors (the warnings are now errors). This is intended — we're collecting the work surface.
 
-Count the unique error codes:
+Count the unique error codes (Windows-friendly grep):
 ```bash
 grep -oE 'CS[0-9]+|CA[0-9]+|Nullable warning' /tmp/wae-discovery.log | sort -u
 ```
@@ -329,38 +388,49 @@ grep -oE 'CS[0-9]+|CA[0-9]+|Nullable warning' /tmp/wae-discovery.log | sort -u
 Note the codes and rough counts in your scratch. Common expected codes:
 - `CS8600`/`CS8601`/`CS8602`/`CS8604`/`CS8618` — nullability
 - `CS0114`/`CS0108` — overrides/hides
-- `CA1416` — platform compatibility (should be silent now since we have `-windows`)
-- `CS1591` — missing XML doc (suppressed via NoWarn 1591 already)
+- `CA1416` — platform compatibility (should be silent now since target is `-windows`)
+- `CS1591` — missing XML doc (suppressed via NoWarn 1591 already in csproj that have GenerateDocumentationFile)
+
+Also note where errors cluster: GameHelper/GameOffsets (audit-in-scope) vs. Launcher/Plugins (audit-out-of-scope). Helpful for routing fixes/deferrals during Task 4.
 
 - [ ] **Step 4: Commit the WAE flip (no source changes yet)**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-git add GameHelper/GameHelper.csproj GameOffsets/GameOffsets.csproj
+git add GameOffsets/GameOffsets.csproj GameHelper/GameHelper.csproj \
+        Launcher/Launcher.csproj \
+        Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj \
+        Plugins/HealthBars/HealthBars.csproj \
+        Plugins/PreloadAlert/PreloadAlert.csproj \
+        Plugins/Radar/Radar.csproj \
+        Plugins/SamplePluginTemplate/Changeme/Changeme.csproj \
+        Plugins/WorldDrawing/WorldDrawing.csproj
 git commit -m "chore(net): enable warnings-as-errors during migration cleanup
 
-Temporary; will be reverted after the mechanical fix pass leaves the
-build green."
+Temporary; will be reverted in a later commit after the mechanical
+fix pass leaves the whole-solution build green."
 ```
 
-## Task 5: Mechanical cleanup loop
+## Task 4: Mechanical cleanup loop (whole solution)
 
-**Files:** any source under `GameHelper/` and `GameOffsets/` that the build flags. Scope guard: do NOT edit anything under `Launcher/` or `Plugins/`.
+**Files:** any source under any of the 9 in-scope csproj that the WAE-enabled build flags as warning. The boundary rule splits behavior:
+- `GameHelper/` + `GameOffsets/` (audit-in-scope): mechanical fix OR `#pragma + // TODO: see audit F-XXX`.
+- `Launcher/` + `Plugins/` (audit-out-of-scope): mechanical fix OR escalate `BLOCKED` to controller.
 
-This task is iterative. Repeat the inner loop until `dotnet build` is clean.
+This task is iterative. Repeat the inner loop until the whole-solution build is 0 errors / 0 warnings.
 
 - [ ] **Step 1: Run build to surface the next batch of errors**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameHelper/GameHelper.csproj -c Debug -p:Platform=x64 --no-restore 2>&1 | tee /tmp/cleanup-iter.log
+dotnet build GameOverlay.sln -c Debug --no-restore 2>&1 | tee /tmp/cleanup-iter.log
 ```
 
 If the build succeeds with 0 errors / 0 warnings, jump to Step 6.
 
 - [ ] **Step 2: Pick the next file with errors**
 
-Take the first file path reported in the log. Read it (`Read` tool, full file). Read the surrounding logic enough to understand whether each warning is mechanically fixable or needs an audit deferral per the boundary rule above.
+Take the first file path reported in the log. Read it (`Read` tool, full file). Read the surrounding logic enough to understand whether each warning is mechanically fixable or needs deferral per the boundary rule above.
 
 - [ ] **Step 3: Apply fixes**
 
@@ -377,102 +447,112 @@ For each warning in that file, classify and apply:
 | `CS8625` (literal null to non-nullable parameter) | Mark parameter `T?` or fix the call site. |
 | `CS0114`/`CS0108` (hide vs override) | Add `new` or `override` keyword based on the inheritance intent. Read the base class to decide. |
 | Other CS warnings | Apply standard guidance; if non-trivial, defer per boundary rule. |
-| `CA*` analyzer warnings | If `RunAnalyzersDuringBuild=false` is set (true for GameOffsets) they shouldn't appear. For GameHelper, treat as the table above. |
+| `CA*` analyzer warnings | `GameOffsets.csproj` has `RunAnalyzersDuringBuild=false` so `CA*` won't appear there. Other csproj have analyzers enabled — handle as in this table. |
 
-For deferrals, use:
+For deferrals **in `GameHelper/` or `GameOffsets/`** (audit-in-scope), use:
 ```csharp
 #pragma warning disable CS8602 // TODO: see audit F-XXX
 var v = maybeNull.Property;
 #pragma warning restore CS8602
 ```
-
 Append a one-liner to your scratch list: `F-XXX | path/to/file.cs:lineNumber | CS8602 | <one-line summary>`. You will populate the audit doc with these in Phase 2.
+
+For warnings **in `Launcher/` or `Plugins/`** (audit-out-of-scope) that need a logic decision, **report `BLOCKED` to the controller** with the file path, line, warning code, and the question. Do not silently `#pragma`-disable in non-audited code.
 
 - [ ] **Step 4: Re-run build, confirm error count dropped**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameHelper/GameHelper.csproj -c Debug -p:Platform=x64 --no-restore 2>&1 | grep -cE 'error |warning '
+dotnet build GameOverlay.sln -c Debug --no-restore 2>&1 | grep -cE 'error |warning '
 ```
 
 Expected: number is strictly lower than the previous iteration. If it isn't, your fix introduced new issues — examine the new errors and either back out or extend the fix.
 
 - [ ] **Step 5: Loop**
 
-Return to Step 1. Continue until Step 1 reports 0 errors / 0 warnings on `Debug|x64`.
+Return to Step 1. Continue until Step 1 reports 0 errors / 0 warnings on `Debug`.
 
-- [ ] **Step 6: Verify Release also builds clean**
+- [ ] **Step 6: Verify Release also builds clean (whole solution)**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameHelper/GameHelper.csproj -c Release -p:Platform=x64 --no-restore 2>&1 | tee /tmp/cleanup-release.log
+dotnet build GameOverlay.sln -c Release --no-restore 2>&1 | tee /tmp/cleanup-release.log
 grep -cE 'error |warning ' /tmp/cleanup-release.log
 ```
 
-Expected: 0 errors and 0 warnings (excluding the `Build succeeded` summary line). If Release surfaces additional issues (rare; usually due to `OutputType` differences or Release-only targets), apply the same fix loop until clean.
+Expected: 0 errors and 0 warnings. If Release surfaces additional issues (rare; usually due to `OutputType` differences or Release-only targets), apply the same fix loop until clean.
 
 - [ ] **Step 7: Commit the fix pass (one commit, may be split if very large)**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-git add GameHelper/ GameOffsets/
-git status --short    # confirm only files in scope are staged
+git add GameHelper/ GameOffsets/ Launcher/ Plugins/
+git status --short    # verify only source files in scope are staged
 git commit -m "fix(net10): resolve compiler warnings from net10 migration
 
 Mechanical fixes for the warning surface that appeared after enabling
-Nullable and bumping to net10.0-windows. Logic-decision warnings were
-deferred behind #pragma disables with TODOs that point to audit IDs
-to be filled in by Phase 2."
+Nullable across all 9 csproj. Logic-decision warnings in audit-in-scope
+code (GameHelper, GameOffsets) were deferred behind #pragma disables
+with TODOs pointing at audit IDs to be filled in by Phase 2.
+Logic-decision warnings in non-audited code (Launcher, Plugins) were
+either resolved mechanically or escalated case-by-case."
 ```
 
-If the diff is unwieldy (>30 files, hard to review), split by directory:
+If the diff is unwieldy (>30 files, hard to review), split by area:
 ```bash
 git reset                     # unstage all
 git add GameOffsets/
 git commit -m "fix(net10): resolve nullable warnings in GameOffsets"
 git add GameHelper/RemoteObjects/
 git commit -m "fix(net10): resolve nullable warnings in GameHelper/RemoteObjects"
+git add Launcher/
+git commit -m "fix(net10): resolve nullable warnings in Launcher"
+git add Plugins/Radar/
+git commit -m "fix(net10): resolve nullable warnings in Plugins/Radar"
 # ... etc, until clean
 ```
 
-Each split commit must leave the build green (re-run `dotnet build` between commits).
+Each split commit must leave the whole-solution build green (re-run `dotnet build GameOverlay.sln` between commits).
 
-## Task 6: Restore non-WAE state for normal development
+## Task 5: Restore non-WAE state for normal development
 
-**Files:**
-- Modify: `GameHelper/GameHelper.csproj`
-- Modify: `GameOffsets/GameOffsets.csproj`
+**Files:** all 9 csproj that received `TreatWarningsAsErrors=true` in Task 3.
 
-- [ ] **Step 1: Revert WAE flag in `GameHelper.csproj`**
+- [ ] **Step 1: Revert WAE in every csproj**
 
-In the Debug `PropertyGroup`, change `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` back to `<TreatWarningsAsErrors>false</TreatWarningsAsErrors>`.
+For each of the 9 csproj:
+- `GameHelper/GameHelper.csproj`: revert top-level `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` to `false` and revert the Debug-block `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` back to `<TreatWarningsAsErrors>false</TreatWarningsAsErrors>` (matches original).
+- `GameOffsets/GameOffsets.csproj`, `Launcher/Launcher.csproj`, and the 6 plugin csproj: remove the top-level `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` line that Task 3 Step 2 added. The originals had no such line.
 
-In the Release `PropertyGroup`, **remove** the `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` line that was added in Task 4 Step 1 (Release didn't have it originally).
+Keep `<Nullable>enable</Nullable>` and `<LangVersion>latest</LangVersion>` everywhere — those stay.
 
-- [ ] **Step 2: Revert WAE flag in `GameOffsets.csproj`**
-
-Remove the `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` line from both Debug and Release `PropertyGroup`s. The original file had no such line, and we want to match.
-
-- [ ] **Step 3: Verify build still green without WAE**
+- [ ] **Step 2: Verify build still green without WAE (whole solution)**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameHelper/GameHelper.csproj -c Debug -p:Platform=x64 --no-restore 2>&1 | tail -10
-dotnet build GameHelper/GameHelper.csproj -c Release -p:Platform=x64 --no-restore 2>&1 | tail -10
+dotnet build GameOverlay.sln -c Debug --no-restore 2>&1 | tail -10
+dotnet build GameOverlay.sln -c Release --no-restore 2>&1 | tail -10
 ```
 
-Expected: both end with "Build succeeded" and `0 Warning(s)` `0 Error(s)`. (Without WAE, warnings would not error — but since we already drove the count to zero, they should remain zero.)
+Expected: both end with "Build succeeded" and `0 Warning(s)` `0 Error(s)`. (Without WAE, warnings would not error — but since we already drove the count to zero in Task 4, they should remain zero.)
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-git add GameHelper/GameHelper.csproj GameOffsets/GameOffsets.csproj
+git add GameOffsets/GameOffsets.csproj GameHelper/GameHelper.csproj \
+        Launcher/Launcher.csproj \
+        Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj \
+        Plugins/HealthBars/HealthBars.csproj \
+        Plugins/PreloadAlert/PreloadAlert.csproj \
+        Plugins/Radar/Radar.csproj \
+        Plugins/SamplePluginTemplate/Changeme/Changeme.csproj \
+        Plugins/WorldDrawing/WorldDrawing.csproj
 git commit -m "chore(net): relax warnings-as-errors post-migration
 
-Keeps Nullable=enable for ongoing protection, removes the temporary
-WAE flag used during the migration cleanup pass. Future warnings
-will not block builds but remain visible."
+Keeps Nullable=enable for ongoing protection across all 9 csproj,
+removes the temporary WAE flag used during the migration cleanup
+pass. Future warnings will not block builds but remain visible."
 ```
 
 ---
@@ -521,7 +601,7 @@ For each finding, append to the audit doc under the matching category section us
 
 `F-NNN` is a zero-padded sequential ID assigned in order of discovery (F-001, F-002, …). When you create a deferred-warning `#pragma` in Phase 1 with a placeholder ID, fix the ID here so the placeholder matches.
 
-## Task 7: Create audit document skeleton
+## Task 6: Create audit document skeleton
 
 **Files:**
 - Create: `docs/audit/2026-04-27-bug-audit.md`
@@ -613,9 +693,9 @@ Coverage: 0 / 134 source files audited.
 
 - [ ] **Step 3: Do not commit yet**
 
-The audit doc accumulates across Tasks 8–17 and is committed once at Task 18.
+The audit doc accumulates across Tasks 7–16 and is committed once at Task 17.
 
-## Task 8: Audit GameOffsets — Natives, Pattern, root files
+## Task 7: Audit GameOffsets — Natives, Pattern, root files
 
 **Files (read-only):**
 - `GameOffsets/Natives/StdBucket.cs`
@@ -650,7 +730,7 @@ In the Summary section, change `Coverage: X / 134` to reflect this group (after 
 
 Increment the relevant severity rows. Add each `F-NNN — title (severity, file)` to the Index section in numeric order.
 
-## Task 9: Audit GameOffsets — Objects (excluding nested)
+## Task 8: Audit GameOffsets — Objects (excluding nested)
 
 **Files (read-only):**
 - `GameOffsets/Objects/AreaChangeOffset.cs`
@@ -663,7 +743,7 @@ Increment the relevant severity rows. Add each `F-NNN — title (severity, file)
 - [ ] **Step 3: Update coverage counter** (after this task: `16 / 134`)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 10: Audit GameOffsets — Components, FilesStructures, States, UiElement
+## Task 9: Audit GameOffsets — Components, FilesStructures, States, UiElement
 
 **Files (read-only):** all 18 component offsets, 4 FilesStructures, 7 States (incl. nested InGameState/), 3 UiElement.
 
@@ -707,7 +787,7 @@ GameOffsets/Objects/UiElement/UiElementBaseOffset.cs
 - [ ] **Step 3: Update coverage counter** (after this task: `48 / 134` — finishes GameOffsets)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 11: Audit GameHelper — Utils + Cache + CoroutineEvents
+## Task 10: Audit GameHelper — Utils + Cache + CoroutineEvents
 
 **Files (read-only):**
 ```
@@ -739,7 +819,7 @@ Pay extra attention to:
 - [ ] **Step 3: Update coverage counter** (after this task: `61 / 134`)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 12: Audit GameHelper — Core, GameProcess, GameOverlay, Program
+## Task 11: Audit GameHelper — Core, GameProcess, GameOverlay, Program
 
 **Files (read-only):**
 ```
@@ -763,7 +843,7 @@ Pay extra attention across all categories. Specifically:
 - [ ] **Step 3: Update coverage counter** (after this task: `65 / 134`)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 13: Audit GameHelper — Plugin (host-side loader, NOT user plugins)
+## Task 12: Audit GameHelper — Plugin (host-side loader, NOT user plugins)
 
 **Files (read-only):**
 ```
@@ -787,7 +867,7 @@ Pay extra attention to:
 - [ ] **Step 3: Update coverage counter** (after this task: `71 / 134`)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 14: Audit GameHelper — RemoteEnums + RemoteObjects (root + base + helpers)
+## Task 13: Audit GameHelper — RemoteEnums + RemoteObjects (root + base + helpers)
 
 **Files (read-only):**
 ```
@@ -820,7 +900,7 @@ Pay extra attention to:
 - [ ] **Step 3: Update coverage counter** (after this task: `88 / 134`)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 15: Audit GameHelper — RemoteObjects/Components (entity components)
+## Task 14: Audit GameHelper — RemoteObjects/Components (entity components)
 
 **Files (read-only):**
 ```
@@ -858,7 +938,7 @@ Pay extra attention to:
 - [ ] **Step 3: Update coverage counter** (after this task: `110 / 134`)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 16: Audit GameHelper — RemoteObjects/States (incl. InGameStateObjects) + UiElement + FilesStructures
+## Task 15: Audit GameHelper — RemoteObjects/States (incl. InGameStateObjects) + UiElement + FilesStructures
 
 **Files (read-only):**
 ```
@@ -890,7 +970,7 @@ Pay extra attention to:
 - [ ] **Step 3: Update coverage counter** (after this task: `125 / 134`)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 17: Audit GameHelper — Settings + Ui
+## Task 16: Audit GameHelper — Settings + Ui
 
 **Files (read-only):**
 ```
@@ -915,7 +995,7 @@ Pay extra attention to:
 - [ ] **Step 3: Update coverage counter** (after this task: `134 / 134` — done)
 - [ ] **Step 4: Update severity counts and Index**
 
-## Task 18: Final pass and commit
+## Task 17: Final pass and commit
 
 **Files:**
 - Modify: `docs/audit/2026-04-27-bug-audit.md`
@@ -943,15 +1023,15 @@ In the Summary section:
 - Sum the per-severity counts and confirm the **Total** row matches.
 - Confirm `Coverage: 134 / 134`.
 
-- [ ] **Step 3: Verify build is still green**
+- [ ] **Step 3: Verify build is still green (whole solution)**
 
 ```bash
 cd /c/Users/D/Desktop/GameHelper2
-dotnet build GameHelper/GameHelper.csproj -c Debug -p:Platform=x64 --no-restore 2>&1 | tail -5
-dotnet build GameHelper/GameHelper.csproj -c Release -p:Platform=x64 --no-restore 2>&1 | tail -5
+dotnet build GameOverlay.sln -c Debug --no-restore 2>&1 | tail -5
+dotnet build GameOverlay.sln -c Release --no-restore 2>&1 | tail -5
 ```
 
-Expected: both end with `0 Warning(s)` `0 Error(s)`. The audit is read-only on source, so this should be unchanged from Task 6 — but verify.
+Expected: both end with `0 Warning(s)` `0 Error(s)` across all 9 csproj. The audit is read-only on source, so this should be unchanged from Task 5 — but verify.
 
 - [ ] **Step 4: Update any source `// TODO: see audit F-XXX` placeholder IDs that were finalized**
 
@@ -981,11 +1061,13 @@ git log --oneline pre-net10-migration..HEAD
 
 Expected: commits roughly matching this sequence —
 1. (preceding) `docs(spec): add .NET 10 migration + audit design`
-2. `chore(net): migrate to .NET 10 LTS (net10.0-windows)`
-3. `chore(net): enable warnings-as-errors during migration cleanup`
-4. `fix(net10): resolve compiler warnings from net10 migration` (possibly split into multiple commits)
-5. `chore(net): relax warnings-as-errors post-migration`
-6. `docs(audit): add 2026-04-27 bug audit report`
+2. (preceding) `docs(plan): add .NET 10 migration + audit implementation plan`
+3. (preceding) `chore: gitignore docs/ and adjust plan to use git add -f`
+4. `chore(net): migrate all 9 csproj to .NET 10 LTS (net10.0-windows)`
+5. `chore(net): enable warnings-as-errors during migration cleanup`
+6. `fix(net10): resolve compiler warnings from net10 migration` (possibly split per area)
+7. `chore(net): relax warnings-as-errors post-migration`
+8. `docs(audit): add 2026-04-27 bug audit report`
 
 ```bash
 git status --short
