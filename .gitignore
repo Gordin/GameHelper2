@@ -8,11 +8,5 @@
 **/bin/
 **/obj/
 
-Plugins/AutoHotKeyTrigger/config/
-Plugins/HealthBars/config/
-Plugins/PreloadAlert/config/
-Plugins/PreloadAlert/preloads.txt
-Plugins/Radar/config/
-Plugins/Zoom/
 configs/
 docs/
