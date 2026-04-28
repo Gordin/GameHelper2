@@ -23,7 +23,11 @@ namespace GameHelper
             {
                 var errorText = "Program exited with message:\n " + exceptionArgs.ExceptionObject;
                 File.AppendAllText("Error.log", $"{DateTime.Now:g} {errorText}\r\n{new string('-', 30)}\r\n");
-                Environment.Exit(1);
+
+                // Do NOT call Environment.Exit — it skips `using` Dispose and leaks
+                // the SafeMemoryHandle (audit F-061). The runtime will terminate
+                // the process naturally because IsTerminating == true for unhandled
+                // exceptions on the main thread.
             };
 
             using (Core.Overlay = new GameOverlay(MiscHelper.GenerateRandomString()))

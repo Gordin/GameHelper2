@@ -29,6 +29,7 @@ namespace GameHelper
         private int clientSelected = -1;
         private bool showSelectGameMenu = false;
         private bool closeForcefully = false;
+        private bool userPickedProcess = false;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="GameProcess" /> class.
@@ -51,8 +52,20 @@ namespace GameHelper
                 {
                     return (uint)this.Information.Id;
                 }
-                catch
+                catch (NullReferenceException)
                 {
+                    // Information not yet populated — game not yet found. Expected pre-attach.
+                    return 0;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Process exited; caller should re-attach. Returning 0 retains current behavior.
+                    return 0;
+                }
+                catch (Exception ex)
+                {
+                    // Unexpected (e.g., Win32Exception access denied). Log so it's diagnosable.
+                    Console.WriteLine($"[GameProcess.Pid] Unexpected exception: {ex.Message}");
                     return 0;
                 }
             }
@@ -125,11 +138,11 @@ namespace GameHelper
         /// </param>
         internal void Close(bool monitorForNewGame = true)
         {
-            CoroutineHandler.RaiseEvent(GameHelperEvents.OnClose);
-            this.WindowArea = Rectangle.Empty;
-            this.Foreground = false;
             this.Handle?.Dispose();
             this.Information?.Close();
+            this.WindowArea = Rectangle.Empty;
+            this.Foreground = false;
+            CoroutineHandler.RaiseEvent(GameHelperEvents.OnClose);
             if (monitorForNewGame)
             {
                 CoroutineHandler.Start(this.FindAndOpen());
@@ -148,6 +161,20 @@ namespace GameHelper
             while (true)
             {
                 yield return new Wait(2d);
+
+                // If the user already picked an instance via the popup,
+                // Information is already set; just open it.
+                if (this.userPickedProcess)
+                {
+                    this.userPickedProcess = false;
+                    if (this.Open())
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
                 this.processesInfo.Clear();
                 foreach (var process in Process.GetProcesses())
                 {
@@ -171,15 +198,6 @@ namespace GameHelper
                 else if (this.processesInfo.Count > 1)
                 {
                     this.ShowSelectGameMenu();
-                    if (this.clientSelected > -1 && this.clientSelected < this.processesInfo.Count)
-                    {
-                        this.Information = this.processesInfo[this.clientSelected];
-                        if (this.Open())
-                        {
-                            this.processesInfo.Clear();
-                            break;
-                        }
-                    }
                 }
             }
         }
@@ -205,9 +223,11 @@ namespace GameHelper
                         }
                     }
 
-                    ImGui.BeginDisabled(this.Address == IntPtr.Zero);
+                    ImGui.BeginDisabled(this.clientSelected < 0 || this.clientSelected >= this.processesInfo.Count);
                     if (ImGui.Button("Done"))
                     {
+                        this.Information = this.processesInfo[this.clientSelected];
+                        this.userPickedProcess = true;
                         this.HideSelectGameMenu();
                         ImGui.CloseCurrentPopup();
                     }
@@ -246,19 +266,41 @@ namespace GameHelper
         {
             while (true)
             {
-                // Have to check MainWindowHandle because
-                // sometime HasExited returns false even when game isn't running..
-                if (this.Information.HasExited ||
-                    this.Information.MainWindowHandle.ToInt64() <= 0x00 ||
-                    this.closeForcefully)
+                bool shouldClose = false;
+                try
+                {
+                    // Have to check MainWindowHandle because
+                    // sometime HasExited returns false even when game isn't running..
+                    if (this.Information == null ||
+                        this.Information.HasExited ||
+                        this.Information.MainWindowHandle.ToInt64() <= 0x00 ||
+                        this.closeForcefully)
+                    {
+                        shouldClose = true;
+                    }
+                    else
+                    {
+                        this.UpdateIsForeground();
+                        this.UpdateWindowRectangle();
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // Information was disposed by Close() between iterations — exit cleanly.
+                    shouldClose = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[GameProcess.Monitor] {ex}");
+                    shouldClose = true;
+                }
+
+                if (shouldClose)
                 {
                     this.closeForcefully = false;
                     this.Close();
                     break;
                 }
-
-                this.UpdateIsForeground();
-                this.UpdateWindowRectangle();
 
                 yield return new Wait(1d);
             }
@@ -304,6 +346,7 @@ namespace GameHelper
         /// </summary>
         private bool Open()
         {
+            this.Handle?.Dispose();
             this.Handle = new SafeMemoryHandle(this.Information.Id);
             if (this.Handle.IsInvalid)
             {
