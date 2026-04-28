@@ -232,14 +232,29 @@ internal class ProfileData
     public void AddFrameSample(double ns)
     {
         recentFrameNs.Enqueue(ns);
-        sumFrameNs += ns;
+        // F-182: atomic add - was raw `+=`, racy on parallel ProfileDisposable.Dispose
+        // calls that update CurrentFrameNs from worker threads. Interlocked has no
+        // double Add overload, so use the standard CompareExchange loop pattern.
+        InterlockedAddDouble(ref sumFrameNs, ns);
         while (recentFrameNs.Count > WindowSize)
         {
             if (recentFrameNs.TryDequeue(out double old))
             {
-                sumFrameNs -= old;
+                InterlockedAddDouble(ref sumFrameNs, -old);
             }
         }
+    }
+
+    private static double InterlockedAddDouble(ref double location, double value)
+    {
+        double current, computed;
+        do
+        {
+            current = location;
+            computed = current + value;
+        }
+        while (Interlocked.CompareExchange(ref location, computed, current) != current);
+        return computed;
     }
 }
 
