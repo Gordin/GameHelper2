@@ -77,6 +77,13 @@
                 new[] { " ", "," }, StringSplitOptions.RemoveEmptyEntries).ToList();
 
             this.BytesToSkip = arrayOfHexBytesList.FindIndex("^".Equals);
+            if (this.BytesToSkip < 0)
+            {
+                throw new ArgumentException(
+                    $"Pattern '{name}' must contain a '^' marker to indicate BytesToSkip; use the (name, bytes, bytesToSkip) constructor for explicit values (audit F-006).",
+                    nameof(arrayOfHexBytes));
+            }
+
             (this.Data, this.Mask) = ParseArrayOfHexBytes(
                 arrayOfHexBytesList.Where(hex => hex != "^").ToList());
         }
