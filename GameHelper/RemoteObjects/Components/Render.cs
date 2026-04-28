@@ -18,7 +18,9 @@ namespace GameHelper.RemoteObjects.Components
         private static readonly float WorldToGridRatio =
             TileStructure.TileToWorldConversion / TileStructure.TileToGridConversion;
 
-        private StdTuple3D<float> gridPos2D;
+        private GridPos2DSnap gridSnap = new(0f, 0f);
+
+        private sealed record GridPos2DSnap(float X, float Y);
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="Render" /> class.
@@ -29,11 +31,16 @@ namespace GameHelper.RemoteObjects.Components
 
         /// <summary>
         ///     Gets the position where entity is located on the grid (map).
+        ///     Returns a per-call snapshot — atomic with respect to UpdateData.
+        ///     Z is always 0 (the underlying field is 2D).
         /// </summary>
         public StdTuple3D<float> GridPosition
         {
-            get => this.gridPos2D;
-            private set => this.gridPos2D = value;
+            get
+            {
+                var s = System.Threading.Volatile.Read(ref this.gridSnap);
+                return new StdTuple3D<float> { X = s.X, Y = s.Y, Z = 0f };
+            }
         }
 
         /// <summary>
@@ -58,7 +65,7 @@ namespace GameHelper.RemoteObjects.Components
         internal override void ToImGui()
         {
             base.ToImGui();
-            ImGui.Text($"Grid Position: {this.gridPos2D}");
+            ImGui.Text($"Grid Position: {this.GridPosition}");
             ImGui.Text($"World Position: {this.WorldPosition}");
             ImGui.Text($"Terrain Height (Z-Axis): {this.TerrainHeight}");
             ImGui.Text($"Model Bounds: {this.ModelBounds}");
@@ -73,8 +80,10 @@ namespace GameHelper.RemoteObjects.Components
             this.WorldPosition = data.CurrentWorldPosition;
             this.ModelBounds = data.CharactorModelBounds;
             this.TerrainHeight = (float)Math.Round(data.TerrainHeight, 4);
-            this.gridPos2D.X = data.CurrentWorldPosition.X / WorldToGridRatio;
-            this.gridPos2D.Y = data.CurrentWorldPosition.Y / WorldToGridRatio;
+
+            var newX = data.CurrentWorldPosition.X / WorldToGridRatio;
+            var newY = data.CurrentWorldPosition.Y / WorldToGridRatio;
+            System.Threading.Volatile.Write(ref this.gridSnap, new GridPos2DSnap(newX, newY));
         }
     }
 }

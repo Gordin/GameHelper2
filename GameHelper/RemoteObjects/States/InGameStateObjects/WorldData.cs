@@ -21,9 +21,13 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     {
         private IntPtr areaDetailsPtrCache = IntPtr.Zero;
         /// <summary>
-        ///     Gets the World to Screen Matrix.
+        ///     Wrapper for the World-to-Screen matrix. Wrapped in a sealed record
+        ///     so we can swap it atomically via Volatile.Write — a 64-byte struct
+        ///     write is not atomic on x64, which produces torn matrices for
+        ///     concurrent WorldToScreen readers (audit F-131).
         /// </summary>
-        private Matrix4x4 worldToScreenMatrix = Matrix4x4.Identity;
+        private sealed record MatrixSnap(Matrix4x4 M);
+        private MatrixSnap matrixSnap = new(Matrix4x4.Identity);
 
         /// <summary>
         ///     Gets the Area Details.
@@ -51,6 +55,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 return Vector2.Zero;
             }
 
+            var snap = System.Threading.Volatile.Read(ref this.matrixSnap);
+            var matrix = snap.M;
+
             Vector2 result = Vector2.Zero;
             double[] tmpResult = [0, 0, 0, 0];
             double[] temp0 = [worldPosition.X, worldPosition.Y, height, 1.0f];
@@ -60,7 +67,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 tmpResult[i] = 0;
                 for (var j = 0; j < 4; j++)
                 {
-                    tmpResult[i] += this.worldToScreenMatrix[j, i] * temp0[j];
+                    tmpResult[i] += matrix[j, i] * temp0[j];
                 }
             }
 
@@ -89,6 +96,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 return Vector2.Zero;
             }
 
+            var snap = System.Threading.Volatile.Read(ref this.matrixSnap);
+            var matrix = snap.M;
+
             Vector2 result = Vector2.Zero;
             double[] tmpResult = [0, 0, 0, 0];
             double[] temp0 = [worldPosition.X, worldPosition.Y, height, 1.0f];
@@ -98,7 +108,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 tmpResult[i] = 0;
                 for (var j = 0; j < 4; j++)
                 {
-                    tmpResult[i] += this.worldToScreenMatrix[j, i] * temp0[j];
+                    tmpResult[i] += matrix[j, i] * temp0[j];
                 }
             }
 
@@ -133,7 +143,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             base.ToImGui();
             if (ImGui.TreeNode("WindowToScreenMatrix"))
             {
-                var d = this.worldToScreenMatrix;
+                var d = System.Threading.Volatile.Read(ref this.matrixSnap).M;
                 ImGui.Text($"{d.M11:0.00}\t{d.M12:0.00}\t{d.M13:0.00}\t{d.M14:0.00}");
                 ImGui.Text($"{d.M21:0.00}\t{d.M22:0.00}\t{d.M23:0.00}\t{d.M24:0.00}");
                 ImGui.Text($"{d.M31:0.00}\t{d.M32:0.00}\t{d.M33:0.00}\t{d.M34:0.00}");
@@ -147,7 +157,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         {
             this.areaDetailsPtrCache = IntPtr.Zero;
             this.AreaDetails.Address = IntPtr.Zero;
-            this.worldToScreenMatrix = Matrix4x4.Identity;
+            System.Threading.Volatile.Write(ref this.matrixSnap, new MatrixSnap(Matrix4x4.Identity));
         }
 
         /// <inheritdoc />
@@ -162,7 +172,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.areaDetailsPtrCache = data.WorldAreaDetailsPtr;
             }
 
-            this.worldToScreenMatrix = data.CameraStructurePtr.WorldToScreenMatrix;
+            System.Threading.Volatile.Write(ref this.matrixSnap, new MatrixSnap(data.CameraStructurePtr.WorldToScreenMatrix));
         }
 
         private IEnumerator<Wait> OnPerFrame()

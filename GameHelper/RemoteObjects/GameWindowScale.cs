@@ -29,12 +29,15 @@ namespace GameHelper.RemoteObjects
             CoroutineHandler.Start(this.OnGameForegroundChange(), priority: int.MaxValue - 1);
         }
 
+        private float[] valuesSnap = new float[6] { 1f, 1f, 1f, 1f, 1f, 1f };
+
         /// <summary>
         ///     Gets the current game window scale values.
         ///     There are 3 rows (1 for each UI Element type)
         ///     and each row contains 2 element.
+        ///     Returns a per-call snapshot — atomic with respect to UpdateData.
         /// </summary>
-        public float[] Values { get; } = new float[6];
+        public float[] Values => System.Threading.Volatile.Read(ref this.valuesSnap);
 
         /// <summary>
         ///     Gets the Scale Value depending on the index and multiplier.
@@ -44,21 +47,22 @@ namespace GameHelper.RemoteObjects
         /// <returns>Returns the Width and Height scale value valid for the specific Ui-Element.</returns>
         public (float WidthScale, float HeightScale) GetScaleValue(int index, float multiplier)
         {
+            var snap = System.Threading.Volatile.Read(ref this.valuesSnap);
             var widthScale = multiplier;
             var heightScale = multiplier;
             switch (index)
             {
                 case 1:
-                    widthScale *= this.Values[0];
-                    heightScale *= this.Values[1];
+                    widthScale *= snap[0];
+                    heightScale *= snap[1];
                     break;
                 case 2:
-                    widthScale *= this.Values[2];
-                    heightScale *= this.Values[3];
+                    widthScale *= snap[2];
+                    heightScale *= snap[3];
                     break;
                 case 3:
-                    widthScale *= this.Values[4];
-                    heightScale *= this.Values[5];
+                    widthScale *= snap[4];
+                    heightScale *= snap[5];
                     break;
             }
 
@@ -79,10 +83,7 @@ namespace GameHelper.RemoteObjects
         /// <inheritdoc />
         protected override void CleanUpData()
         {
-            for (var i = 0; i < this.Values.Length; i++)
-            {
-                this.Values[i] = 1f;
-            }
+            System.Threading.Volatile.Write(ref this.valuesSnap, new float[6] { 1f, 1f, 1f, 1f, 1f, 1f });
         }
 
         /// <inheritdoc />
@@ -91,12 +92,8 @@ namespace GameHelper.RemoteObjects
             // All of the code below is written after RE-ing the game function.
             var v1 = (float)((Core.Process.WindowArea.Width - Core.GameCull.Value - Core.GameCull.Value) / UiElementBaseFuncs.BaseResolution.X);
             var v2 = (float)((Core.Process.WindowArea.Height - 0) / UiElementBaseFuncs.BaseResolution.Y);
-            this.Values[0] = v1;
-            this.Values[1] = v1;
-            this.Values[2] = v2;
-            this.Values[3] = v2;
-            this.Values[4] = v1;
-            this.Values[5] = v2;
+            var newValues = new float[6] { v1, v1, v2, v2, v1, v2 };
+            System.Threading.Volatile.Write(ref this.valuesSnap, newValues);
         }
 
         private IEnumerator<Wait> OnGameMove()
