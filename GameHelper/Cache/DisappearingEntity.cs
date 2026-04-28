@@ -136,15 +136,21 @@ namespace GameHelper.Cache
 
         private void UpdateActivation(IReadOnlyList<int> environments)
         {
-            this.isActivated = false;
+            // F-042: compute the new state into a local first, then publish once.
+            // The previous false-then-maybe-true pattern opened a race window where
+            // parallel TryAddParallel readers saw the transient false and skipped
+            // caching active environments.
+            var active = false;
             foreach (var envKey in environments)
             {
                 if (envKey >= this.envKeyMin && envKey <= this.envKeyMax)
                 {
-                    this.isActivated = true;
+                    active = true;
                     break;
                 }
             }
+
+            this.isActivated = active;
         }
 
         private void UpdateCleanUpJob()
