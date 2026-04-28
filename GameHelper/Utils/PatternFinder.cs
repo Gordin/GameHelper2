@@ -79,7 +79,13 @@ namespace GameHelper.Utils
             {
                 var currentOffset = i * MaxBytesObject;
                 var isLastIteration = i == totalReadOperations - 1;
-                var actualReadSize = isLastIteration ? processSize - currentOffset : MaxBytesObject;
+                // F-037: chunks overlap by patternMaxLength so a pattern that straddles
+                // the boundary between chunk N and chunk N+1 is matched in chunk N.
+                // The last chunk reads to end-of-process; intermediate chunks read
+                // MaxBytesObject + patternMaxLength but capped at end-of-process.
+                var actualReadSize = isLastIteration
+                    ? processSize - currentOffset
+                    : Math.Min(MaxBytesObject + patternMaxLength, processSize - currentOffset);
 
                 if (state1.ShouldExitCurrentIteration)
                 {
