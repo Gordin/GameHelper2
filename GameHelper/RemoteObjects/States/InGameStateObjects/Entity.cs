@@ -185,15 +185,27 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             {
                 if (compAddr != IntPtr.Zero)
                 {
-                    component = Activator.CreateInstance(typeof(T), compAddr) as T;
-                    if (component != null)
+                    if (shouldCache)
                     {
-                        if (shouldCache)
-                        {
-                            this.componentCache[componenName] = component;
-                        }
-
+                        // Atomic get-or-add: prevents two parallel callers each constructing
+                        // their own ComponentBase + caching it (audit F-134). ConcurrentDictionary
+                        // may invoke the factory more than once under contention, but only one
+                        // result is committed; the orphan is GC'd without participating in
+                        // subsequent state mutations.
+                        var cached = this.componentCache.GetOrAdd(componenName, _ =>
+                            (ComponentBase)Activator.CreateInstance(typeof(T), compAddr)!);
+                        component = (T)cached;
                         return true;
+                    }
+                    else
+                    {
+                        // Caller doesn't want caching; construct fresh each call. No race
+                        // because the result isn't shared.
+                        component = Activator.CreateInstance(typeof(T), compAddr) as T;
+                        if (component != null)
+                        {
+                            return true;
+                        }
                     }
                 }
             }
@@ -613,7 +625,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             switch (this.EntityType)
             {
                 case EntityTypes.Unidentified:
-                    throw new Exception($"Entity with path ({this.Path}) and Id (${this.Id}) is unidentified.");
+                    Console.WriteLine($"[Entity.TryCalculateEntitySubType] Unidentified entity reached subtype calc - path={this.Path}, Id={this.Id}; skipping (audit F-133).");
+                    return false;
 
                 case EntityTypes.Chest:
                     this.TryGetComponent<Chest>(out var chestComp);
@@ -650,9 +663,25 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     break;
 
                 case EntityTypes.Player:
-                    this.EntitySubtype = this.Id == Core.States.InGameStateObject.CurrentAreaInstance.Player.Id
-                        ? EntitySubtypes.PlayerSelf
-                        : EntitySubtypes.PlayerOther;
+                    {
+                        // Snapshot the Player.Id chain once - 4 levels of RemoteObject property
+                        // access, each acquiring updateLock. During state transitions any link
+                        // can be a default-valued instance; treat NRE as "not self" (audit F-135).
+                        uint localPlayerId;
+                        try
+                        {
+                            localPlayerId = Core.States.InGameStateObject.CurrentAreaInstance.Player.Id;
+                        }
+                        catch (NullReferenceException)
+                        {
+                            this.EntitySubtype = EntitySubtypes.PlayerOther;
+                            break;
+                        }
+
+                        this.EntitySubtype = this.Id == localPlayerId
+                            ? EntitySubtypes.PlayerSelf
+                            : EntitySubtypes.PlayerOther;
+                    }
                     break;
 
                 case EntityTypes.Shrine:
@@ -694,7 +723,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                                      (statcomp != null &&
                                       statcomp.StatsChangedByItems != null &&
                                       statcomp.StatsChangedByItems.ContainsKey(stat))),
-                                _ => throw new Exception($"EntityFilterType {filtertype} added but not handled in Entity file.")
+                                _ => LogUnhandledFilterType(filtertype),
                             };
 
                             if (matched)
@@ -723,7 +752,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     break;
 
                 default:
-                    throw new Exception($"Please update TryCalculateEntitySubType function to include {this.EntityType}.");
+                    Console.WriteLine($"[Entity.TryCalculateEntitySubType] Unhandled EntityType={this.EntityType} - skipping (audit F-133).");
+                    return false;
             }
 
             return true;
@@ -837,6 +867,12 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 }
             }
 
+            return false;
+        }
+
+        private static bool LogUnhandledFilterType(EntityFilterType filtertype)
+        {
+            Console.WriteLine($"[Entity.TryCalculateEntitySubType] EntityFilterType {filtertype} added but not handled - skipping match (audit F-133).");
             return false;
         }
     }
