@@ -38,9 +38,23 @@ namespace GameHelper.Ui
             while (true)
             {
                 yield return new Wait(GameHelperEvents.OnRender);
-                if (Core.States.GameCurrentState == GameStateTypes.InGameState &&
-                    Core.States.InGameStateObject.CurrentAreaInstance.Player.TryGetComponent<Render>(out var r))
+                try
                 {
+                    // F-179: snapshot the 4-level chain into locals; treat any null /
+                    // NRE as "not in-game right now, skip this frame".
+                    if (Core.States.GameCurrentState != GameStateTypes.InGameState)
+                    {
+                        continue;
+                    }
+
+                    var inGame = Core.States.InGameStateObject;
+                    var area = inGame?.CurrentAreaInstance;
+                    var player = area?.Player;
+                    if (player == null || !player.TryGetComponent<Render>(out var r))
+                    {
+                        continue;
+                    }
+
                     if (Core.GHSettings.OuterCircle.IsVisible)
                     {
                         DrawNearbyRange(totalLines, Core.GHSettings.OuterCircle.Meaning, r.GridPosition.X, r.GridPosition.Y, r.TerrainHeight, bigColor);
@@ -50,6 +64,10 @@ namespace GameHelper.Ui
                     {
                         DrawNearbyRange(totalLines, Core.GHSettings.InnerCircle.Meaning, r.GridPosition.X, r.GridPosition.Y, r.TerrainHeight, smallColor);
                     }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[NearbyVisualization.NearbyVisualizationRenderCoRoutine] {ex}");
                 }
             }
         }
