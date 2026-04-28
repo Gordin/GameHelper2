@@ -116,9 +116,15 @@ namespace GameHelper.Plugin
             var alcRef = new WeakReference(target.Alc);
             target.Alc.Unload();
 
+            // Release the strong reference to the PluginContainer (and its Alc field)
+            // BEFORE the GC loop. The .NET docs require this — without it, the JIT
+            // can keep `target` rooted across the loop and alcRef.IsAlive stays true
+            // forever (spurious warning log). See:
+            // https://learn.microsoft.com/en-us/dotnet/standard/assembly/unloadability
+            target = null;
+
             // Run GC repeatedly until the ALC is unreachable (or we give up after
-            // 10 attempts). This is the documented .NET pattern for collectible
-            // ALC unload - see https://learn.microsoft.com/en-us/dotnet/standard/assembly/unloadability.
+            // 10 attempts).
             for (var i = 0; i < 10 && alcRef.IsAlive; i++)
             {
                 GC.Collect();
