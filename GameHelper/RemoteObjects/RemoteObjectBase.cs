@@ -80,14 +80,21 @@ namespace GameHelper.RemoteObjects
                     }
 
                     this.address = value;
-                    if (value == IntPtr.Zero)
+                    try
                     {
-                        this.CleanUpData();
+                        if (value == IntPtr.Zero)
+                        {
+                            this.CleanUpData();
+                        }
+                        else
+                        {
+                            using var _ = PerformanceProfiler.Profile(GetType().FullName ?? string.Empty, "UpdateData");
+                            this.UpdateData(hasAddressChanged);
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        using var _ = PerformanceProfiler.Profile(GetType().FullName ?? string.Empty, "UpdateData");
-                        this.UpdateData(hasAddressChanged);
+                        Console.WriteLine($"[{this.GetType().Name}.Address.set] {ex}");
                     }
                 }
             }
