@@ -17,6 +17,7 @@ namespace Radar
         /// </summary>
         public static readonly double CameraAngle = 38.7 * Math.PI / 180;
         private static double diagonalLength = 0x00;
+        private static double mapHeight = 0x00;
         private static float scale = 0.5f;
         private static float cos = 0x00;
         private static float sin = 0x00;
@@ -37,6 +38,26 @@ namespace Radar
                 if (value > 0 && value != diagonalLength)
                 {
                     diagonalLength = value;
+                    UpdateCosSin();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sets the visible map height used to normalize map projection across resolutions.
+        /// </summary>
+        public static double MapHeight
+        {
+            private get
+            {
+                return mapHeight;
+            }
+
+            set
+            {
+                if (value > 0 && value != mapHeight)
+                {
+                    mapHeight = value;
                     UpdateCosSin();
                 }
             }
@@ -88,9 +109,10 @@ namespace Radar
         private static void UpdateCosSin()
         {
             // Magic number that works with diagnonal length.
+            var length = MapHeight > 0 ? MapHeight * Math.Sqrt(1 + (16d / 9d * 16d / 9d)) : DiagonalLength;
             float mapScale = 240f / Scale;
-            cos = (float)(DiagonalLength * Math.Cos(CameraAngle) / mapScale);
-            sin = (float)(DiagonalLength * Math.Sin(CameraAngle) / mapScale);
+            cos = (float)(length * Math.Cos(CameraAngle) / mapScale);
+            sin = (float)(length * Math.Sin(CameraAngle) / mapScale);
         }
     }
 }

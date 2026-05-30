@@ -16,7 +16,7 @@ namespace GameOffsets.Objects.States.InGameState
         [FieldOffset(0x7C8)] public IntPtr MiniMapParentPtr;
         [FieldOffset(0x7B8)] public IntPtr LargeMapVisibilityPtr;
         [FieldOffset(0xA50)] public IntPtr LargeMapCenterPtr;
-        [FieldOffset(0xA50)] public IntPtr LargeMapVerticalCenterPtr;
+        [FieldOffset(0xA30)] public IntPtr LargeMapVerticalCenterPtr;
         [FieldOffset(0xAA8)] public IntPtr ControllerModeMapParentPtr;
     }
 

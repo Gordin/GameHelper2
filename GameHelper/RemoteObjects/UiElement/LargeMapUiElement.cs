@@ -54,7 +54,7 @@ namespace GameHelper.RemoteObjects.UiElement
                     return center;
                 }
 
-                return new Vector2(center.X, this.verticalCenterElement.Position.Y);
+                return new Vector2(center.X, this.verticalCenterElement.Position.Y + (this.verticalCenterElement.Size.Y / 2f));
             }
         }
 
@@ -111,7 +111,10 @@ namespace GameHelper.RemoteObjects.UiElement
                 return;
             }
 
-            this.UpdateMapData(reader.ReadMemory<MapUiElementOffset>(mapDataAddress));
+            var mapData = reader.ReadMemory<MapUiElementOffset>(mapDataAddress);
+            this.UpdateMapData(mapData);
+            this.shift -= this.defaultShift;
+            this.defaultShift = Vector2.Zero;
         }
 
         protected override void CleanUpData()

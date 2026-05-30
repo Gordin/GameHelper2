@@ -96,13 +96,18 @@ namespace GameHelper.RemoteObjects.UiElement
 
         protected void UpdateMapData(MapUiElementOffset data)
         {
-            this.shift.X = data.Shift.X;
-            this.shift.Y = data.Shift.Y;
+            this.shift.X = GetValidMapFloat(data.Shift.X);
+            this.shift.Y = GetValidMapFloat(data.Shift.Y);
 
-            this.defaultShift.X = data.DefaultShift.X;
-            this.defaultShift.Y = data.DefaultShift.Y;
+            this.defaultShift.X = GetValidMapFloat(data.DefaultShift.X);
+            this.defaultShift.Y = GetValidMapFloat(data.DefaultShift.Y);
 
             this.Zoom = data.Zoom;
+        }
+
+        private static float GetValidMapFloat(float value)
+        {
+            return float.IsFinite(value) && MathF.Abs(value) < 100000f ? value : 0f;
         }
     }
 }

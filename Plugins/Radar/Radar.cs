@@ -31,6 +31,7 @@ namespace Radar
     public sealed class Radar : PCore<RadarSettings>
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
+        private const float LargeMapBaseUiScale = 0.675f;
 
         private readonly string delveChestStarting = "Metadata/Chests/DelveChests/";
         private readonly Dictionary<uint, string> delveChestCache = new();
@@ -86,7 +87,7 @@ namespace Radar
                 "This slider has no impact on mini-map icons. For windowed-full-screen " +
                 "default value should be good enough. If you want to add precise value " +
                 "(e.g. 0.137345) press CTRL + LMB");
-            ImGui.DragFloat("Large Map Y Offset", ref this.Settings.LargeMapYOffset, 0.1f, -100f, 100f);
+            ImGui.DragFloat("Large Map Y Offset", ref this.Settings.LargeMapYOffset, 0.1f);
             ImGuiHelper.ToolTip("Adjusts only the large map overlay vertically. Negative moves it up, positive moves it down.");
             ImGui.Checkbox("Hide Radar when in Hideout/Town", ref this.Settings.DrawWhenNotInHideoutOrTown);
             ImGui.Checkbox("Hide Radar when game is in the background", ref this.Settings.DrawWhenForeground);
@@ -256,12 +257,16 @@ namespace Radar
                 return;
             }
 
+            this.EnsureCullWindowBounds();
+            this.UpdateMapDetails(largeMap.Size, miniMap.Size);
+
             if (largeMap.IsVisible)
             {
                 var largeMapRealCenter = largeMap.Center + largeMap.Shift + largeMap.DefaultShift;
                 largeMapRealCenter.Y += this.Settings.LargeMapYOffset;
-                var largeMapModifiedZoom = this.Settings.LargeMapScaleMultiplier * largeMap.Zoom;
+                var largeMapModifiedZoom = this.Settings.LargeMapScaleMultiplier * LargeMapBaseUiScale;
                 Helper.DiagonalLength = this.largeMapDiagonalLength;
+                Helper.MapHeight = largeMap.Size.Y;
                 Helper.Scale = largeMapModifiedZoom;
                 ImGui.SetNextWindowPos(this.Settings.CullWindowPos);
                 ImGui.SetNextWindowSize(this.Settings.CullWindowSize);
@@ -279,6 +284,7 @@ namespace Radar
             if (miniMap.IsVisible)
             {
                 Helper.DiagonalLength = this.miniMapDiagonalLength;
+                Helper.MapHeight = miniMap.Size.Y;
                 Helper.Scale = miniMap.Zoom;
                 var miniMapCenter = miniMap.Position +
                     (miniMap.Size / 2) +
@@ -937,6 +943,24 @@ namespace Radar
             }
         }
 
+        private void EnsureCullWindowBounds()
+        {
+            if (!this.Settings.MakeCullWindowFullScreen)
+            {
+                return;
+            }
+
+            var windowArea = Core.Process.WindowArea;
+            if (windowArea.Width <= 0 || windowArea.Height <= 0)
+            {
+                return;
+            }
+
+            this.Settings.CullWindowPos = Vector2.Zero;
+            this.Settings.CullWindowSize.X = windowArea.Width;
+            this.Settings.CullWindowSize.Y = windowArea.Height;
+        }
+
         private void UpdateMiniMapDetails()
         {
             var map = Core.States.InGameStateObject.GameUi.MiniMap;
@@ -951,6 +975,17 @@ namespace Radar
             var widthSq = map.Size.X * map.Size.X;
             var heightSq = map.Size.Y * map.Size.Y;
             this.largeMapDiagonalLength = Math.Sqrt(widthSq + heightSq);
+        }
+
+        private void UpdateMapDetails(Vector2 largeMapSize, Vector2 miniMapSize)
+        {
+            var largeWidthSq = largeMapSize.X * largeMapSize.X;
+            var largeHeightSq = largeMapSize.Y * largeMapSize.Y;
+            this.largeMapDiagonalLength = Math.Sqrt(largeWidthSq + largeHeightSq);
+
+            var miniWidthSq = miniMapSize.X * miniMapSize.X;
+            var miniHeightSq = miniMapSize.Y * miniMapSize.Y;
+            this.miniMapDiagonalLength = Math.Sqrt(miniWidthSq + miniHeightSq);
         }
 
         private void ReloadMapTexture()
