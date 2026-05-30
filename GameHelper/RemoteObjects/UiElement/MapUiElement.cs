@@ -96,13 +96,26 @@ namespace GameHelper.RemoteObjects.UiElement
 
         protected void UpdateMapData(MapUiElementOffset data)
         {
-            this.shift.X = data.Shift.X;
-            this.shift.Y = data.Shift.Y;
-
-            this.defaultShift.X = data.DefaultShift.X;
-            this.defaultShift.Y = data.DefaultShift.Y;
-
+            // The Shift/DefaultShift field offsets can drift after a game patch and
+            // read garbage (NaN/Infinity or absurd magnitudes). A bad value here gets
+            // added straight into the map's draw origin, throwing the whole overlay
+            // far off-screen. Reject implausible values so the map stays drawable;
+            // the Radar X/Y offset sliders handle the small, real corrections.
+            this.shift = SanitizeShift(data.Shift.X, data.Shift.Y);
+            this.defaultShift = SanitizeShift(data.DefaultShift.X, data.DefaultShift.Y);
             this.Zoom = data.Zoom;
+        }
+
+        private static Vector2 SanitizeShift(float x, float y)
+        {
+            // A few screen-widths of panning is plausible; anything beyond is a misread.
+            const float MaxSaneShift = 50000f;
+            return new Vector2(SaneOrZero(x, MaxSaneShift), SaneOrZero(y, MaxSaneShift));
+        }
+
+        private static float SaneOrZero(float value, float max)
+        {
+            return float.IsFinite(value) && Math.Abs(value) <= max ? value : 0f;
         }
     }
 }
