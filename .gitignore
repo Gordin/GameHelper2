@@ -1,0 +1,12 @@
+.claude/
+
+*.vs
+*.un~
+*.cs~
+*.pdb
+*.dll
+**/bin/
+**/obj/
+
+configs/
+docs/

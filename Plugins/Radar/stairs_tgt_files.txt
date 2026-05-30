@@ -1,0 +1,9 @@
+{
+  "Metadata/Terrain/Dungeon/Ziggurat/ziggurat_outerwall_end_stairsup_01.tdtx:1-y:1": "Stairs",
+  "Metadata/Terrain/Maps/SwampTower/Tiles/Lower_Exterior/SwampTower_BasementOuterWall_EndStairsUp_01.tdtx:1-y:1": "Stairs",
+  "Metadata/Terrain/Maps/SwampTower/Tiles/Lower_Exterior/SwampTower_BasementOuterWall_EndStairsUp_02.tdtx:1-y:1": "Stairs",
+  "Metadata/Terrain/Maps/SwampTower/Tiles/Mid_Exterior/SwampTower_OuterWallEnd_StairsUp_02.tdtx:3-y:2": "Stairs",
+  "Metadata/Terrain/Maps/SwampTower/Tiles/CentrePillar_02.tdtx:1-y:5": "Stairs",
+  "Metadata/Terrain/Maps/SwampTower/Tiles/Mid_Exterior/SwampTower_OuterWallEnd_StairsUp_01.tdtx:2-y:1": "Stairs",
+  "Metadata/Terrain/Dungeon/Ziggurat/ziggurat_outerwall_end_stairsup_02.tdtx:1-y:1": "Stairs"
+}

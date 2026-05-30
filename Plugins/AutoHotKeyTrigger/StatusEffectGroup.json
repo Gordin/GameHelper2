@@ -1,0 +1,82 @@
+{
+  "Bleeding Or Corruption": [
+    "bleeding",
+    "puncture",
+    "puncture_moving",
+    "physical_damage_and_bleed",
+    "corrupted_blood",
+    "corrupted_blood_rain"
+  ],
+  "Bleeding": [
+    "bleeding",
+    "puncture",
+    "puncture_moving",
+    "physical_damage_and_bleed"
+  ],
+  "Corruption": [
+    "corrupted_blood",
+    "corrupted_blood_rain"
+  ],
+  "Frozen Or Chilled": [
+    "frozen",
+    "cold_damage_and_freeze",
+    "chilled",
+    "ground_ice_chill",
+    "chilling_bond_in_beam",
+    "yugul_pool_chilled"
+  ],
+  "Frozen": [
+    "frozen",
+    "cold_damage_and_freeze"
+  ],
+  "Chilled": [
+    "chilled",
+    "ground_ice_chill",
+    "chilling_bond_in_beam",
+    "yugul_pool_chilled"
+  ],
+  "Poisoned": [
+    "poison",
+    "viper_strike_orb",
+    "ground_desecration",
+    "caustic_cloud",
+    "chaos_bond_in_beam"
+  ],
+  "Burning": [
+    "ground_fire_burn",
+    "ignited",
+    "searing_bond_in_beam",
+    "fire_damage_and_ignite",
+    "righteous_fire_aura",
+    "demon_righteous_fire_aura"
+  ],
+  "Shocked": [
+    "shocked",
+    "ground_lightning_shock",
+    "seawitch_lightning_beam",
+    "lightning_damage_and_shock"
+  ],
+  "Cursed": [
+    "curse_temporal_chains",
+    "curse_elemental_weakness",
+    "curse_cold_weakness",
+    "curse_lightning_weakness",
+    "curse_chaos_weakness",
+    "curse_fire_weakness",
+    "curse_newpunishment",
+    "curse_enfeeble",
+    "curse_vulnerability",
+    "curse_warlords_mark",
+    "curse_assassins_mark"
+  ],
+  "Unable To Recover": [
+    "atlas_orion_meteor_ground",
+    "maven_rotating_beam_debuff",
+    "maven_cutter_beam_debuff"
+  ],
+  "Exposed": [
+    "reduced_cold_resistance_from_skill",
+    "reduced_fire_resistance_from_skill",
+    "reduced_lightning_resistance_from_skill"
+  ]
+}
