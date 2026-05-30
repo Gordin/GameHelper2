@@ -2,6 +2,8 @@
 
 GameHelper2 is a Windows x64 .NET overlay application with a plugin-based architecture. The main executable reads data from a running game process, renders an ImGui/ClickableTransparentOverlay UI, and loads plugins from the runtime `Plugins` directory.
 
+This repository is forked from [bylafko/gamehelper2](https://gitlab.com/bylafko/gamehelper2).
+
 This guide is written for users who want to build and run the project from Visual Studio without using command-line tools.
 
 ## Required Tools
@@ -65,6 +67,18 @@ After a successful `Release` build, the runnable application is created here:
 
 ```text
 GameHelper\bin\Release\net10.0-windows\win-x64\
+```
+
+The main Release executable is:
+
+```text
+GameHelper\bin\Release\net10.0-windows\win-x64\GameHelper.exe
+```
+
+The recommended Release launcher is:
+
+```text
+GameHelper\bin\Release\net10.0-windows\win-x64\Launcher.exe
 ```
 
 That folder should contain files such as:
