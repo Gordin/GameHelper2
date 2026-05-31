@@ -32,6 +32,10 @@ namespace Radar
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
 
+        // All campaign rune terrain tiles (e.g. GrimTangle_Runestones, and other
+        // terrain variants) live under this folder; matching the prefix combines them all.
+        private const string RunestoneTgtPrefix = "Metadata/Terrain/Leagues/Expedition/Tiles/CampaignRunes/";
+
         private readonly string delveChestStarting = "Metadata/Chests/DelveChests/";
         private readonly Dictionary<uint, string> delveChestCache = new();
 
@@ -192,6 +196,11 @@ namespace Radar
                     "Temple Icons",
                     this.Settings.TempleIcons,
                     "Icons for Incursion Waygate devices (Vaal Ruins).");
+
+                this.Settings.DrawIconsSettingToImGui(
+                    "Runestone Icons",
+                    this.Settings.RunestoneIcons,
+                    "Icon for Expedition campaign Runestone terrain (all terrain variants combined).");
 
                 this.Settings.DrawIconsSettingToImGui(
                     "Expedition Marker Icons",
@@ -605,6 +614,15 @@ namespace Radar
 
                     this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, templeIcon, iconSizeMultiplier, shiftUp: true);
                 }
+                else if (tgtKV.Key.StartsWith(RunestoneTgtPrefix) && tgtKV.Key.EndsWith(":1-y:1"))
+                {
+                    if (!this.Settings.RunestoneIcons.TryGetValue("Runestones", out var runestoneIcon))
+                    {
+                        continue;
+                    }
+
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, runestoneIcon, iconSizeMultiplier, shiftUp: true);
+                }
                 else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
                 {
                     if (!this.Settings.BossIcons.TryGetValue("Boss Arena", out var bossIcon))
@@ -879,6 +897,14 @@ namespace Radar
                                     }
                                 }
                                 doneRemnant:;
+                            }
+                        }
+                        else if (entityValue.EntityCustomGroup == RadarSettings.RuneEncounterGroup)
+                        {
+                            if (this.Settings.RunestoneIcons.TryGetValue("Rune Encounter", out var runeEncounterIcon) &&
+                                runeEncounterIcon.IconScale > 0)
+                            {
+                                DrawIcon(runeEncounterIcon);
                             }
                         }
                         else

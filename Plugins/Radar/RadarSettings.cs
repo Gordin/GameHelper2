@@ -175,6 +175,12 @@ namespace Radar
         public Dictionary<string, IconPicker> TempleIcons = new();
 
         /// <summary>
+        /// Icons to display on the map. Runestone includes the Campaign Runestone
+        /// terrain tiles (all terrain variants combined under a single "Runestones" entry).
+        /// </summary>
+        public Dictionary<string, IconPicker> RunestoneIcons = new();
+
+        /// <summary>
         /// Icons to display on the map. Boss arena icons for endgame maps.
         /// </summary>
         public Dictionary<string, IconPicker> BossIcons = new();
@@ -212,6 +218,18 @@ namespace Radar
         /// </summary>
         [JsonIgnore]
         public const int ExpeditionRemnantGroup = 101;
+
+        /// <summary>
+        /// The group number used for boss checkpoints in SpecialMiscObjPaths.
+        /// </summary>
+        [JsonIgnore]
+        public const int BossCheckpointGroup = 102;
+
+        /// <summary>
+        /// The group number used for Rune encounter controllers in SpecialMiscObjPaths.
+        /// </summary>
+        [JsonIgnore]
+        public const int RuneEncounterGroup = 103;
 
         /// <summary>
         /// Maps mod name substrings to display names used as keys in ExpeditionRemnantIcons.
@@ -374,6 +392,7 @@ namespace Radar
             this.AddDefaultExpeditionMarkerIcons(basicIconPathName);
             this.AddDefaultExpeditionRemnantIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
+            this.AddDefaultRunestoneIcons(basicIconPathName);
             this.AddDefaultBossIcons(basicIconPathName);
         }
 
@@ -433,6 +452,12 @@ namespace Radar
         private void AddDefaultTempleIcons(string iconPathName)
         {
             this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 75, IconSize));
+        }
+
+        private void AddDefaultRunestoneIcons(string iconPathName)
+        {
+            this.RunestoneIcons.TryAdd("Runestones", new IconPicker(iconPathName, 13, 1, 75, IconSize));
+            this.RunestoneIcons.TryAdd("Rune Encounter", new IconPicker(iconPathName, 9, 2, 75, IconSize));
         }
 
         private void AddDefaultExpeditionMarkerIcons(string iconPathName)
