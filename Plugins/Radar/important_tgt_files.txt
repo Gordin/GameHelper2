@@ -119,7 +119,7 @@
   "G2_5_1": {
     "Metadata/Terrain/Desert/Badlands/Features/AreaTransition_BadlandsToPits_01.tdtx:3-y:3": "The Bone Pits",
     "Metadata/Terrain/Desert/Badlands/Features/Badlands_Entrance_01.tdtx:14-y:4": "The Ardura Caravan",
-    "Metadata/Terrain/Desert/Badlands/Features/Landmark_feature_02.tdtx:4-y:7": "Fossilised Memorial (Support Gem Level 1)",
+    "Metadata/Terrain/Desert/Badlands/Features/Landmark_feature_02.tdtx:4-y:7": "Fossilised Memorial (Support Gem Level 2)",
     "Metadata/Terrain/Desert/Badlands/Features/AbyssHole.tdtx:0-y:0": "Lightless Passage"
   },
   "Abyss_Intro": {

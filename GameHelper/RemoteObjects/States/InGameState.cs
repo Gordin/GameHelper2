@@ -49,7 +49,15 @@ namespace GameHelper.RemoteObjects.States
         internal override void ToImGui()
         {
             base.ToImGui();
-            ImGuiHelper.IntPtrToImGui("UiRoot", this.uiRootAddress);
+            ImGuiHelper.IntPtrToImGui("Active UI Manager", this.uiRootAddress);
+            ImGuiHelper.IntPtrToImGui("Current GameUi Address", this.GameUi.Address);
+
+            if (this.Address != IntPtr.Zero)
+            {
+                var data = Core.Process.Handle.ReadMemory<InGameStateOffset>(this.Address);
+                ImGuiHelper.IntPtrToImGui("KB/M UI Manager (+0x2F0)", data.UiRootStructPtr);
+                ImGuiHelper.IntPtrToImGui("Gamepad UI Manager (+0x318)", data.GamepadUiRootStructPtr);
+            }
         }
 
         /// <inheritdoc />
@@ -64,33 +72,16 @@ namespace GameHelper.RemoteObjects.States
         /// <inheritdoc />
         protected override void UpdateData(bool hasAddressChanged)
         {
-            var reader = Core.Process.Handle;
-            var data = reader.ReadMemory<InGameStateOffset>(this.Address);
+            var data = Core.Process.Handle.ReadMemory<InGameStateOffset>(this.Address);
             this.CurrentAreaInstance.Address = data.AreaInstanceData;
             this.CurrentWorldInstance.Address = data.WorldData;
 
-            if (data.UiRootStructPtr == IntPtr.Zero)
-            {
-                this.uiRootAddress = data.GameUiPtr;
-                Core.GHSettings.EnableControllerMode = false;
-                this.GameUi.Address = data.GameUiPtr;
-            }
-            else
-            {
-                var uiRootStruct = reader.ReadMemory<UiRootStruct>(data.UiRootStructPtr);
-                this.uiRootAddress = uiRootStruct.UiRootPtr;
-
-                if (uiRootStruct.GameUiPtr == IntPtr.Zero)
-                {
-                    Core.GHSettings.EnableControllerMode = true;
-                    this.GameUi.Address = uiRootStruct.GameUiControllerPtr;
-                }
-                else
-                {
-                    Core.GHSettings.EnableControllerMode = false;
-                    this.GameUi.Address = uiRootStruct.GameUiPtr;
-                }
-            }
+            Core.GHSettings.EnableControllerMode = data.UiRootStructPtr == IntPtr.Zero &&
+                data.GamepadUiRootStructPtr != IntPtr.Zero;
+            this.uiRootAddress = Core.GHSettings.EnableControllerMode
+                ? data.GamepadUiRootStructPtr
+                : data.UiRootStructPtr;
+            this.GameUi.Address = this.uiRootAddress;
         }
 
         private IEnumerator<Wait> OnPerFrame()

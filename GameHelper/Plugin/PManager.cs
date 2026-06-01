@@ -326,6 +326,16 @@ namespace GameHelper.Plugin
             }
         }
 
+        private static bool ShouldSuppressPluginUi(string pluginName)
+        {
+            if (!Core.States.InGameStateObject.GameUi.IsPassiveSkillTreeVisible)
+            {
+                return false;
+            }
+
+            return pluginName is "Radar" or "HealthBars" or "PreloadAlert" or "WorldDrawing";
+        }
+
         private static IEnumerator<Wait> DrawPluginUiRenderCoroutine()
         {
             while (true)
@@ -351,6 +361,11 @@ namespace GameHelper.Plugin
                 {
                     if (container.Metadata.Enable)
                     {
+                        if (ShouldSuppressPluginUi(container.Name))
+                        {
+                            continue;
+                        }
+
                         try
                         {
                             using var _ = PerformanceProfiler.Profile(container.Plugin.GetType().FullName ?? string.Empty, "DrawUI");

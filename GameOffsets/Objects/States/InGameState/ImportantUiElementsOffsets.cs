@@ -10,7 +10,7 @@ namespace GameOffsets.Objects.States.InGameState
     public struct ImportantUiElementsOffsets
     {
         [FieldOffset(0x640)] public IntPtr ChatParentPtr;
-        [FieldOffset(0x6B0)] public IntPtr PassiveSkillTreePanel;
+        [FieldOffset(0x730)] public IntPtr PassiveSkillTreePanel;
         [FieldOffset(0x700)] public IntPtr LargeMapParentPtr;
         [FieldOffset(0x768)] public IntPtr LargeMapCenterRootPtr;
         [FieldOffset(0x7C8)] public IntPtr MiniMapParentPtr;

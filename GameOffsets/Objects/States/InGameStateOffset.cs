@@ -8,9 +8,9 @@ namespace GameOffsets.Objects.States
     public struct InGameStateOffset
     {
         [FieldOffset(0x290)] public IntPtr AreaInstanceData; // contains area level
+        [FieldOffset(0x2F0)] public IntPtr UiRootStructPtr; // UserInterface_MouseAndKeyboard
+        [FieldOffset(0x318)] public IntPtr GamepadUiRootStructPtr; // UserInterface_Gamepad
         [FieldOffset(0x368)] public IntPtr WorldData; // contains area name
-        [FieldOffset(0x2F0)] public IntPtr GameUiPtr;
-        [FieldOffset(0x340)] public IntPtr UiRootStructPtr; // UiRootStruct
     }
     
     [StructLayout(LayoutKind.Explicit, Pack = 1)]

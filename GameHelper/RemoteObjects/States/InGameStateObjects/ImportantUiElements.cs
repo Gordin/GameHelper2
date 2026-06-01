@@ -86,12 +86,33 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         /// </summary>
         public List<SkillTreeNodeUiElement> SkillTreeNodesUiElements { get; }
 
+        /// <summary>
+        ///     Gets a value indicating whether the passive skill tree panel is visible.
+        /// </summary>
+        public bool IsPassiveSkillTreeVisible { get; private set; }
+
         internal override void ToImGui()
         {
             this.displayParentsCache();
             base.ToImGui();
-            ImGui.Text($"Passive Skill Tree Panel Visible: {this.passiveskilltreenodes.IsVisible}");
+            ImGui.Text($"Passive Skill Tree Panel Visible: {this.IsPassiveSkillTreeVisible}");
+            ImGui.Text($"Passive Skill Tree Node Parent Address: {this.passiveskilltreenodes.Address.ToInt64():X}");
+            ImGui.Text($"Passive Skill Tree Node Parent Children: {this.passiveskilltreenodes.TotalChildrens}");
             ImGui.Text($"Total Skill Tree Nodes: {this.SkillTreeNodesUiElements.Count}");
+            if (this.passiveskilltreenodes.Address != IntPtr.Zero && ImGui.TreeNode("Passive Skill Tree Node Parent Children"))
+            {
+                var visibleLimit = Math.Min(this.passiveskilltreenodes.TotalChildrens, 20);
+                for (var i = 0; i < visibleLimit; i++)
+                {
+                    var child = this.passiveskilltreenodes[i];
+                    if (child != null)
+                    {
+                        ImGui.Text($"[{i}] 0x{child.Address.ToInt64():X} Visible={child.IsVisible} Children={child.TotalChildrens}");
+                    }
+                }
+
+                ImGui.TreePop();
+            }
             if (ImGui.TreeNode("Skill Tree Nodes"))
             {
                 for (var i = 0; i < this.SkillTreeNodesUiElements.Count; i++)
@@ -116,6 +137,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.LargeMap.SetInverseVisibilityAddress(IntPtr.Zero);
             this.LargeMap.SetCenterAddress(IntPtr.Zero);
             this.ChatParent.Address = IntPtr.Zero;
+            this.IsPassiveSkillTreeVisible = false;
             this.SkillTreeNodesUiElements.Clear();
         }
 
@@ -136,6 +158,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.MiniMap.SetVisibilityAddress(data2.MiniMapPtr);
                 this.ChatParent.Address = IntPtr.Zero;
                 this.passiveskilltreenodes.Address = IntPtr.Zero;
+                this.IsPassiveSkillTreeVisible = false;
+                this.SkillTreeNodesUiElements.Clear();
             }
             else
             {
@@ -180,14 +204,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
         private void updatePassiveSkillTreeData()
         {
-            if (this.passiveskilltreenodes.IsVisible)
-            {
-                this.AddOrUpdateSkillNodes();
-            }
-            else
-            {
-                this.ClearSkillNodes();
-            }
+            this.IsPassiveSkillTreeVisible = this.passiveskilltreenodes.IsVisible;
+            this.ClearSkillNodes();
         }
 
         private void ClearSkillNodes()
