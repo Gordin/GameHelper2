@@ -70,6 +70,11 @@ namespace GameHelper.RemoteEnums
         LoadingState,
 
         /// <summary>
+        ///     Unknown game state added by Path of Exile 2 0.5.x.
+        /// </summary>
+        UnknownState,
+
+        /// <summary>
         ///     This is a special State, changing to this state will not trigger State Change Event.
         ///     This is just for displaying purposes. It means Game isn't stared.
         /// </summary>

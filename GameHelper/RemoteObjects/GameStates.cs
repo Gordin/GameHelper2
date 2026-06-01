@@ -76,6 +76,7 @@ namespace GameHelper.RemoteObjects
             base.ToImGui();
             if (ImGui.TreeNode("All States Info"))
             {
+                ImGui.Text($"Configured State Slots: {GameStateHelper.TOTAL_STATES}");
                 foreach (var state in this.AllStates)
                 {
                     ImGuiHelper.IntPtrToImGui($"{state.Value}", state.Key);

@@ -7,7 +7,7 @@
 
     public static class GameStateHelper
     {
-        public const int TOTAL_STATES = 12;
+        public const int TOTAL_STATES = 13;
     }
 
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
