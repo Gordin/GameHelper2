@@ -226,6 +226,7 @@ namespace GameHelper.Settings
             "Metadata/Monsters/MarakethSamdDjinn/SandDjinn",
             "Metadata/Monsters/MarakethWaterDjinn/WaterDjinn",
             "Metadata/Monsters/MarakethTimeDjinn/FireDjinn",
+            "Metadata/Monsters/Monsters/LivingLightningPlayerSummoned",
         };
 
         /// <summary>
