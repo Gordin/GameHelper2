@@ -73,7 +73,7 @@ namespace GameHelper.RemoteObjects.UiElement
 
         protected override IntPtr GetLiveMapStateAddress()
         {
-            return this.inverseVisibilityElement.Address;
+            return this.visibilityElement.Address;
         }
 
         /// <inheritdoc />
