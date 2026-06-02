@@ -69,6 +69,11 @@ namespace GameHelper.RemoteObjects
             return (widthScale, heightScale);
         }
 
+        internal void Refresh()
+        {
+            this.UpdateData(false);
+        }
+
         /// <summary>
         ///     Converts the <see cref="GameWindowScale" /> class data to ImGui.
         /// </summary>
@@ -89,6 +94,11 @@ namespace GameHelper.RemoteObjects
         /// <inheritdoc />
         protected override void UpdateData(bool hasAddressChanged)
         {
+            if (Core.Process.WindowArea.Width <= 0 || Core.Process.WindowArea.Height <= 0)
+            {
+                return;
+            }
+
             // All of the code below is written after RE-ing the game function.
             var v1 = (float)((Core.Process.WindowArea.Width - Core.GameCull.Value - Core.GameCull.Value) / UiElementBaseFuncs.BaseResolution.X);
             var v2 = (float)((Core.Process.WindowArea.Height - 0) / UiElementBaseFuncs.BaseResolution.Y);

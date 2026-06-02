@@ -55,6 +55,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.passiveskilltreenodes = new(IntPtr.Zero, this.rootCache);
             this.LargeMap = new(IntPtr.Zero, this.rootCache);
             this.MiniMap = new(IntPtr.Zero, this.rootCache);
+            this.WorldMapPanel = new(IntPtr.Zero, this.rootCache);
+            this.LeftPanel = new(IntPtr.Zero, this.rootCache);
+            this.RightPanel = new(IntPtr.Zero, this.rootCache);
             this.ChatParent = new(IntPtr.Zero, this.rootCache);
 
             this.SkillTreeNodesUiElements = new();
@@ -73,6 +76,50 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     UiRoot -> MainChild -> 3rd index -> 2nd index.
         /// </summary>
         public MapUiElement MiniMap { get; }
+
+        /// <summary>
+        ///     Gets the checkpoint / world-travel map panel UiElement.
+        ///     It is only <see cref="UiElementBase.IsVisible" /> while that screen is open
+        ///     (opened by interacting with a checkpoint). The in-area LargeMap stays visible
+        ///     underneath it, so consumers gate on this to tell the two apart.
+        ///     UiRoot manager -> 0x988.
+        /// </summary>
+        public UiElementBase WorldMapPanel { get; }
+
+        /// <summary>
+        ///     Gets the currently-open left-side panel UiElement (character, skills, etc.).
+        ///     It is only <see cref="UiElementBase.IsVisible" /> while such a panel is open;
+        ///     the backing pointer is null when no left panel is open.
+        ///     UiRoot manager -> 0x6D8.
+        /// </summary>
+        public UiElementBase LeftPanel { get; }
+
+        /// <summary>
+        ///     Gets the currently-open right-side panel UiElement (inventory, vendor/shop, stash, etc.).
+        ///     It is only <see cref="UiElementBase.IsVisible" /> while such a panel is open;
+        ///     the backing pointer is null when no right panel is open.
+        ///     UiRoot manager -> 0x6E0.
+        /// </summary>
+        public UiElementBase RightPanel { get; }
+
+        /// <summary>
+        ///     Gets a value indicating whether any large blocking panel is currently open
+        ///     (a left/right side panel, the passive skill tree, or the world-travel map).
+        ///     Useful for overlays that should hide world-space drawing while the player is in a menu.
+        /// </summary>
+        public bool IsAnyLargePanelOpen =>
+            this.LeftPanel.IsVisible ||
+            this.RightPanel.IsVisible ||
+            this.WorldMapPanel.IsVisible ||
+            this.IsPassiveSkillTreeOpen;
+
+        /// <summary>
+        ///     Gets a value indicating whether the passive skill tree is currently open.
+        ///     Gated on the visibility of the tree's node container (UiRoot manager -> 0x730 -> child 2),
+        ///     not on <see cref="SkillTreeNodesUiElements" />: in v0.5.x the per-node SkillInfo pointer
+        ///     reads null so that list never populates, but the container's visibility bit is reliable.
+        /// </summary>
+        public bool IsPassiveSkillTreeOpen => this.passiveskilltreenodes.IsVisible;
 
         /// <summary>
         ///     Gets the Chat UiElement parent.
@@ -111,6 +158,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.passiveskilltreenodes.Address = IntPtr.Zero;
             this.MiniMap.Address = IntPtr.Zero;
             this.LargeMap.Address = IntPtr.Zero;
+            this.WorldMapPanel.Address = IntPtr.Zero;
+            this.LeftPanel.Address = IntPtr.Zero;
+            this.RightPanel.Address = IntPtr.Zero;
             this.ChatParent.Address = IntPtr.Zero;
             this.SkillTreeNodesUiElements.Clear();
         }
@@ -126,6 +176,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 var data2 = reader.ReadMemory<MapParentStruct>(data1.ControllerModeMapParentPtr);
                 this.LargeMap.Address = data2.LargeMapPtr;
                 this.MiniMap.Address = data2.MiniMapPtr;
+                this.WorldMapPanel.Address = IntPtr.Zero;
+                this.LeftPanel.Address = IntPtr.Zero;
+                this.RightPanel.Address = IntPtr.Zero;
                 this.ChatParent.Address = IntPtr.Zero;
                 this.passiveskilltreenodes.Address = IntPtr.Zero;
             }
@@ -138,6 +191,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 // game UiElement garbage collection is not instant. if this ever changes, put try catch on it.
                 this.LargeMap.Address = data2.LargeMapPtr;
                 this.MiniMap.Address = data2.MiniMapPtr;
+                this.WorldMapPanel.Address = data1.WorldMapPanelPtr;
+                this.LeftPanel.Address = data1.LeftPanelPtr;
+                this.RightPanel.Address = data1.RightPanelPtr;
                 this.ChatParent.Address = data1.ChatParentPtr;
                 this.passiveskilltreenodes.Address = data4;
                 this.updatePassiveSkillTreeData();

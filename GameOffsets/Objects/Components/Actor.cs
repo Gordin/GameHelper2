@@ -9,10 +9,10 @@ namespace GameOffsets.Objects.Components
     {
         [FieldOffset(0x000)] public ComponentHeader Header;
         [FieldOffset(0x8A0)] public int AnimationId;
-        [FieldOffset(0xB00)] public StdVector ActiveSkillsPtr; // ActiveSkillStructure // take and remove skill gem.
-        [FieldOffset(0xB18)] public StdVector CooldownsPtr;
+        [FieldOffset(0xB08)] public StdVector ActiveSkillsPtr; // ActiveSkillStructure // take and remove skill gem.
+        [FieldOffset(0xB20)] public StdVector CooldownsPtr;
         // [FieldOffset(0xA70)] public StdVector VaalSoulsPtr;
-        [FieldOffset(0xC10)] public StdVector DeployedEntityArray; // DeployedEntityStructure
+        [FieldOffset(0xC18)] public StdVector DeployedEntityArray; // DeployedEntityStructure
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -28,22 +28,22 @@ namespace GameOffsets.Objects.Components
         //[FieldOffset(0x00)] public IntPtr UselessPtr0;
         [FieldOffset(0x08)] public int UseStage;
         [FieldOffset(0x0C)] public int CastType;
-        [FieldOffset(0x10)] public uint UnknownIdAndEquipmentInfo;
+        [FieldOffset(0x40)] public uint UnknownIdAndEquipmentInfo;
         //[FieldOffset(0x14)] public int Pad0x14;
-        [FieldOffset(0x18)] public IntPtr GrantedEffectsPerLevelDatRow;
+        [FieldOffset(0x48)] public IntPtr GrantedEffectsPerLevelDatRow;
         [FieldOffset(0x20)] public IntPtr ActiveSkillsDatPtr; // this is just a placeholder. Caller is suppose to update this one.
         //[FieldOffset(0x28)] public int CurrentVaalSouls; // this is just a placeholder. Caller is suppose to update this one.
         //[FieldOffset(0x20)] public IntPtr UselessPtr1;
         //[FieldOffset(0x28)] public IntPtr Pad0x28;
-        [FieldOffset(0x30)] public IntPtr GrantedEffectStatSetsPerLevelDatRow;
+        [FieldOffset(0x50)] public IntPtr GrantedEffectStatSetsPerLevelDatRow;
         //[FieldOffset(0x38)] public IntPtr UselessPtr2;
         //[FieldOffset(0x40)] public IntPtr Pad0x40;
         //[FieldOffset(0x80)] public bool CanBeUsedWithWeapon;
         //[FieldOffset(0x81)] public bool CannotBeUsed;
         //[FieldOffset(0x82)] public byte UnknownByte0;
         //[FieldOffset(0x83)] public byte UnknownByte1;
-        [FieldOffset(0x98)] public int TotalUses;
-        [FieldOffset(0xA8)] public int TotalCooldownTimeInMs;
+        [FieldOffset(0xE4)] public int TotalUses;
+        [FieldOffset(0xE8)] public int TotalCooldownTimeInMs;
         //[FieldOffset(0x9C)] public int SoulsPerUse;
         //[FieldOffset(0xA0)] public int TotalVaalUses;
         //[FieldOffset(0xB0)] public IntPtr StatsPtr;

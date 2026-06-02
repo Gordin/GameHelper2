@@ -18,8 +18,8 @@ namespace GameOffsets.Objects.States.InGameState
         [FieldOffset(0x00)] public ItemStruct ItemBase;
         [FieldOffset(0x30)] public StdVector UnknownListPtr;
         // [FieldOffset(0x70)] public IntPtr CurrentAreaInstanceOwner;
-        [FieldOffset(0x80)] public uint Id;
-        [FieldOffset(0x84)] public byte IsValid; // 0x0C = Valid, 0x03 = Invalid
+        [FieldOffset(0x88)] public uint Id;
+        [FieldOffset(0x8C)] public byte IsValid; // 0x0C = Valid, 0x03 = Invalid
     }
 
     public static class EntityHelper

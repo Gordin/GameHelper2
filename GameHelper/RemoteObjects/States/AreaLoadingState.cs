@@ -8,6 +8,7 @@ namespace GameHelper.RemoteObjects.States
     using System.Collections.Generic;
     using Coroutine;
     using CoroutineEvents;
+    using GameOffsets.Objects.FilesStructures;
     using GameOffsets.Objects.States;
     using ImGuiNET;
 
@@ -67,7 +68,8 @@ namespace GameHelper.RemoteObjects.States
                 !this.IsLoading &&
                 data.TotalLoadingScreenTimeMs > this.lastCache.TotalLoadingScreenTimeMs)
             {
-                var areaName = reader.ReadUnicodeString(reader.ReadMemory<IntPtr>(data.CurrentAreaDetailsPtr));
+                var areaDetails = reader.ReadMemory<WorldAreaDatOffsets>(data.CurrentAreaDetailsPtr);
+                var areaName = reader.ReadUnicodeString(areaDetails.NamePtr);
                 this.CurrentAreaName = areaName;
                 this.lastCache = data;
                 hasAreaChanged = true;

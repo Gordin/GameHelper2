@@ -12,7 +12,7 @@ namespace GameOffsets.Objects.States.InGameState
     public struct WorldDataOffset
     {
         [FieldOffset(0x98)] public IntPtr WorldAreaDetailsPtr;
-        [FieldOffset(0xA0)] public CameraStructure CameraStructurePtr;
+        [FieldOffset(0x98)] public CameraStructure CameraStructurePtr;
     }
 
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
@@ -31,7 +31,7 @@ namespace GameOffsets.Objects.States.InGameState
         // First value is changing when we change the screen size (ratio)
         // 4 bytes before the matrix doesn't change
         // matrix is duplicated, meaning when first matrix finish, 2nd one start with exact same values.
-        [FieldOffset(0x100)] public Matrix4x4 WorldToScreenMatrix;
+        [FieldOffset(0x108)] public Matrix4x4 WorldToScreenMatrix;
         // [FieldOffset(0xF0)] public Vector3 Position;
         // [FieldOffset(0x1C4)] public float ZFar;
     }

@@ -11,7 +11,7 @@
         [FieldOffset(0x160)] public IntPtr StatsChangedByItemsPtr; // StatsStructInternal
         [FieldOffset(0x168)] public int CurrentWeaponIndex; // 0 or 1 when we change weapons.
         [FieldOffset(0x170)] public IntPtr ShapeshiftFormsRowPtr; // Data/ShapeshiftForms.dat ~ 0x00 if Player isn't shape shifted
-        [FieldOffset(0x198)] public IntPtr StatsChangedByBuffAndActions; // StatsStructInternal
+        [FieldOffset(0x1C8)] public IntPtr StatsChangedByBuffAndActions; // StatsStructInternal
     }
 
     [StructLayout(LayoutKind.Explicit, Pack = 1)]

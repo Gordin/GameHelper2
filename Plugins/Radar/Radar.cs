@@ -75,7 +75,7 @@ namespace Radar
         {
             ImGui.TextWrapped("If your mini/large map icon are not working/visible. Open this " +
                 "setting window, click anywhere on it and then hide this setting window. It will fix the issue.");
-            ImGui.DragFloat("Large Map Fix", ref this.Settings.LargeMapScaleMultiplier, 0.001f, 0.01f, 0.3f);
+            ImGui.DragFloat("Large Map Fix", ref this.Settings.LargeMapScaleMultiplier, 0.001f, 0.1f, 2.0f);
             ImGuiHelper.ToolTip("This slider is for fixing large map (icons) offset. " +
                 "You have to use it if you feel that LargeMap Icons " +
                 "are moving while your player is moving. You only have " +
@@ -249,13 +249,25 @@ namespace Radar
                 return;
             }
 
-            if (Core.States.InGameStateObject.GameUi.SkillTreeNodesUiElements.Count > 0)
+            if (Core.States.InGameStateObject.GameUi.IsPassiveSkillTreeOpen)
             {
                 return;
             }
 
-            if (largeMap.IsVisible)
+            if (this.Settings.MakeCullWindowFullScreen)
             {
+                this.Settings.CullWindowPos = Vector2.Zero;
+                this.Settings.CullWindowSize.X = Core.Process.WindowArea.Size.Width;
+                this.Settings.CullWindowSize.Y = Core.Process.WindowArea.Size.Height;
+            }
+
+            if (largeMap.IsVisible && !Core.States.InGameStateObject.GameUi.WorldMapPanel.IsVisible)
+            {
+                if (this.largeMapDiagonalLength <= 0)
+                {
+                    this.UpdateLargeMapDetails();
+                }
+
                 var largeMapRealCenter = largeMap.Center + largeMap.Shift + largeMap.DefaultShift;
                 var largeMapModifiedZoom = this.Settings.LargeMapScaleMultiplier * largeMap.Zoom;
                 Helper.DiagonalLength = this.largeMapDiagonalLength;
@@ -275,6 +287,11 @@ namespace Radar
 
             if (miniMap.IsVisible)
             {
+                if (this.miniMapDiagonalLength <= 0)
+                {
+                    this.UpdateMiniMapDetails();
+                }
+
                 Helper.DiagonalLength = this.miniMapDiagonalLength;
                 Helper.Scale = miniMap.Zoom;
                 var miniMapCenter = miniMap.Position +
@@ -823,14 +840,6 @@ namespace Radar
                                 expMarkerIcon.IconScale > 0)
                             {
                                 DrawIcon(expMarkerIcon);
-                            }
-                        }
-                        else if (entityValue.EntityCustomGroup == RadarSettings.BossCheckpointGroup)
-                        {
-                            if (baseIcons.TryGetValue("Boss Checkpoint", out var bossCheckpointIcon) &&
-                                bossCheckpointIcon.IconScale > 0)
-                            {
-                                DrawIcon(bossCheckpointIcon);
                             }
                         }
                         else if (entityValue.EntityCustomGroup == RadarSettings.ExpeditionRemnantGroup)

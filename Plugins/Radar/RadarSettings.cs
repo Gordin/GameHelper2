@@ -190,12 +190,6 @@ namespace Radar
         public const int ExpeditionRemnantGroup = 101;
 
         /// <summary>
-        /// The group number used for boss checkpoints in SpecialMiscObjPaths.
-        /// </summary>
-        [JsonIgnore]
-        public const int BossCheckpointGroup = 102;
-
-        /// <summary>
         /// Maps mod name substrings to display names used as keys in ExpeditionRemnantIcons.
         /// </summary>
         [JsonIgnore]
@@ -384,7 +378,6 @@ namespace Radar
             this.BaseIcons.TryAdd("Red Bestiary Monster", new IconPicker(iconPathName, 7, 2, 35, IconSize));
 
             this.BaseIcons.TryAdd("Stairs", new IconPicker(iconPathName, 4, 1, 40, IconSize));
-            this.BaseIcons.TryAdd("Boss Checkpoint", new IconPicker(iconPathName, 0, 11, 70, IconSize));
         }
 
         private void AddDefaultPOIMonsterIcons(string iconPathName)

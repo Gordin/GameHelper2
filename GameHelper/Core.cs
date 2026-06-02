@@ -195,6 +195,7 @@ namespace GameHelper
             {
                 yield return new Wait(Process.OnStaticAddressFound);
                 GameCull.Address = Process.StaticAddresses["GameCullSize"];
+                GameScale.Refresh();
             }
         }
 

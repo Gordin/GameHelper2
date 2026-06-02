@@ -69,19 +69,14 @@ namespace GameHelper.RemoteObjects.States
             this.CurrentAreaInstance.Address = data.AreaInstanceData;
             this.CurrentWorldInstance.Address = data.WorldData;
 
-            var uiRootStruct = reader.ReadMemory<UiRootStruct>(data.UiRootStructPtr);
-            this.uiRootAddress = uiRootStruct.UiRootPtr;
+            Core.GHSettings.EnableControllerMode = data.UiRootStructPtr == IntPtr.Zero;
+            var uiManagerPtr = Core.GHSettings.EnableControllerMode
+                ? data.GamepadUiRootStructPtr
+                : data.UiRootStructPtr;
 
-            if (uiRootStruct.GameUiPtr == IntPtr.Zero)
-            {
-                Core.GHSettings.EnableControllerMode = true;
-                this.GameUi.Address = uiRootStruct.GameUiControllerPtr;
-            }
-            else
-            {
-                Core.GHSettings.EnableControllerMode = false;
-                this.GameUi.Address = uiRootStruct.GameUiPtr;
-            }
+            var uiRootStruct = reader.ReadMemory<UiRootStruct>(uiManagerPtr);
+            this.uiRootAddress = uiRootStruct.UiRootPtr;
+            this.GameUi.Address = uiManagerPtr;
         }
 
         private IEnumerator<Wait> OnPerFrame()

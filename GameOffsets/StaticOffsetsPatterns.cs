@@ -25,7 +25,7 @@
             // </HowToFindIt>
             new (
                 "Game States",
-                "48 39 2D ^ ?? ?? ?? ?? 0F 85 16 01 00 00"
+                "48 39 2D ^ ?? ?? ?? ?? 0F 85 ?? ?? ?? ?? B9 40 01 00 00"
             ),
 
             // <HowToFindIt>
@@ -43,7 +43,7 @@
             // </HowToFindIt>
             new (
                 "File Root",
-                "48 8B 0D ^ ?? ?? ?? ?? E8 ?? ?? ?? ?? E8"
+                "48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ^ ?? ?? ?? ?? 48 83 C4 28"
             ),
 
             // <HowToFindIt>
@@ -60,7 +60,7 @@
             // </HowToFindIt>
             new(
                 "AreaChangeCounter",
-                "FF 05 ^ ?? ?? ?? ?? 4C 8B 06"
+                "FF 05 ^ ?? ?? ?? ?? 4D 8B 06"
             ),
 
             // <HowToFindIt>
@@ -79,7 +79,7 @@
             // </HowToFindIt>
             new(
                 "Terrain Rotator Helper", // array length = bigger
-                "48 8D 05 ^ ?? ?? ?? ?? 4F 8D 04 40"
+                "48 83 EC 38 41 0F B6 C0 4C 8B D1 4C 8B CA 48 8D 0D ?? ?? ?? ?? 44 0F B6 04 08 B8 08 00 00 00 8B 0A 44 3B C0 89 4C 24 24 BA 16 00 00 00 44 0F 47 C0 48 8D 05 ^ ?? ?? ?? ??"
 
             ),
 
@@ -87,7 +87,7 @@
             // This would be passed as an argument.
             new(
                 "Terrain Rotation Selector", // example output array = 00 03 02 01 04 05 06 07 08
-                "48 8D 0D ^ ?? ?? ?? ?? 44 0F B6 04 08"
+                "48 83 EC 38 41 0F B6 C0 4C 8B D1 4C 8B CA 48 8D 0D ^ ?? ?? ?? ??"
             ),
 
             // <HowToFindIt>
@@ -100,7 +100,7 @@
             // </HowToFindIt>
             new(
                 "GameCullSize",
-                "2B 05 ^ ?? ?? ?? ?? 45 0F 57 C9"
+                "2B 0D ?? ?? ?? ?? 8B 05 ?? ?? ?? ?? 2B 05 ^ ?? ?? ?? ?? 0F 57 FF"
                 )
         };
     }

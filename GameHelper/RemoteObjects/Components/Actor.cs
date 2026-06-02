@@ -112,7 +112,7 @@ namespace GameHelper.RemoteObjects.Components
                         ImGui.Text($"Skill Gem socket Number: {si}");
                         ImGui.Text($"Skill Gem Inventory Slot: {(InventoryName)inv}");
                         ImGui.Text($"Skill Gem Name Hash: {uid:X}");
-                        ImGuiHelper.IntPtrToImGui("Granted Effects Per Level Ptr", skilldetails.GrantedEffectsPerLevelDatRow);
+                        ImGuiHelper.IntPtrToImGui("Granted Effects Ptr", skilldetails.GrantedEffectsPerLevelDatRow);
                         ImGuiHelper.IntPtrToImGui($"Active Skills Ptr", skilldetails.ActiveSkillsDatPtr);
                         ImGuiHelper.IntPtrToImGui("Granted Effect Stat Sets Per Level Ptr", skilldetails.GrantedEffectStatSetsPerLevelDatRow);
                         //ImGui.Text($"Can be used with weapons: {skilldetails.CanBeUsedWithWeapon}");
@@ -182,7 +182,8 @@ namespace GameHelper.RemoteObjects.Components
             for (var i = 0; i < activeSkills.Length; i++)
             {
                 var skillDetails = reader.ReadMemory<ActiveSkillDetails>(activeSkills[i].ActiveSkillPtr);
-                if (skillDetails.GrantedEffectsPerLevelDatRow == IntPtr.Zero)
+                if (skillDetails.GrantedEffectsPerLevelDatRow == IntPtr.Zero ||
+                    (skillDetails.UnknownIdAndEquipmentInfo >> 0x10) < 0x8000)
                 {
                     // No usecase for these skills.
                     // this.ActiveSkills[i.ToString()] = skillDetails;
@@ -192,11 +193,7 @@ namespace GameHelper.RemoteObjects.Components
                     (var name, skillDetails.ActiveSkillsDatPtr) = ((string, IntPtr))Core.GgpkObjectCache.
                         AddOrGetExisting(skillDetails.GrantedEffectsPerLevelDatRow, (key) =>
                         {
-                            return (reader.ReadUnicodeString(
-                                reader.ReadMemory<IntPtr>(reader.ReadMemory<IntPtr>(key))),
-                                reader.ReadMemory<GrantedEffectsDatOffset>(
-                                    reader.ReadMemory<GrantedEffectsPerLevelDatOffset>(
-                                        key).GrantedEffectDatPtr).ActiveSkillDatPtr);
+                            return (reader.ReadUnicodeString(reader.ReadMemory<IntPtr>(key)), key);
                         });
 
                     // skillDetails.CurrentVaalSouls = -1;
