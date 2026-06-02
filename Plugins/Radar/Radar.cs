@@ -32,11 +32,21 @@ namespace Radar
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
 
-        // Radar scale settings were tuned while MapUiElement.Zoom was stale and always
-        // read as about 1.35. Keep using that legacy baseline for radar placement/icon
-        // size so the newly-correct live DV zoom value does not invalidate all existing
-        // calibration. Revisit once Shift/DefaultShift and map pan state are found.
-        private const float LegacyRadarZoomBaseline = 1.35f;
+        // Radar scale baseline, calibrated so that LargeMapScaleMultiplier = 1.0
+        // produces correct icon placement at the game's base resolution.
+        // Originally 1.35; rescaled by ×6.95 (2026-06 calibration with live
+        // Shift/DefaultShift and height-normalised diagonal).
+        private const float LegacyRadarZoomBaseline = 9.3825f;
+
+        // Small horizontal bias the game applies to map-rendered icons vs the
+        // UiElement centre.
+        private const float MapXBias = -4f;
+        private const float MiniMapXBias = -7.8f;
+
+        // Baseline scale / zoom values for the minimap, calibrated so the
+        // user-facing sliders default to 1.0.
+        private const float MiniMapScaleBaseline = 0.045f;
+        private const float MiniMapZoomBaseline = 0.04f;
 
         // All campaign rune terrain tiles (e.g. GrimTangle_Runestones, and other
         // terrain variants) live under this folder; matching the prefix combines them all.
@@ -101,6 +111,8 @@ namespace Radar
             ImGuiHelper.ToolTip("Adjusts only the large map overlay horizontally. Negative moves it left, positive moves it right.");
             ImGui.DragFloat("Large Map Y Offset", ref this.Settings.LargeMapYOffset, 0.1f);
             ImGuiHelper.ToolTip("Adjusts only the large map overlay vertically. Negative moves it up, positive moves it down.");
+            ImGui.DragFloat("Mini Map X Offset", ref this.Settings.MiniMapXOffset, 0.1f);
+            ImGuiHelper.ToolTip("Adjusts only the mini-map overlay horizontally. Negative moves it left, positive moves it right.");
             ImGui.DragFloat("Mini Map Icon Scale", ref this.Settings.MiniMapScaleMultiplier, 0.005f, 0.01f, 2f, "%.3f");
             ImGuiHelper.ToolTip("Scales the size of icons drawn on the mini-map only. " +
                 "The mini-map draws icons much larger than the large map by default; " +
@@ -284,8 +296,10 @@ namespace Radar
 
             if (largeMap.IsVisible)
             {
+                // X-offset bias baked in so defaults (Map Fix 1, Offsets 0)
+                // produce the correct alignment out of the box.
                 var largeMapRealCenter = largeMap.Center + largeMap.Shift + largeMap.DefaultShift;
-                largeMapRealCenter.X += this.Settings.LargeMapXOffset;
+                largeMapRealCenter.X += MapXBias + this.Settings.LargeMapXOffset;
                 largeMapRealCenter.Y += this.Settings.LargeMapYOffset;
                 var largeMapModifiedZoom = this.Settings.LargeMapScaleMultiplier / 100f * LegacyRadarZoomBaseline;
                 Helper.DiagonalLength = this.largeMapDiagonalLength;
@@ -306,18 +320,19 @@ namespace Radar
             if (miniMap.IsVisible)
             {
                 Helper.DiagonalLength = this.miniMapDiagonalLength;
-                Helper.Scale = LegacyRadarZoomBaseline * this.Settings.MiniMapZoomMultiplier;
+                Helper.Scale = LegacyRadarZoomBaseline * this.Settings.MiniMapZoomMultiplier * MiniMapZoomBaseline;
                 var miniMapCenter = miniMap.Position +
                     (miniMap.Size / 2) +
                     miniMap.DefaultShift +
                     miniMap.Shift;
+                miniMapCenter.X += MiniMapXBias + this.Settings.MiniMapXOffset;
                 ImGui.SetNextWindowPos(miniMap.Position);
                 ImGui.SetNextWindowSize(miniMap.Size);
                 ImGui.SetNextWindowBgAlpha(0f);
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
                 ImGui.Begin("###minimapRadar", ImGuiHelper.TransparentWindowFlags);
                 ImGui.PopStyleVar();
-                var miniMapIconScale = LegacyRadarZoomBaseline * this.Settings.MiniMapScaleMultiplier;
+                var miniMapIconScale = LegacyRadarZoomBaseline * this.Settings.MiniMapScaleMultiplier * MiniMapScaleBaseline;
                 this.DrawTgtIcons(miniMapCenter, miniMapIconScale);
                 this.DrawMapIcons(miniMapCenter, miniMapIconScale);
                 ImGui.End();
@@ -992,18 +1007,21 @@ namespace Radar
 
         private void UpdateMiniMapDetails()
         {
+            // Scale the base-resolution diagonal with the window height so that
+            // the world-to-pixel ratio tracks the game's own vertical scaling.
+            // Changing only the window width does not affect the map scale.
             var map = Core.States.InGameStateObject.GameUi.MiniMap;
-            var widthSq = map.Size.X * map.Size.X;
-            var heightSq = map.Size.Y * map.Size.Y;
-            this.miniMapDiagonalLength = Math.Sqrt(widthSq + heightSq);
+            var baseRes = GameOffsets.Objects.UiElement.UiElementBaseFuncs.BaseResolution;
+            var baseDiag = Math.Sqrt((baseRes.X * baseRes.X) + (baseRes.Y * baseRes.Y));
+            this.miniMapDiagonalLength = baseDiag * map.Size.Y / baseRes.Y;
         }
 
         private void UpdateLargeMapDetails()
         {
             var map = Core.States.InGameStateObject.GameUi.LargeMap;
-            var widthSq = map.Size.X * map.Size.X;
-            var heightSq = map.Size.Y * map.Size.Y;
-            this.largeMapDiagonalLength = Math.Sqrt(widthSq + heightSq);
+            var baseRes = GameOffsets.Objects.UiElement.UiElementBaseFuncs.BaseResolution;
+            var baseDiag = Math.Sqrt((baseRes.X * baseRes.X) + (baseRes.Y * baseRes.Y));
+            this.largeMapDiagonalLength = baseDiag * map.Size.Y / baseRes.Y;
         }
 
         private void ReloadMapTexture()

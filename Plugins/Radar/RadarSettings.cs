@@ -29,11 +29,17 @@ namespace Radar
         public float LargeMapScaleMultiplier = 6.44f;
 
         /// <summary>
+        /// Horizontal screen-space offset applied to the mini-map overlay.
+        /// Negative values move the overlay left.
+        /// </summary>
+        public float MiniMapXOffset = 0f;
+
+        /// <summary>
         /// Multiplier applied to the mini-map icon size (on top of the mini-map zoom).
         /// The mini-map draws icons much larger than the large map by default, so this
         /// knob scales them down independently. Default ~0.32 roughly matches large-map icon size.
         /// </summary>
-        public float MiniMapScaleMultiplier = 0.32f;
+        public float MiniMapScaleMultiplier = 1f;
 
         /// <summary>
         /// Multiplier applied to the mini-map position zoom (Helper.Scale), controlling how
@@ -41,7 +47,7 @@ namespace Radar
         /// default (uses raw zoom), which spreads icons too far. Turn down to pull them in.
         /// This only affects icon positions, not icon size.
         /// </summary>
-        public float MiniMapZoomMultiplier = 0.37f;
+        public float MiniMapZoomMultiplier = 1f;
 
         /// <summary>
         /// Horizontal screen-space offset applied to the large map overlay.
