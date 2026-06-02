@@ -223,6 +223,9 @@ namespace GameHelper.Settings
         {
             "Metadata/Monsters/LeagueIncursionNew/Garrison/VaalTrainingDummy",
             "Metadata/Monsters/PerennialKingStage2/PerennialKingCorpseFriend",
+            "Metadata/Monsters/MarakethSamdDjinn/SandDjinn",
+            "Metadata/Monsters/MarakethWaterDjinn/WaterDjinn",
+            "Metadata/Monsters/MarakethTimeDjinn/FireDjinn",
         };
 
         /// <summary>
