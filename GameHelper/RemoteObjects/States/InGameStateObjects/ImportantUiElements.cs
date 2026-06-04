@@ -40,6 +40,12 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private UiElementBase passiveskilltreenodes;
 
         /// <summary>
+        ///     Sekhemas Trial Map panel.
+        ///     UiRoot MainChild -> child 1 -> child 84 -> child 0
+        /// </summary>
+        private UiElementBase sekhemasTrialMapPanel;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="ImportantUiElements" /> class.
         /// </summary>
         /// <param name="address">
@@ -53,6 +59,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.passiveSkillTreeCache = new(this.rootCache, GameStateTypes.InGameState, GameStateTypes.EscapeState, "PassiveSkillTree");
 
             this.passiveskilltreenodes = new(IntPtr.Zero, this.rootCache);
+            this.sekhemasTrialMapPanel = new(IntPtr.Zero, this.rootCache);
             this.LargeMap = new(IntPtr.Zero, this.rootCache);
             this.MiniMap = new(IntPtr.Zero, this.rootCache);
             this.WorldMapPanel = new(IntPtr.Zero, this.rootCache);
@@ -111,6 +118,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.LeftPanel.IsVisible ||
             this.RightPanel.IsVisible ||
             this.WorldMapPanel.IsVisible ||
+            this.SekhemasTrialMapPanel.IsVisible ||
             this.IsPassiveSkillTreeOpen;
 
         /// <summary>
@@ -120,6 +128,13 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     reads null so that list never populates, but the container's visibility bit is reliable.
         /// </summary>
         public bool IsPassiveSkillTreeOpen => this.passiveskilltreenodes.IsVisible;
+
+        /// <summary>
+        ///     Gets the Sekhemas Trial Map panel UiElement.
+        ///     Visible only during Trial of the Sekhemas.
+        ///     UiRoot MainChild -> child 1 -> child 84 -> child 0.
+        /// </summary>
+        public UiElementBase SekhemasTrialMapPanel => this.sekhemasTrialMapPanel;
 
         /// <summary>
         ///     Gets the Chat UiElement parent.
@@ -156,6 +171,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         protected override void CleanUpData()
         {
             this.passiveskilltreenodes.Address = IntPtr.Zero;
+            this.sekhemasTrialMapPanel.Address = IntPtr.Zero;
             this.MiniMap.Address = IntPtr.Zero;
             this.LargeMap.Address = IntPtr.Zero;
             this.WorldMapPanel.Address = IntPtr.Zero;
@@ -181,6 +197,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.RightPanel.Address = IntPtr.Zero;
                 this.ChatParent.Address = IntPtr.Zero;
                 this.passiveskilltreenodes.Address = IntPtr.Zero;
+                this.sekhemasTrialMapPanel.Address = IntPtr.Zero;
             }
             else
             {
@@ -197,6 +214,13 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.ChatParent.Address = data1.ChatParentPtr;
                 this.passiveskilltreenodes.Address = data4;
                 this.updatePassiveSkillTreeData();
+                {
+                    var mgrOff = reader.ReadMemory<UiElementBaseOffset>(this.Address);
+                    var parentAddr = reader.ReadMemory<IntPtr>(mgrOff.ChildrensPtr.First + (84 * IntPtr.Size));
+                    var parentOff = reader.ReadMemory<UiElementBaseOffset>(parentAddr);
+                    this.sekhemasTrialMapPanel.Address =
+                      reader.ReadMemory<IntPtr>(parentOff.ChildrensPtr.First);
+                }
             }
         }
 

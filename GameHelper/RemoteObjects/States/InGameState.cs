@@ -20,6 +20,11 @@ namespace GameHelper.RemoteObjects.States
         private IntPtr uiRootAddress;
 
         /// <summary>
+        ///     Gets the address of the UiRoot UiElement.
+        /// </summary>
+        internal IntPtr UiRootAddress => this.uiRootAddress;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="InGameState" /> class.
         /// </summary>
         /// <param name="address">address of the remote memory object.</param>
