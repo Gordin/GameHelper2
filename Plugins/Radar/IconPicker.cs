@@ -60,12 +60,19 @@ namespace Radar
         /// <param name="y">Default Icon Row number. Note: start from 0.</param>
         /// <param name="s">Default Icon size.</param>
         /// <param name="iconSize">Size of a single icon of the given sprite in pixel.</param>
-        public IconPicker(string filepathname, int x, int y, int s, Vector2 iconSize)
+        /// <param name="showPath">Whether to show a path to this entity type by default.</param>
+        /// <param name="pathColor">Default color for the path line.</param>
+        public IconPicker(
+            string filepathname, int x, int y, int s, Vector2 iconSize,
+            bool showPath = false,
+            Vector4? pathColor = null)
         {
             this.FilePathName = filepathname;
             this.Clicked = new(x, y);
             this.IconSize = iconSize;
             this.iconScale = s;
+            this.ShowPath = showPath;
+            this.PathColor = pathColor ?? new Vector4(0f, 1f, 1f, 1f);
             this.Initialize();
         }
 

@@ -141,12 +141,12 @@ namespace Radar
         /// <summary>
         /// Thickness of the POI direction lines in screen pixels.
         /// </summary>
-        public float DirectionLineThickness = 2.0f;
+        public float DirectionLineThickness = 0.1f;
 
         /// <summary>
         /// Thickness of entity/terrain-tile icon paths in screen pixels.
         /// </summary>
-        public float IconPathThickness = 2.0f;
+        public float IconPathThickness = 1.5f;
 
         /// <summary>
         /// Number of segments from the start of a cached path to recompute.
@@ -505,13 +505,10 @@ namespace Radar
 
         private void AddDefaultTempleIcons(string iconPathName)
         {
-            this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 75, IconSize));
-
-            if (this.TempleIcons.TryGetValue("Vaal Ruins", out var vr))
-            {
-                vr.ShowPath = true;
-                vr.PathColor = new System.Numerics.Vector4(1f, 0.6f, 0f, 1f); // orange
-            }
+            this.TempleIcons.TryAdd("Vaal Ruins",
+                new IconPicker(iconPathName, 9, 2, 75, IconSize,
+                    showPath: true,
+                    pathColor: new System.Numerics.Vector4(1f, 0.6f, 0f, 1f)));
         }
 
         private void AddDefaultExpeditionMarkerIcons(string iconPathName)
@@ -528,14 +525,11 @@ namespace Radar
 
         private void AddDefaultRunestoneIcons(string iconPathName)
         {
-            this.RunestoneIcons.TryAdd("Runestone Encounter", new IconPicker(iconPathName, 3, 12, 70, IconSize));
+            this.RunestoneIcons.TryAdd("Runestone Encounter",
+                new IconPicker(iconPathName, 3, 12, 70, IconSize,
+                    showPath: true,
+                    pathColor: new System.Numerics.Vector4(1f, 0.15f, 0.15f, 1f)));
             this.RunestoneIcons.TryAdd("Runestones", new IconPicker(iconPathName, 13, 1, 70, IconSize));
-
-            if (this.RunestoneIcons.TryGetValue("Runestone Encounter", out var re))
-            {
-                re.ShowPath = true;
-                re.PathColor = new System.Numerics.Vector4(1f, 0.15f, 0.15f, 1f); // red
-            }
         }
 
         private void AddDefaultExpeditionRemnantIcons(string iconPathName)
