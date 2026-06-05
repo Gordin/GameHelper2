@@ -23,6 +23,6 @@ namespace GameOffsets.Objects.Components
         // Exactly the same as provided in the Positioned component.
         // [FieldOffset(0x00C0)] public float RotationCurrent;
         // [FieldOffset(0x00C4)] public float RotationFuture;
-        [FieldOffset(0x1ac)] public float TerrainHeight;
+        [FieldOffset(0x1B0)] public float TerrainHeight;
     }
 }
