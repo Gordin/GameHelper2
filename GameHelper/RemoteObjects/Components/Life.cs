@@ -42,6 +42,16 @@ namespace GameHelper.RemoteObjects.Components
         public VitalStruct Mana { get; private set; }
 
         /// <summary>
+        ///     Gets the ward related information of the entity.
+        /// </summary>
+        public VitalStruct Ward { get; private set; }
+
+        /// <summary>
+        ///     Gets the divinity related information of the entity.
+        /// </summary>
+        public VitalStruct Divinity { get; private set; }
+
+        /// <summary>
         ///     Converts the <see cref="Life" /> class data to ImGui.
         /// </summary>
         internal override void ToImGui()
@@ -65,6 +75,18 @@ namespace GameHelper.RemoteObjects.Components
                 this.VitalToImGui(this.Mana);
                 ImGui.TreePop();
             }
+
+            if (ImGui.TreeNode("Ward"))
+            {
+                this.VitalToImGui(this.Ward);
+                ImGui.TreePop();
+            }
+
+            if (ImGui.TreeNode("Divinity"))
+            {
+                this.VitalToImGui(this.Divinity);
+                ImGui.TreePop();
+            }
         }
 
         /// <inheritdoc />
@@ -76,6 +98,8 @@ namespace GameHelper.RemoteObjects.Components
             this.Health = data.Health;
             this.EnergyShield = data.EnergyShield;
             this.Mana = data.Mana;
+            this.Ward = data.Ward;
+            this.Divinity = data.Divinity;
             this.IsAlive = data.Health.Current > 0;
         }
 
