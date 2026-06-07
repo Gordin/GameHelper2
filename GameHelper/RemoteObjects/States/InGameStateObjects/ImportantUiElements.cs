@@ -30,6 +30,14 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     /// </summary>
     public class ImportantUiElements : RemoteObjectBase
     {
+        private static readonly int[] WorldMapPanelChildPath = { 22, 0 };
+        private static readonly int[] Act1PanelChildPath = { 22, 0, 0 };
+        private static readonly int[] Act2PanelChildPath = { 22, 0, 1 };
+        private static readonly int[] Act3PanelChildPath = { 22, 0, 2 };
+        private static readonly int[] Act4PanelChildPath = { 22, 0, 3 };
+        private static readonly int[] InterludePanelChildPath = { 22, 0, 5 };
+        private static readonly int[] AtlasPanelChildPath = { 22, 0, 6 };
+
         private readonly UiElementParents rootCache;
         private readonly UiElementParents passiveSkillTreeCache;
 
@@ -63,6 +71,12 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.LargeMap = new(IntPtr.Zero, this.rootCache);
             this.MiniMap = new(IntPtr.Zero, this.rootCache);
             this.WorldMapPanel = new(IntPtr.Zero, this.rootCache);
+            this.Act1 = new(IntPtr.Zero, this.rootCache);
+            this.Act2 = new(IntPtr.Zero, this.rootCache);
+            this.Act3 = new(IntPtr.Zero, this.rootCache);
+            this.Act4 = new(IntPtr.Zero, this.rootCache);
+            this.Interlude = new(IntPtr.Zero, this.rootCache);
+            this.Atlas = new(IntPtr.Zero, this.rootCache);
             this.LeftPanel = new(IntPtr.Zero, this.rootCache);
             this.RightPanel = new(IntPtr.Zero, this.rootCache);
             this.ChatParent = new(IntPtr.Zero, this.rootCache);
@@ -89,9 +103,45 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     It is only <see cref="UiElementBase.IsVisible" /> while that screen is open
         ///     (opened by interacting with a checkpoint). The in-area LargeMap stays visible
         ///     underneath it, so consumers gate on this to tell the two apart.
-        ///     UiRoot manager -> 0x988.
+        ///     GameUi -> child 22 -> child 0.
         /// </summary>
         public UiElementBase WorldMapPanel { get; }
+
+        /// <summary>
+        ///     Gets the Act 1 tab under the checkpoint / world-travel map panel.
+        ///     GameUi -> child 22 -> child 0 -> child 0.
+        /// </summary>
+        public UiElementBase Act1 { get; }
+
+        /// <summary>
+        ///     Gets the Act 2 tab under the checkpoint / world-travel map panel.
+        ///     GameUi -> child 22 -> child 0 -> child 1.
+        /// </summary>
+        public UiElementBase Act2 { get; }
+
+        /// <summary>
+        ///     Gets the Act 3 tab under the checkpoint / world-travel map panel.
+        ///     GameUi -> child 22 -> child 0 -> child 2.
+        /// </summary>
+        public UiElementBase Act3 { get; }
+
+        /// <summary>
+        ///     Gets the Act 4 tab under the checkpoint / world-travel map panel.
+        ///     GameUi -> child 22 -> child 0 -> child 3.
+        /// </summary>
+        public UiElementBase Act4 { get; }
+
+        /// <summary>
+        ///     Gets the Interlude tab under the checkpoint / world-travel map panel.
+        ///     GameUi -> child 22 -> child 0 -> child 5.
+        /// </summary>
+        public UiElementBase Interlude { get; }
+
+        /// <summary>
+        ///     Gets the Atlas tab under the checkpoint / world-travel map panel.
+        ///     GameUi -> child 22 -> child 0 -> child 6.
+        /// </summary>
+        public UiElementBase Atlas { get; }
 
         /// <summary>
         ///     Gets the currently-open left-side panel UiElement (character, skills, etc.).
@@ -175,6 +225,12 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.MiniMap.Address = IntPtr.Zero;
             this.LargeMap.Address = IntPtr.Zero;
             this.WorldMapPanel.Address = IntPtr.Zero;
+            this.Act1.Address = IntPtr.Zero;
+            this.Act2.Address = IntPtr.Zero;
+            this.Act3.Address = IntPtr.Zero;
+            this.Act4.Address = IntPtr.Zero;
+            this.Interlude.Address = IntPtr.Zero;
+            this.Atlas.Address = IntPtr.Zero;
             this.LeftPanel.Address = IntPtr.Zero;
             this.RightPanel.Address = IntPtr.Zero;
             this.ChatParent.Address = IntPtr.Zero;
@@ -192,7 +248,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 var data2 = reader.ReadMemory<MapParentStruct>(data1.ControllerModeMapParentPtr);
                 this.LargeMap.Address = data2.LargeMapPtr;
                 this.MiniMap.Address = data2.MiniMapPtr;
-                this.WorldMapPanel.Address = IntPtr.Zero;
+                this.UpdateWorldMapPanelAddresses();
                 this.LeftPanel.Address = IntPtr.Zero;
                 this.RightPanel.Address = IntPtr.Zero;
                 this.ChatParent.Address = IntPtr.Zero;
@@ -208,7 +264,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 // game UiElement garbage collection is not instant. if this ever changes, put try catch on it.
                 this.LargeMap.Address = data2.LargeMapPtr;
                 this.MiniMap.Address = data2.MiniMapPtr;
-                this.WorldMapPanel.Address = data1.WorldMapPanelPtr;
+                this.UpdateWorldMapPanelAddresses();
                 this.LeftPanel.Address = data1.LeftPanelPtr;
                 this.RightPanel.Address = data1.RightPanelPtr;
                 this.ChatParent.Address = data1.ChatParentPtr;
@@ -222,6 +278,50 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                       reader.ReadMemory<IntPtr>(parentOff.ChildrensPtr.First);
                 }
             }
+        }
+
+        private void UpdateWorldMapPanelAddresses()
+        {
+            this.WorldMapPanel.Address = ResolveChildAddress(this.Address, WorldMapPanelChildPath);
+            this.Act1.Address = ResolveChildAddress(this.Address, Act1PanelChildPath);
+            this.Act2.Address = ResolveChildAddress(this.Address, Act2PanelChildPath);
+            this.Act3.Address = ResolveChildAddress(this.Address, Act3PanelChildPath);
+            this.Act4.Address = ResolveChildAddress(this.Address, Act4PanelChildPath);
+            this.Interlude.Address = ResolveChildAddress(this.Address, InterludePanelChildPath);
+            this.Atlas.Address = ResolveChildAddress(this.Address, AtlasPanelChildPath);
+        }
+
+        private static IntPtr ResolveChildAddress(IntPtr rootAddress, int[] childPath)
+        {
+            if (rootAddress == IntPtr.Zero)
+            {
+                return IntPtr.Zero;
+            }
+
+            var reader = Core.Process.Handle;
+            var currentAddress = rootAddress;
+            foreach (var childIndex in childPath)
+            {
+                if (childIndex < 0)
+                {
+                    return IntPtr.Zero;
+                }
+
+                var data = reader.ReadMemory<UiElementBaseOffset>(currentAddress);
+                var childCount = data.ChildrensPtr.TotalElements(IntPtr.Size);
+                if (data.ChildrensPtr.First == IntPtr.Zero || childIndex >= childCount)
+                {
+                    return IntPtr.Zero;
+                }
+
+                currentAddress = reader.ReadMemory<IntPtr>(data.ChildrensPtr.First + (childIndex * IntPtr.Size));
+                if (currentAddress == IntPtr.Zero)
+                {
+                    return IntPtr.Zero;
+                }
+            }
+
+            return currentAddress;
         }
 
         private void updatePassiveSkillTreeData()
