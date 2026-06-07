@@ -404,21 +404,21 @@
     "Metadata/Terrain/Interlude/Part3/P3_2/KriarVillage_Bossroom.tdtx:0-y:0": "Boss"
   },
   "P3_3": {
-    "Metadata/Terrain/Interlude/Part3/P3_3/GlacialTarn_Bossroom.tdtx:0-y:0": "Boss",
+    "Metadata/Terrain/Interlude/Part3/P3_3/GlacialTarn_Bossroom.tdtx:10-y:10": "Rakkar",
     "Metadata/Terrain/Maps/FrozenFalls/Tiles/Cove_01.tdtx:3-y:3": "Howling Caves"
   },
   "P3_4": {
     "Metadata/Terrain/Interlude/Part3/P3_4/Cave_Bossroom.tdtx:0-y:0": "Boss"
   },
   "P3_5": {
-    "Metadata/Terrain/Interlude/Part3/P3_5/Ravine_Exit_Transition.tdtx:0-y:0": "Ravine",
-    "Metadata/Terrain/Interlude/Part3/P3_5/Medition_Ridge.tdtx:0-y:0": "Guarenteed unique?"
+    "Metadata/Terrain/Interlude/Part3/P3_5/Ravine_Exit_Transition.tdtx:9-y:9": "Etched Ravine",
+    "Metadata/Terrain/Interlude/Part3/P3_5/Medition_Ridge.tdtx:8-y:10": "Elder Madox"
   },
   "P3_6": {
-    "Metadata/Terrain/Interlude/Part3/P3_6/Ravine_Bossroom.tdtx:0-y:0": "Boss"
+    "Metadata/Terrain/Interlude/Part3/P3_6/Ravine_Bossroom.tdtx:4-y:3": "Stormgore"
   },
   "P3_7": {
-    "Metadata/Terrain/Interlude/Part3/P3_7/BloodVault_Bossroom.tdtx:0-y:0": "Boss"
+    "Metadata/Terrain/Interlude/Part3/P3_7/BloodVault_Bossroom.tdtx:6-y:7": "Zelina & Zolin"
   },
   "MapBluff": {
     "Metadata/Terrain/Maps/Bluff/Tiles/Feature/Beacon_01.tdtx:0-y:0": "Beacon"
