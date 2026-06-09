@@ -1,4 +1,4 @@
-﻿namespace Atlas
+namespace Atlas
 {
     using GameHelper;
     using GameHelper.Plugin;
@@ -39,6 +39,7 @@
         private static readonly Dictionary<string, ContentInfo> MapTags = [];
         private static readonly Dictionary<string, ContentInfo> MapPlain = [];
         private static readonly Dictionary<byte, BiomeInfo> Biomes = [];
+        private static readonly Dictionary<string, int> MapScores = new(StringComparer.OrdinalIgnoreCase);
 
         // ── Per-node static-data cache ──────────────────────────────────────
         // Reading + chasing pointers for all ~1700 atlas nodes every frame was the FPS killer
@@ -78,6 +79,7 @@
 
             LoadBiomeMap();
             LoadContentMap();
+            LoadMapScores();
         }
 
         public override void SaveSettings()
@@ -501,6 +503,27 @@
                     drawList.AddRectFilled(bgPos, bgPos + bgSize, ImGuiHelper.Color(backgroundColor), rounding);
                     drawList.AddText(drawPosition, ImGuiHelper.Color(fontColor), mapName);
 
+                    if (MapScores.TryGetValue(mapName, out var score))
+                    {
+                        var scoreStr = score.ToString();
+                        var scoreTextSize = ImGui.CalcTextSize(scoreStr);
+                        var scoreBgSize = scoreTextSize + padding * 2;
+                        
+                        var scoreBgPos = new Vector2(bgPos.X + bgSize.X + (2f * uiScale), bgPos.Y);
+                        
+                        float t = Math.Clamp(score / 6.0f, 0f, 1f);
+                        float r = t < 0.5f ? 2f * t : 1f;
+                        float g = t < 0.5f ? 1f : 1f - 2f * (t - 0.5f);
+                        Vector4 scoreBgColor = new Vector4(r, g, 0f, 0.9f);
+                        
+                        if (completed)
+                            scoreBgColor.W *= 0.4f;
+
+                        drawList.AddRectFilled(scoreBgPos, scoreBgPos + scoreBgSize, ImGuiHelper.Color(scoreBgColor), rounding);
+                        var scoreDrawPos = scoreBgPos + padding;
+                        drawList.AddText(scoreDrawPos, ImGuiHelper.Color(new Vector4(0, 0, 0, 1)), scoreStr);
+                    }
+
                     float labelCenterX = drawPosition.X + textSize.X * 0.5f;
                     float nextRowTopY = drawPosition.Y + textSize.Y + (4f * uiScale);
                     float rowGap = 4f * uiScale;
@@ -840,6 +863,26 @@
             }
 
             ApplyContentOverrides();
+        }
+
+        private void LoadMapScores()
+        {
+            var path = Path.Join(DllDirectory, "json", "map_scores.json");
+            if (!File.Exists(path))
+                return;
+
+            var json = File.ReadAllText(path);
+            var contents = JsonConvert.DeserializeObject<Dictionary<string, int>>(json);
+
+            MapScores.Clear();
+
+            if (contents is null)
+                return;
+
+            foreach (var content in contents)
+            {
+                MapScores[content.Key] = content.Value;
+            }
         }
 
         private static float ComputeDisplayScale(float refW, float refH)
