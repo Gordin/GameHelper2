@@ -64,6 +64,18 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         public string DisplayName => WorldAreaNames.GetDisplayName(this.MapId);
 
         /// <summary>
+        ///     Gets the map type classification ("normal" or "unique"),
+        ///     resolved from <see cref="MapId" /> via the embedded tags database.
+        /// </summary>
+        public string Type => WorldAreaTags.GetMeta(this.MapId)?.Type ?? "normal";
+
+        /// <summary>
+        ///     Gets feature tags (e.g. "lineage", "arbiter") for this map,
+        ///     resolved from <see cref="MapId" /> via the embedded tags database.
+        /// </summary>
+        public IReadOnlyList<string> Tags => WorldAreaTags.GetMeta(this.MapId)?.Tags ?? Array.Empty<string>();
+
+        /// <summary>
         ///     Gets the node's Atlas grid position.
         /// </summary>
         public StdTuple2D<int> GridPosition { get; }

@@ -12,25 +12,37 @@ namespace Atlas
         public bool ControllerMode = false;
 
         public string SearchQuery = string.Empty;
-        public bool DrawLinesSearchQuery = true;
-        public float DrawSearchInRange = 1.3f;
 
         public bool DrawLinesToCitadel = false;
+        public Vector4 CitadelPathColor = new(0f, 0f, 1f, 50f / 255f);
+        public int CitadelMaxHops = 100;
         public bool DrawLinesToTowers = false;
-        public float DrawTowersInRange = 1.3f;
+        public Vector4 TowerPathColor = new(0.78f, 0.76f, 0.05f, 50f / 255f);
+        public int TowerMaxHops = 100;
+        public bool DrawLinesToSearch = true;
+        public Vector4 SearchPathColor = new(1f, 1f, 1f, 50f / 255f);
+        public int SearchMaxHops = 100;
+        public bool DrawLinesToUniqueMaps = false;
+        public Vector4 UniquePathColor = new(1f, 143f / 255f, 0f, 50f / 255f);
+        public int UniqueMaxHops = 100;
+        public bool DrawLinesToLineageMaps = false;
+        public Vector4 LineagePathColor = new(0f, 0.88f, 0f, 50f / 255f);
+        public int LineageMaxHops = 100;
+        public bool DrawLinesToArbiterMaps = false;
+        public Vector4 ArbiterPathColor = new(1f, 0f, 0f, 50f / 255f);
+        public int ArbiterMaxHops = 100;
 
         public bool HideCompletedMaps = true;
         public bool HideNotAccessibleMaps = false;
-        public bool HideFailedMaps = true;
-        public bool DrawGrid = false;
-        public Vector4 GridLineColor = new(1f, 1f, 1f, 0.35f);
-        public bool GridSkipCompleted = false;
+        public bool ShowAtlasGraph = false;
+        public Vector4 AtlasGraphLineColor = new(1f, 1f, 1f, 0.35f);
+        public float AtlasGraphOffsetX = 0f;
+        public float AtlasGraphOffsetY = 0f;
         public bool ShowMapBadges = true;
         public bool ShowMapCounts = false;
         public bool ShowBiomeBorder = true;
         public float BiomeBorderThickness = 2.5f;
 
-        public bool RouteLinesThroughNodes = true;
         public float PathLineThickness = 6f;
 
         public float BaseWidth = 1920f;

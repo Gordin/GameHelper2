@@ -6,6 +6,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 {
     using System;
     using System.Collections.Generic;
+    using System.Numerics;
     using System.Runtime.InteropServices;
     using System.Threading.Tasks;
     using Coroutine;
@@ -46,10 +47,14 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private const int AtlasNodeConnectionsVectorOffset = 0x5A8;
         private const byte AtlasNodeAccessibleBit = 0x01;
         private const byte AtlasNodeCompletedBit = 0x02;
+        private const int UiElementBaseFlagsOffset = 0x180;
+        private const uint IsVisibleMask = 0x800;
+        private const uint AtlasCurrentNodeMarkerFp = 0x502EF3;
 
         private readonly UiElementParents rootCache;
         private readonly UiElementParents passiveSkillTreeCache;
         private readonly List<AtlasMapNode> atlasMaps = new();
+        private readonly List<PlayerMarker> atlasMarkers = new();
         private int atlasMapCacheFrameCounter = int.MaxValue;
         private int cachedAtlasMapCount = -1;
 
@@ -169,6 +174,13 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         public IReadOnlyList<AtlasMapNode> AtlasMaps => this.atlasMaps;
 
         /// <summary>
+        ///     Gets the "you are here" marker children on the Atlas (fp 0x502EF3).
+        ///     These are not real map nodes — they render on the player's current
+        ///     node. Exposed so plugins can draw a position indicator.
+        /// </summary>
+        public IReadOnlyList<PlayerMarker> AtlasMarkers => this.atlasMarkers;
+
+        /// <summary>
         ///     Gets the currently-open left-side panel UiElement (character, skills, etc.).
         ///     It is only <see cref="UiElementBase.IsVisible" /> while such a panel is open;
         ///     the backing pointer is null when no left panel is open.
@@ -240,6 +252,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                         ImGui.Text($"Grid Position: {map.GridPosition.X}, {map.GridPosition.Y}");
                         ImGui.Text($"Biome: {map.BiomeId}");
                         ImGui.Text($"State: {map.State}");
+                        ImGui.Text($"Type: {map.Type}");
+                        ImGui.Text($"Tags: {string.Join(", ", map.Tags)}");
                         ImGui.Text($"Connected Nodes: {map.ConnectedGridPositions.Count}");
                         foreach (var connected in map.ConnectedGridPositions)
                         {
@@ -258,6 +272,31 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                             ImGui.Text($"- {badge}");
                         }
 
+                        ImGui.TreePop();
+                    }
+                }
+
+                ImGui.TreePop();
+            }
+
+            ImGui.Text($"Player Marker: {(this.AtlasMarkers.Count > 0 ? $"on node {this.AtlasMarkers[0].MapNodeIndex}" : "none")}");
+            if (ImGui.TreeNode("Player Marker"))
+            {
+                foreach (var marker in this.AtlasMarkers)
+                {
+                    var mapNode = this.atlasMaps.Find(m => m.Index == marker.MapNodeIndex);
+                    var label = mapNode != null
+                        ? $"{marker.Index} -> {mapNode.DisplayName} (idx {marker.MapNodeIndex})"
+                        : $"{marker.Index}: Marker##AtlasMarker{marker.Index}";
+                    if (ImGui.TreeNode($"{label}##AtlasMarker{marker.Index}"))
+                    {
+                        ImGui.Text($"Address: 0x{marker.Address.ToInt64():X}");
+                        ImGui.Text($"Map Node Index: {marker.MapNodeIndex}");
+                        if (mapNode != null)
+                        {
+                            ImGui.Text($"Map Node: {mapNode.DisplayName}");
+                            ImGui.Text($"Map Node Grid: {mapNode.GridPosition.X}, {mapNode.GridPosition.Y}");
+                        }
                         ImGui.TreePop();
                     }
                 }
@@ -363,6 +402,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             if (this.Atlas.Address == IntPtr.Zero || !this.Atlas.IsVisible)
             {
                 this.atlasMaps.Clear();
+                this.atlasMarkers.Clear();
                 this.cachedAtlasMapCount = -1;
                 this.atlasMapCacheFrameCounter = int.MaxValue;
                 return;
@@ -372,6 +412,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             if (atlasCount <= 0 || atlasCount > 10000)
             {
                 this.atlasMaps.Clear();
+                this.atlasMarkers.Clear();
                 this.cachedAtlasMapCount = -1;
                 this.atlasMapCacheFrameCounter = int.MaxValue;
                 return;
@@ -384,13 +425,27 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 return;
             }
 
+            var reader = Core.Process.Handle;
             var connections = ReadAtlasConnections(this.Atlas.Address);
             var maps = new List<AtlasMapNode>(atlasCount);
+            var markers = new List<PlayerMarker>(2);
+            var markerFpMasked = AtlasCurrentNodeMarkerFp & ~IsVisibleMask;
             for (var i = 0; i < atlasCount; i++)
             {
                 var nodeUi = this.Atlas[i];
                 if (nodeUi == null || nodeUi.Address == IntPtr.Zero)
                 {
+                    continue;
+                }
+
+                // Filter out the "you are here" marker (fp 0x502EF3) before
+                // attempting the map-node parse — it can have garbage that looks
+                // valid at the map-node offsets.
+                var flags = reader.ReadMemory<uint>(nodeUi.Address + UiElementBaseFlagsOffset);
+                if ((flags & ~IsVisibleMask) == markerFpMasked
+                    && (flags & IsVisibleMask) != 0)
+                {
+                    markers.Add(new PlayerMarker(i, nodeUi.Address, -1));
                     continue;
                 }
 
@@ -403,6 +458,40 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
             this.atlasMaps.Clear();
             this.atlasMaps.AddRange(maps);
+
+            // Resolve each marker to the map node it sits on. The marker
+            // renders above the node, so offset its Y center downward ~100px
+            // before the nearest-center search to avoid picking the node above.
+            const float markerYOffset = 100f;
+            var mapCenters = new List<(Vector2 Center, int Index)>(maps.Count);
+            for (int mi = 0; mi < maps.Count; mi++)
+            {
+                var mu = this.Atlas[maps[mi].Index];
+                if (mu == null) continue;
+                mapCenters.Add((mu.Position + mu.Size * 0.5f, maps[mi].Index));
+            }
+
+            var resolved = new List<PlayerMarker>(markers.Count);
+            foreach (var m in markers)
+            {
+                var mu = this.Atlas[m.Index];
+                if (mu == null) continue;
+                var markerPos = mu.Position + mu.Size * 0.5f;
+                markerPos.Y += markerYOffset;
+
+                int bestIdx = -1;
+                float bestD = float.MaxValue;
+                foreach (var (center, index) in mapCenters)
+                {
+                    var d = Vector2.DistanceSquared(markerPos, center);
+                    if (d < bestD) { bestD = d; bestIdx = index; }
+                }
+
+                resolved.Add(new PlayerMarker(m.Index, m.Address, bestIdx));
+            }
+
+            this.atlasMarkers.Clear();
+            this.atlasMarkers.AddRange(resolved);
             this.cachedAtlasMapCount = atlasCount;
             this.atlasMapCacheFrameCounter = 0;
         }

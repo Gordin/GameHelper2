@@ -22,9 +22,6 @@
 
     public sealed class Atlas : PCore<AtlasSettings>
     {
-        private const uint CitadelLineColor = 0xFF0000FF;
-        private const uint TowerLineColor = 0xFFC6C10D;
-        private const uint SearchLineColor = 0xFFFFFFFF;
         private const uint CompletedNodeDotColor = 0xFF00FF00;
         private const uint DotOutlineColor = 0xFF000000;
 
@@ -57,11 +54,19 @@
             public AtlasNodeState State;
             public int BadgeCount;
             public List<string> RawContents;
+            public string Type;             // "normal" or "unique"
+            public List<string> Tags;       // e.g. "lineage", "arbiter"
         }
         private readonly List<NodeData> nodeCache = new();
         private int cacheFrameCounter = int.MaxValue;   // force refresh on first frame
         private int cachedAtlasCount = -1;
         private const int CacheRefreshFrames = 20;       // rebuild static data ~3×/sec at 60fps
+
+        // Cached routing graph — the node graph doesn't change while the
+        // atlas is open, so rebuild only with the node cache.
+        private Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>> cachedRouteGraph;
+        private HashSet<StdTuple2D<int>> cachedAccessible;
+        private Dictionary<StdTuple2D<int>, StdTuple2D<int>> cachedBfsTree;
 
         public override void OnDisable()
         {
@@ -98,21 +103,16 @@
             ImGui.SameLine();
             if (ImGui.SmallButton("Clear"))
                 Settings.SearchQuery = string.Empty;
-            if (ImGui.TreeNode("Draw Lines Settings"))
-            {
-                ImGui.Checkbox("Route Lines Through Nodes (Shortest Path)", ref Settings.RouteLinesThroughNodes);
-                ImGui.SameLine();
-                ImGui.SetNextItemWidth(150);
-                ImGui.SliderFloat("Path Thickness", ref Settings.PathLineThickness, 1.0f, 8.0f);
-                ImGui.Checkbox("Draw Lines to Search in range", ref Settings.DrawLinesSearchQuery);
-                ImGui.SameLine();
-                ImGui.SliderFloat("##DrawSearchInRange", ref Settings.DrawSearchInRange, 1.0f, 10.0f);
-                ImGui.Checkbox("Draw Lines to Citadels", ref Settings.DrawLinesToCitadel);
-                ImGui.Checkbox("Draw Lines to Towers in range", ref Settings.DrawLinesToTowers);
-                ImGui.SameLine();
-                ImGui.SliderFloat("##DrawTowersInRange", ref Settings.DrawTowersInRange, 1.0f, 10.0f);
-                ImGui.TreePop();
-            }
+            ImGui.SeparatorText("Show shortest path to");
+
+            PathRow("Citadels", ref Settings.DrawLinesToCitadel, ref Settings.CitadelPathColor, ref Settings.CitadelMaxHops);
+            PathRow("Towers", ref Settings.DrawLinesToTowers, ref Settings.TowerPathColor, ref Settings.TowerMaxHops);
+            PathRow("Search", ref Settings.DrawLinesToSearch, ref Settings.SearchPathColor, ref Settings.SearchMaxHops);
+            PathRow("Unique Maps", ref Settings.DrawLinesToUniqueMaps, ref Settings.UniquePathColor, ref Settings.UniqueMaxHops);
+            PathRow("Lineage Maps", ref Settings.DrawLinesToLineageMaps, ref Settings.LineagePathColor, ref Settings.LineageMaxHops);
+            PathRow("Arbiter Maps", ref Settings.DrawLinesToArbiterMaps, ref Settings.ArbiterPathColor, ref Settings.ArbiterMaxHops);
+
+            ImGui.SliderFloat("Path Thickness", ref Settings.PathLineThickness, 1.0f, 8.0f);
 
             ImGui.SeparatorText("Atlas Settings");
             ImGui.Checkbox("Hide Completed Maps", ref Settings.HideCompletedMaps);
@@ -165,6 +165,15 @@
 
                     ImGui.TreePop();
                 }
+
+            ImGui.Checkbox("Show Atlas Graph", ref Settings.ShowAtlasGraph);
+            if (Settings.ShowAtlasGraph)
+            {
+                ImGui.SameLine();
+                ColorSwatch("##AtlasGraphLineColor", ref Settings.AtlasGraphLineColor);
+                ImGui.SliderFloat("Graph X-Offset", ref Settings.AtlasGraphOffsetX, -200f, 200f);
+                ImGui.SliderFloat("Graph Y-Offset", ref Settings.AtlasGraphOffsetY, -200f, 200f);
+            }
 
             ImGui.SeparatorText("Layout Settings");
             var nudge = Settings.AnchorNudge;
@@ -267,7 +276,7 @@
                 return;
 
             var player = Core.States.InGameStateObject.CurrentAreaInstance.Player;
-            if (!player.TryGetComponent<Render>(out var playerRender))
+            if (!player.TryGetComponent<Render>(out _))
                 return;
 
             var drawList = ImGui.GetBackgroundDrawList();
@@ -296,15 +305,14 @@
             var panelSize = atlasUi.Size;
             var panelRect = new RectangleF(panelTopLeft.X, panelTopLeft.Y, panelSize.X, panelSize.Y);
 
-            Dictionary<StdTuple2D<int>, Vector2> nodeCenters = null;
-            Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>> graph = null;
-            Dictionary<StdTuple2D<int>, bool> nodeCompleted = null;
-            Dictionary<StdTuple2D<int>, bool> nodeAccessible = null;
-
-            if (Settings.RouteLinesThroughNodes || Settings.DrawGrid)
+            // Screen positions change per frame (panning), but the graph
+            // topology is cached with the node cache (~3×/sec).
+            var allCenters = new Dictionary<StdTuple2D<int>, Vector2>(nodeCache.Count);
+            foreach (var nd in nodeCache)
             {
-                BuildAtlasGraph(atlasUi, nodeCache, panelRect,
-                    out nodeCenters, out graph, out nodeCompleted, out nodeAccessible);
+                var nu = atlasUi[nd.Index];
+                if (nu == null) continue;
+                allCenters[nd.GridPosition] = nu.Position + nu.Size * 0.5f;
             }
 
             var towers = new HashSet<string>(
@@ -313,8 +321,6 @@
                     .SelectMany(tower => tower.Maps)
                     .Select(NormalizeName),
                 StringComparer.OrdinalIgnoreCase);
-            var boundsTowers = CalculateBounds(Settings.DrawTowersInRange);
-
             var searchQuery = NormalizeName(Settings.SearchQuery);
             bool doSearch = !string.IsNullOrWhiteSpace(searchQuery);
             List<string> searchList = [];
@@ -326,10 +332,6 @@
                     .Where(s => !string.IsNullOrWhiteSpace(s))
                     .ToList();
             }
-            var boundsSearch = CalculateBounds(Settings.DrawSearchInRange);
-
-            var playerLocation = Core.States.InGameStateObject.CurrentWorldInstance.WorldToScreen(playerRender.WorldPosition);
-
             float resScale = ComputeDisplayScale(Settings.BaseWidth, Settings.BaseHeight);
             float uiScale = Math.Clamp(Settings.ScaleMultiplier * resScale, 0.5f, 4.0f);
             using (new FontScaleScope(uiScale))
@@ -338,49 +340,55 @@
                     if (inventoryPanel)
                         return;
 
-                if (Settings.DrawGrid && graph != null && nodeCenters != null)
-                {
-                    drawList.ChannelsSetCurrent(ChannelGrid);
-                    float lineTh = MathF.Max(1f, uiScale * 2.5f);
-
-                    static (int x, int y) XY(StdTuple2D<int> t) => (t.X, t.Y);
-                    static bool IsCanonical(StdTuple2D<int> a, StdTuple2D<int> b)
-                    {
-                        var (ax, ay) = XY(a);
-                        var (bx, by) = XY(b);
-                        return (ax < bx) || (ax == bx && ay <= by);
-                    }
-
-                    foreach (var (src, targets) in graph)
-                    {
-                        if (!nodeCenters.TryGetValue(src, out var a))
-                            continue;
-
-                        foreach (var dst in targets)
-                        {
-                            if (!IsCanonical(src, dst))
-                                continue;
-
-                            if (!nodeCenters.TryGetValue(dst, out var b))
-                                continue;
-
-                            if (Settings.GridSkipCompleted &&
-                                ((nodeCompleted?.TryGetValue(src, out var srcCompleted) == true && srcCompleted) ||
-                                 (nodeCompleted?.TryGetValue(dst, out var dstCompleted) == true && dstCompleted)))
-                            {
-                                continue;
-                            }
-
-                            drawList.AddLine(a, b, ImGuiHelper.Color(Settings.GridLineColor), lineTh);
-                        }
-                    }
-                }
-
                 // Off-screen labels/badges are culled (nothing to draw); a margin keeps
                 // partially-visible labels alive. Lines below are drawn before this cull so
                 // off-screen citadel/tower/search targets still get their line.
                 var screenBounds = new RectangleF(0, 0, ImGui.GetIO().DisplaySize.X, ImGui.GetIO().DisplaySize.Y);
                 screenBounds.Inflate(64f, 64f);
+                var graphOffset = new Vector2(Settings.AtlasGraphOffsetX, Settings.AtlasGraphOffsetY) * uiScale;
+
+                // Apply graph offset to routing centers so all lines share
+                // the same coordinate space.
+                var shiftedCenters = allCenters;
+                if (graphOffset != Vector2.Zero)
+                {
+                    shiftedCenters = new Dictionary<StdTuple2D<int>, Vector2>(allCenters.Count);
+                    foreach (var kv in allCenters)
+                        shiftedCenters[kv.Key] = kv.Value + graphOffset;
+                }
+
+                if (Settings.ShowAtlasGraph)
+                {
+                    drawList.ChannelsSetCurrent(ChannelGrid);
+                    float lineTh = MathF.Max(1f, uiScale * 2.5f);
+
+                    static bool IsCanonical(StdTuple2D<int> a, StdTuple2D<int> b)
+                    {
+                        return (a.X < b.X) || (a.X == b.X && a.Y <= b.Y);
+                    }
+
+                    foreach (var nd in nodeCache)
+                    {
+                        if (!shiftedCenters.TryGetValue(nd.GridPosition, out var sa))
+                            continue;
+
+                        bool srcOnScreen = screenBounds.Contains(sa.X, sa.Y);
+
+                        foreach (var dst in nd.ConnectedGridPositions)
+                        {
+                            if (!IsCanonical(nd.GridPosition, dst))
+                                continue;
+
+                            if (!shiftedCenters.TryGetValue(dst, out var da))
+                                continue;
+
+                            if (!srcOnScreen && !screenBounds.Contains(da.X, da.Y))
+                                continue;
+
+                            drawList.AddLine(sa, da, ImGuiHelper.Color(Settings.AtlasGraphLineColor), lineTh);
+                        }
+                    }
+                }
 
                 foreach (var nd in nodeCache)
                 {
@@ -412,61 +420,59 @@
                     var padding = new Vector2(5, 2) * uiScale;
                     var bgPos = drawPosition - padding;
                     var bgSize = textSize + padding * 2;
-                    var rectCenter = (bgPos + (bgPos + bgSize)) * 0.5f;
 
-                    // Lines to citadels / towers / search hits — drawn even when the target is
-                    // off-screen, so this happens before the visibility cull.
-                    bool shouldDrawCitadel = Settings.DrawLinesToCitadel && mapName.EndsWith("Citadel", StringComparison.OrdinalIgnoreCase);
-                    bool shouldDrawTower = Settings.DrawLinesToTowers && towers.Contains(mapName) && !completed && boundsTowers.Contains(new PointF(drawPosition.X, drawPosition.Y));
-                    bool shouldDrawSearch = Settings.DrawLinesSearchQuery && doSearch
-                        && searchList.Any(searchTerm => mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                        && boundsSearch.Contains(new PointF(drawPosition.X, drawPosition.Y));
-                    if (shouldDrawCitadel || shouldDrawTower || shouldDrawSearch)
+                    // ── Routing ──────────────────────────────────────────────
+                    // Determine if this node is a routing target.
+                    bool routeTarget = false;
+                    uint routeColor = 0;
+                    int maxHops = 0;
+                    if (Settings.DrawLinesToCitadel && mapName.EndsWith("Citadel", StringComparison.OrdinalIgnoreCase))
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.CitadelPathColor); maxHops = Settings.CitadelMaxHops; }
+                    else if (Settings.DrawLinesToTowers && towers.Contains(mapName) && !completed)
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.TowerPathColor); maxHops = Settings.TowerMaxHops; }
+                    else if (Settings.DrawLinesToSearch && doSearch
+                        && searchList.Any(s => mapName.Contains(s, StringComparison.OrdinalIgnoreCase)))
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.SearchPathColor); maxHops = Settings.SearchMaxHops; }
+                    else if (Settings.DrawLinesToUniqueMaps && !completed
+                        && string.Equals(nd.Type, "unique", StringComparison.OrdinalIgnoreCase))
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.UniquePathColor); maxHops = Settings.UniqueMaxHops; }
+                    else if (Settings.DrawLinesToLineageMaps && !completed
+                        && nd.Tags.Exists(t => string.Equals(t, "lineage", StringComparison.OrdinalIgnoreCase)))
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.LineagePathColor); maxHops = Settings.LineageMaxHops; }
+                    else if (Settings.DrawLinesToArbiterMaps && !completed
+                        && nd.Tags.Exists(t => string.Equals(t, "arbiter", StringComparison.OrdinalIgnoreCase)))
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.ArbiterPathColor); maxHops = Settings.ArbiterMaxHops; }
+
+                    if (routeTarget)
                     {
-                        uint lineColor = shouldDrawCitadel ? CitadelLineColor : shouldDrawTower ? TowerLineColor : SearchLineColor;
                         float thickness = MathF.Max(1f, uiScale * Settings.PathLineThickness);
-                        var drewRoute = false;
+                        var path = PathFromAccessible(nd.GridPosition, cachedBfsTree, cachedAccessible);
+                        int hops = path?.Count > 0 ? path.Count - 1 : int.MaxValue;
 
-                        if (Settings.RouteLinesThroughNodes &&
-                            graph != null &&
-                            nodeCenters != null &&
-                            nodeCompleted != null &&
-                            nodeAccessible != null &&
-                            nodeCenters.ContainsKey(nd.GridPosition) &&
-                            TryGetNearestNode(playerLocation, nodeCenters, out var startNode))
+                        if (path != null && path.Count > 0 && hops <= maxHops)
                         {
-                            var path = FindShortestPathAStar(startNode, nd.GridPosition, graph, nodeCenters);
-                            if (path != null && path.Count > 0)
+                            // Full node-path from accessible frontier to target.
+                            DrawNodePath(drawList, path, shiftedCenters, routeColor, thickness, screenBounds);
+
+                            // Green dot on the accessible entry.
+                            if (shiftedCenters.TryGetValue(path[0], out var entryC))
                             {
-                                DrawPath(
-                                    drawList,
-                                    playerLocation,
-                                    bgPos,
-                                    bgSize,
-                                    path,
-                                    nodeCenters,
-                                    nodeCompleted,
-                                    nodeAccessible,
-                                    lineColor,
-                                    thickness,
-                                    ChannelLines,
-                                    ChannelDots);
-                                drewRoute = true;
+                                drawList.ChannelsSetCurrent(ChannelDots);
+                                float sr = MathF.Max(3f, thickness * 1.3f);
+                                drawList.AddCircleFilled(entryC, sr, ImGuiHelper.Color(new Vector4(0.2f, 1f, 0.2f, 1f)));
+                                drawList.AddCircle(entryC, sr, DotOutlineColor, 0, MathF.Max(1f, sr * 0.35f));
                             }
-                        }
 
-                        if (!drewRoute)
-                        {
-                            var intersectionPoint = GetLineRectangleIntersection(playerLocation, rectCenter, bgPos, bgPos + bgSize);
-
-                            drawList.ChannelsSetCurrent(ChannelLines);
-                            drawList.AddLine(playerLocation, intersectionPoint, lineColor, thickness);
-                            var endDot = OffsetPointOutsideRect(intersectionPoint, rectCenter, thickness * 0.6f);
-                            drawList.ChannelsSetCurrent(ChannelDots);
-                            drawList.AddCircleFilled(endDot, thickness, lineColor);
-                            drawList.AddCircle(endDot, thickness, DotOutlineColor, 0, MathF.Max(1f, thickness * 0.35f));
+                            // Hop count above the target.
+                            drawList.ChannelsSetCurrent(ChannelLabels);
+                            string ht = hops.ToString();
+                            var hts = ImGui.CalcTextSize(ht);
+                            var hp = new Vector2(nodeCenter.X - hts.X * 0.5f, nodeCenter.Y - (nodeUi.Size.Y * 0.5f) - hts.Y - 2f * uiScale);
+                            var hpad = new Vector2(4, 1) * uiScale;
+                            drawList.AddRectFilled(hp - hpad, hp + hts + hpad, ImGuiHelper.Color(new Vector4(0, 0, 0, 0.75f)), 3f * uiScale);
+                            drawList.AddText(hp, ImGuiHelper.Color(new Vector4(1f, 0.9f, 0.2f, 1f)), ht);
                         }
-                    }
+                        }
 
                     if (!screenBounds.IntersectsWith(new RectangleF(bgPos.X, bgPos.Y, bgSize.X, bgSize.Y)))
                         continue;
@@ -547,9 +553,24 @@
                     State = ToAtlasNodeState(map.State),
                     BadgeCount = map.BadgeCount,
                     RawContents = map.ContentNames.ToList(),
+                    Type = map.Type ?? "normal",
+                    Tags = map.Tags.ToList(),
                 });
             }
             cachedAtlasCount = atlasCount;
+
+            // Rebuild the routing graph + BFS tree. The node topology
+            // doesn't change while the atlas is open, so this runs at
+            // the same cadence as the node cache (~3×/sec at 60 fps).
+            cachedRouteGraph = new Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>>();
+            cachedAccessible = new HashSet<StdTuple2D<int>>();
+            foreach (var nd in nodeCache)
+            {
+                cachedRouteGraph[nd.GridPosition] = nd.ConnectedGridPositions;
+                if (nd.State == AtlasNodeState.AccessibleNow)
+                    cachedAccessible.Add(nd.GridPosition);
+            }
+            cachedBfsTree = MultiSourceBfs(cachedRouteGraph, cachedAccessible, new HashSet<StdTuple2D<int>>());
         }
 
         private static AtlasNodeState ToAtlasNodeState(AtlasMapNodeState state)
@@ -564,233 +585,99 @@
 
         #region Routing helpers
 
-        private static void BuildAtlasGraph(
-            UiElementBase atlasUi,
-            IReadOnlyList<NodeData> nodes,
-            RectangleF panelRect,
-            out Dictionary<StdTuple2D<int>, Vector2> centers,
-            out Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>> graph,
-            out Dictionary<StdTuple2D<int>, bool> completed,
-            out Dictionary<StdTuple2D<int>, bool> accessible)
-        {
-            centers = new Dictionary<StdTuple2D<int>, Vector2>(nodes.Count);
-            completed = new Dictionary<StdTuple2D<int>, bool>(nodes.Count);
-            graph = new Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>>(nodes.Count);
-            accessible = new Dictionary<StdTuple2D<int>, bool>(nodes.Count);
-
-            foreach (var node in nodes)
-            {
-                var nodeUi = atlasUi[node.Index];
-                if (nodeUi == null)
-                    continue;
-
-                var nodeCenter = nodeUi.Position + nodeUi.Size * 0.5f;
-                if (!panelRect.Contains(nodeCenter.X, nodeCenter.Y))
-                    continue;
-
-                centers[node.GridPosition] = nodeCenter;
-                completed[node.GridPosition] = node.State == AtlasNodeState.CompletedBase;
-                accessible[node.GridPosition] = node.State == AtlasNodeState.AccessibleNow ||
-                                                node.State == AtlasNodeState.CompletedBase;
-
-                if (!graph.ContainsKey(node.GridPosition))
-                {
-                    graph[node.GridPosition] = new List<StdTuple2D<int>>(node.ConnectedGridPositions.Count);
-                }
-            }
-
-            foreach (var node in nodes)
-            {
-                if (!centers.ContainsKey(node.GridPosition))
-                    continue;
-
-                foreach (var connected in node.ConnectedGridPositions)
-                {
-                    if (!centers.ContainsKey(connected) || connected.Equals(node.GridPosition))
-                        continue;
-
-                    AddGraphConnection(graph, node.GridPosition, connected);
-                }
-            }
-        }
-
-        private static void AddGraphConnection(
+        // Multi-source BFS from all accessible nodes over the undirected
+        // graph, skipping blocked (failed) nodes. Returns a cameFrom tree
+        // pointing toward the nearest source — reconstruct paths with
+        // PathFromAccessible.
+        private static Dictionary<StdTuple2D<int>, StdTuple2D<int>> MultiSourceBfs(
             Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>> graph,
-            StdTuple2D<int> source,
-            StdTuple2D<int> target)
+            HashSet<StdTuple2D<int>> sources,
+            HashSet<StdTuple2D<int>> blocked)
         {
-            if (!graph.TryGetValue(source, out var sourceConnections))
-            {
-                sourceConnections = new List<StdTuple2D<int>>(4);
-                graph[source] = sourceConnections;
-            }
-
-            if (!sourceConnections.Contains(target))
-            {
-                sourceConnections.Add(target);
-            }
-
-            if (!graph.TryGetValue(target, out var targetConnections))
-            {
-                targetConnections = new List<StdTuple2D<int>>(4);
-                graph[target] = targetConnections;
-            }
-
-            if (!targetConnections.Contains(source))
-            {
-                targetConnections.Add(source);
-            }
-        }
-
-        private static bool TryGetNearestNode(Vector2 point, Dictionary<StdTuple2D<int>, Vector2> centers, out StdTuple2D<int> nearest)
-        {
-            nearest = default;
-            float best = float.MaxValue;
-            bool found = false;
-            foreach (var kv in centers)
-            {
-                float d = Vector2.DistanceSquared(point, kv.Value);
-                if (d < best)
-                {
-                    best = d;
-                    nearest = kv.Key;
-                    found = true;
-                }
-            }
-            return found;
-        }
-
-        private static float Heuristic(StdTuple2D<int> a, StdTuple2D<int> b, Dictionary<StdTuple2D<int>, Vector2> centers)
-        {
-            var pa = centers[a];
-            var pb = centers[b];
-            return Vector2.Distance(pa, pb);
-        }
-
-        private static List<StdTuple2D<int>> FindShortestPathAStar(
-            StdTuple2D<int> start,
-            StdTuple2D<int> goal,
-            Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>> graph,
-            Dictionary<StdTuple2D<int>, Vector2> centers)
-        {
-            if (!graph.ContainsKey(start) || !graph.ContainsKey(goal))
-                return null;
-
             var cameFrom = new Dictionary<StdTuple2D<int>, StdTuple2D<int>>();
-            var gScore = new Dictionary<StdTuple2D<int>, float> { [start] = 0f };
+            var visited = new HashSet<StdTuple2D<int>>();
+            var queue = new Queue<StdTuple2D<int>>();
 
-            var open = new PriorityQueue<StdTuple2D<int>, float>();
-            var f0 = Heuristic(start, goal, centers);
-            open.Enqueue(start, f0);
+            foreach (var s in sources)
+                if (graph.ContainsKey(s) && !blocked.Contains(s) && visited.Add(s))
+                    queue.Enqueue(s);
 
-            var inOpen = new HashSet<StdTuple2D<int>> { start };
-
-            while (open.Count > 0)
+            while (queue.Count > 0)
             {
-                var current = open.Dequeue();
-                inOpen.Remove(current);
-
-                if (current.Equals(goal))
-                    return ReconstructPath(cameFrom, current);
-
-                if (!graph.TryGetValue(current, out var neighbors))
+                var cur = queue.Dequeue();
+                if (!graph.TryGetValue(cur, out var neighbors))
                     continue;
-
                 foreach (var nb in neighbors)
                 {
-                    float tentative = gScore[current] + Vector2.Distance(centers[current], centers[nb]);
-
-                    if (!gScore.TryGetValue(nb, out var old) || tentative < old)
-                    {
-                        cameFrom[nb] = current;
-                        gScore[nb] = tentative;
-                        float f = tentative + Heuristic(nb, goal, centers);
-                        if (!inOpen.Contains(nb))
-                        {
-                            open.Enqueue(nb, f);
-                            inOpen.Add(nb);
-                        }
-                    }
+                    if (blocked.Contains(nb) || !visited.Add(nb))
+                        continue;
+                    cameFrom[nb] = cur;
+                    queue.Enqueue(nb);
                 }
             }
 
-            return null;
+            return cameFrom;
         }
 
-        private static List<StdTuple2D<int>> ReconstructPath(Dictionary<StdTuple2D<int>, StdTuple2D<int>> cameFrom, StdTuple2D<int> current)
+        // Reconstruct the shortest-hop path from any accessible source to
+        // target, or null if unreachable.
+        private static List<StdTuple2D<int>> PathFromAccessible(
+            StdTuple2D<int> target,
+            Dictionary<StdTuple2D<int>, StdTuple2D<int>> cameFrom,
+            HashSet<StdTuple2D<int>> sources)
         {
-            var path = new List<StdTuple2D<int>> { current };
-            while (cameFrom.TryGetValue(current, out var prev))
+            if (sources.Contains(target))
+                return new List<StdTuple2D<int>> { target };
+            if (!cameFrom.ContainsKey(target))
+                return null;
+
+            var path = new List<StdTuple2D<int>> { target };
+            var cur = target;
+            while (cameFrom.TryGetValue(cur, out var prev))
             {
-                current = prev;
-                path.Add(current);
+                cur = prev;
+                path.Add(cur);
             }
             path.Reverse();
             return path;
         }
 
-        private static void DrawPath(
+        // Draw consecutive node centers with dots at each hop.
+        private static void DrawNodePath(
             ImDrawListPtr drawList,
-            Vector2 playerLocation,
-            Vector2 labelBgPos,
-            Vector2 labelBgSize,
             List<StdTuple2D<int>> path,
             Dictionary<StdTuple2D<int>, Vector2> centers,
-            Dictionary<StdTuple2D<int>, bool> completedMap,
-            Dictionary<StdTuple2D<int>, bool> accessibleMap,
             uint color,
             float thickness,
-            int lineChannel,
-            int dotChannel)
+            RectangleF screenBounds)
         {
-            if (path == null || path.Count == 0)
-                return;
-
-            var segments = new List<(Vector2 A, Vector2 B, uint Col)>(path.Count + 1);
-            var dots = new List<(Vector2 P, uint Col, float R)>(path.Count + 2);
-
-            var first = centers[path[0]];
-            segments.Add((playerLocation, first, color));
-
-            if (completedMap != null && completedMap.TryGetValue(path[0], out var firstCompleted) && firstCompleted)
-                dots.Add((first, CompletedNodeDotColor, thickness));
-
-            for (int i = 1; i<path.Count; i++)
+            drawList.ChannelsSetCurrent(ChannelLines);
+            Vector2? prev = null;
+            foreach (var g in path)
             {
-                var a = centers[path[i - 1]];
-                var b = centers[path[i]];
-                bool aC = completedMap != null && completedMap.TryGetValue(path[i - 1], out var ac) && ac;
-                bool bC = completedMap != null && completedMap.TryGetValue(path[i], out var bc) && bc;
-                bool aA = accessibleMap != null && accessibleMap.TryGetValue(path[i - 1], out var aa) && aa;
-                bool bA = accessibleMap != null && accessibleMap.TryGetValue(path[i], out var ba) && ba;
-                
-                uint segColor = ((aC && bC) || (aA && bA)) ? CompletedNodeDotColor : color;
-                segments.Add((a, b, segColor));
-
-                var atNode = path[i];
-                if (completedMap != null && completedMap.TryGetValue(atNode, out var isCompleted) && isCompleted)
-                    dots.Add((b, CompletedNodeDotColor, thickness));
+                if (!centers.TryGetValue(g, out var c))
+                    { prev = null; continue; }
+                if (prev.HasValue)
+                {
+                    // Draw segment only when at least one endpoint is on screen.
+                    if (screenBounds.Contains(prev.Value.X, prev.Value.Y)
+                        || screenBounds.Contains(c.X, c.Y))
+                    {
+                        drawList.AddLine(prev.Value, c, color, thickness);
+                    }
+                }
+                prev = c;
             }
 
-            var last = centers[path[^1]];
-            var rectCenter = (labelBgPos + (labelBgPos + labelBgSize)) * 0.5f;
-            var tip = GetLineRectangleIntersection(last, rectCenter, labelBgPos, labelBgPos + labelBgSize);
-            segments.Add((last, tip, color));
-            var endDot = OffsetPointOutsideRect(tip, rectCenter, thickness * 0.6f);
-            dots.Add((endDot, color, thickness));
-
-            drawList.ChannelsSetCurrent(lineChannel);
-            for (int i = 0; i < segments.Count; i++)
-                drawList.AddLine(segments[i].A, segments[i].B, segments[i].Col, thickness);
-
-            drawList.ChannelsSetCurrent(dotChannel);
-            float outlineTh = MathF.Max(1f, thickness * 0.35f);
-            for (int i = 0; i < dots.Count; i++)
+            // Dots only for on-screen nodes.
+            drawList.ChannelsSetCurrent(ChannelDots);
+            foreach (var g in path)
             {
-                drawList.AddCircleFilled(dots[i].P, dots[i].R, dots[i].Col);
-                drawList.AddCircle(dots[i].P, dots[i].R, DotOutlineColor, 0, outlineTh);
+                if (centers.TryGetValue(g, out var c) && screenBounds.Contains(c.X, c.Y))
+                    drawList.AddCircleFilled(c, thickness * 0.9f, color);
             }
         }
+
 #endregion
 
         private void LoadBiomeMap()
@@ -915,50 +802,6 @@
                 ImGui.PopFont();
                 _font.Scale = _prevScale;
             }
-        }
-
-        private static Vector2 GetLineRectangleIntersection(Vector2 lineStart, Vector2 rectCenter, Vector2 rectMin, Vector2 rectMax)
-        {
-            if (lineStart.X >= rectMin.X && lineStart.X <= rectMax.X &&
-                lineStart.Y >= rectMin.Y && lineStart.Y <= rectMax.Y)
-                return lineStart;
-
-            Vector2 direction = rectCenter - lineStart;
-
-            float dirX = direction.X == 0 ? 1e-6f : direction.X;
-            float dirY = direction.Y == 0 ? 1e-6f : direction.Y;
-
-            float tMinX = (rectMin.X - lineStart.X) / dirX;
-            float tMaxX = (rectMax.X - lineStart.X) / dirX;
-            float tMinY = (rectMin.Y - lineStart.Y) / dirY;
-            float tMaxY = (rectMax.Y - lineStart.Y) / dirY;
-
-            if (tMinX > tMaxX)
-                (tMaxX, tMinX) = (tMinX, tMaxX);
-
-            if (tMinY > tMaxY)
-                (tMaxY, tMinY) = (tMinY, tMaxY);
-
-            float tEnter = Math.Max(tMinX, tMinY);
-            float tExit = Math.Min(tMaxX, tMaxY);
-
-            if (tEnter > tExit || tEnter < 0)
-                return rectCenter;
-
-            float t = Math.Min(tEnter, 1.0f);
-
-            return lineStart + direction * t;
-        }
-
-        private static Vector2 OffsetPointOutsideRect(Vector2 borderPoint, Vector2 rectCenter, float distance)
-        {
-            var dir = borderPoint - rectCenter;
-            float lenSq = dir.X * dir.X + dir.Y * dir.Y;
-            if (lenSq< 1e-6f)
-                return borderPoint;
-            dir /= MathF.Sqrt(lenSq);
-
-            return borderPoint + dir* distance;
         }
 
         private void MoveMapGroup(int index, int direction)
@@ -1192,11 +1035,17 @@
                    Math.Abs(a.W - b.W) < eps;
         }
 
-        private static RectangleF CalculateBounds(float range)
+        private static void PathRow(string label, ref bool enabled, ref Vector4 color, ref int maxHops)
         {
-            var baseBoundsTowers = new RectangleF(0, 0, ImGui.GetIO().DisplaySize.X, ImGui.GetIO().DisplaySize.Y);
-
-            return RectangleF.Inflate(baseBoundsTowers, baseBoundsTowers.Width * (range - 1.0f), baseBoundsTowers.Height * (range - 1.0f));
+            ImGui.Checkbox($"##{label}Enabled", ref enabled);
+            ImGui.SameLine();
+            ColorSwatch($"##{label}Color", ref color);
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(80);
+            ImGui.SliderInt($"##{label}Hops", ref maxHops, 1, 200);
+            ImGuiHelper.ToolTip("Maximum path length in maps to clear.");
+            ImGui.SameLine();
+            ImGui.Text(label);
         }
 
         [DllImport("user32.dll")]
