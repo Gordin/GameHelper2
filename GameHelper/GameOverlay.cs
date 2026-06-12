@@ -65,6 +65,8 @@ namespace GameHelper
         /// <inheritdoc />
         protected override Task PostInitialized()
         {
+            Ui.ImGuiTheme.Apply();
+
             if (MiscHelper.TryConvertStringToImGuiGlyphRanges(Core.GHSettings.FontCustomGlyphRange, out var glyphRanges))
             {
                 Core.Overlay.ReplaceFont(
