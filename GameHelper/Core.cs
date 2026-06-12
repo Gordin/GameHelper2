@@ -60,6 +60,11 @@ namespace GameHelper
         public static State GHSettings { get; } = JsonHelper.CreateOrLoadJsonFile<State>(State.CoreSettingFile);
 
         /// <summary>
+        ///     Gets a value indicating whether the GameHelper settings window is currently open.
+        /// </summary>
+        public static bool IsSettingsMenuOpen { get; internal set; }
+
+        /// <summary>
         ///     Gets the cache for all the GGPK data with value type string.
         /// </summary>
         internal static GgpkAddresses<string> GgpkStringCache {get;} = new();

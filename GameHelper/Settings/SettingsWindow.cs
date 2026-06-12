@@ -694,6 +694,7 @@ namespace GameHelper.Settings
                     }
                 }
 
+                Core.IsSettingsMenuOpen = isSettingsWindowVisible;
                 if (!isSettingsWindowVisible)
                 {
                     continue;
