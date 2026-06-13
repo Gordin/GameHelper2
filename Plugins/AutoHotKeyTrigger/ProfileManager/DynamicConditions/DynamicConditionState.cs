@@ -44,6 +44,7 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
                 {
                     this.PlayerAnimation = (int)actorComponent.Animation;
                     this.PlayerSkillIsUseable = actorComponent.IsSkillUsable;
+                    this.MinionCommandSkillIsUsable = actorComponent.UsableMinionCommandSkills;
                     this.DeployedObjectsCount = actorComponent.DeployedEntities;
                     this.ActiveSkills = actorComponent.ActiveSkills;
                 }
@@ -85,6 +86,11 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         ///     The player skill useability status.
         /// </summary>
         public HashSet<string> PlayerSkillIsUseable { get; } = new();
+
+        /// <summary>
+        ///     The names of minion "command" skills usable on at least one summoned minion.
+        /// </summary>
+        public HashSet<string> MinionCommandSkillIsUsable { get; } = new();
 
         /// <summary>
         ///   The player skill details are in this structure.

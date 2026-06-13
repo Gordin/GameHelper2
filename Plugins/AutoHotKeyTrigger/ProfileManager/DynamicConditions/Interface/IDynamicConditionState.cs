@@ -30,6 +30,11 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
         HashSet<string> PlayerSkillIsUseable { get; }
 
         /// <summary>
+        ///     The names of minion "command" skills usable on at least one summoned minion.
+        /// </summary>
+        HashSet<string> MinionCommandSkillIsUsable { get; }
+
+        /// <summary>
         ///   The player skill details are in this structure.
         /// </summary>
         Dictionary<string, ActiveSkillDetails> ActiveSkills { get; }

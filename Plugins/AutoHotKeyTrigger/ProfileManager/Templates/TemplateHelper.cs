@@ -30,6 +30,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                 ConditionType.AILMENT => AilmentTemplate.Add(),
                 ConditionType.FLASK_IS_USEABLE => FlaskIsUseableTemplate.Add(),
                 ConditionType.IS_SKILL_USEABLE => IsSkillUseableTemplate.Add(),
+                ConditionType.MINION_COMMAND_USEABLE => IsMinionCommandUseableTemplate.Add(),
                 ConditionType.DEPLOYED_OBJECT_COUNT => DeployedObjectTemplate.Add(),
                 ConditionType.NEARBY_MONSTER_COUNT => NearbyMonsterTemplate.Add(),
                 ConditionType.NEARBY_MONSTER_COUNT_IN_RANGE => NearbyMonsterInRangeTemplate.Add(),

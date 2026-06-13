@@ -8,11 +8,11 @@ namespace GameOffsets.Objects.Components
     public struct ActorOffset
     {
         [FieldOffset(0x000)] public ComponentHeader Header;
-        [FieldOffset(0x8A0)] public int AnimationId;
+        [FieldOffset(0x8B0)] public int AnimationId;
         [FieldOffset(0xB08)] public StdVector ActiveSkillsPtr; // ActiveSkillStructure // take and remove skill gem.
         [FieldOffset(0xB20)] public StdVector CooldownsPtr;
         // [FieldOffset(0xA70)] public StdVector VaalSoulsPtr;
-        [FieldOffset(0xC18)] public StdVector DeployedEntityArray; // DeployedEntityStructure
+        [FieldOffset(0xC28)] public StdVector DeployedEntityArray; // DeployedEntityStructure
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -101,6 +101,11 @@ namespace GameOffsets.Objects.Components
         public int DeployedObjectType;
         public int PAD_0x014;
         public int Counter;
+
+        // PoE2 grew this element from 20 to 24 bytes. ReadStdVector rejects the
+        // whole vector when its byte length isn't a multiple of the element size,
+        // so an undersized struct here makes the deployed-entity count read 0.
+        public int PAD_0x18;
 
         public override readonly string ToString()
         {

@@ -54,6 +54,12 @@ namespace AutoHotKeyTrigger.ProfileManager.Enums
         IS_SKILL_USEABLE,
 
         /// <summary>
+        ///     Condition based on a minion "command" skill being useable (its cooldown lives on
+        ///     the summoned minion, not the player).
+        /// </summary>
+        MINION_COMMAND_USEABLE,
+
+        /// <summary>
         ///     Condition based on deployed object count.
         /// </summary>
         DEPLOYED_OBJECT_COUNT,
