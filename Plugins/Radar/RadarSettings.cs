@@ -51,6 +51,16 @@ namespace Radar
         public float MiniMapXOffset = 0f;
 
         /// <summary>
+        /// Automatically detect local co-op mode in controller mode.
+        /// </summary>
+        public bool AutoDetectCoopMode = true;
+
+        /// <summary>
+        /// Enable co-op mode maphack centering on the midpoint between P1 and P2.
+        /// </summary>
+        public bool EnableCoopMode = false;
+
+        /// <summary>
         /// Do not draw the Radar plugin stuff when game is in the background.
         /// </summary>
         public bool DrawWhenForeground = true;

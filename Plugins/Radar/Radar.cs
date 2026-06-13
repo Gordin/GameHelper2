@@ -114,6 +114,15 @@ namespace Radar
             ImGuiHelper.ToolTip("Adjusts only the mini-map overlay horizontally. Negative moves it left, positive moves it right.");
             ImGui.DragFloat("Mini Map Zoom", ref this.Settings.MiniMapZoomMultiplier, 0.001f, 0.01f, 3f, "%.3f");
             ImGuiHelper.ToolTip("Controls how far mini-map icons sit from your character (the mini-map's effective zoom).");
+
+            ImGui.Checkbox("Auto-Detect Local Co-op Mode", ref this.Settings.AutoDetectCoopMode);
+            ImGuiHelper.ToolTip("Automatically detects when you are playing local co-op in controller mode and adjusts map centering.");
+            if (!this.Settings.AutoDetectCoopMode)
+            {
+                ImGui.Checkbox("Enable Local Co-op Map Hack Centering", ref this.Settings.EnableCoopMode);
+                ImGuiHelper.ToolTip("Centers the map/maphack on the midpoint of P1 and P2 when playing co-op.");
+            }
+
             ImGui.Checkbox("Hide Radar when in Hideout/Town", ref this.Settings.DrawWhenNotInHideoutOrTown);
             ImGui.Checkbox("Hide Radar when game is in the background", ref this.Settings.DrawWhenForeground);
             ImGui.Checkbox("Hide Radar when game is paused", ref this.Settings.DrawWhenNotPaused);
@@ -308,6 +317,26 @@ namespace Radar
                 this.Settings.CullWindowSize.Y = Core.Process.WindowArea.Size.Height;
             }
 
+            var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
+            {
+                return;
+            }
+
+            var trackingPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var trackingHeight = playerRender.TerrainHeight;
+
+            var playerOther = currentAreaInstance.AwakeEntities.Values
+                .FirstOrDefault(e => e.EntitySubtype == EntitySubtypes.PlayerOther);
+            if (this.IsLocalCoopActive(playerRender, playerOther != null))
+            {
+                if (playerOther != null && playerOther.TryGetComponent<Render>(out var pOtherRender))
+                {
+                    trackingPos = (trackingPos + new Vector2(pOtherRender.GridPosition.X, pOtherRender.GridPosition.Y)) / 2f;
+                    trackingHeight = (trackingHeight + pOtherRender.TerrainHeight) / 2f;
+                }
+            }
+
             this.CollectEntityPaths();
             this.RebuildEntityPaths();
 
@@ -334,12 +363,12 @@ namespace Radar
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
                 ImGui.Begin("Large Map Culling Window", ImGuiHelper.TransparentWindowFlags);
                 ImGui.PopStyleVar();
-                this.DrawLargeMap(largeMapRealCenter);
-                this.DrawTgtFiles(largeMapRealCenter);
-                this.DrawDirectionLines(largeMapRealCenter);
-                this.DrawTgtIcons(largeMapRealCenter, largeMapModifiedZoom * 5f);
-                this.DrawMapIcons(largeMapRealCenter, largeMapModifiedZoom * 5f);
-                this.DrawEntityPaths(largeMapRealCenter);
+                this.DrawLargeMap(largeMapRealCenter, trackingPos, trackingHeight);
+                this.DrawTgtFiles(largeMapRealCenter, trackingPos, trackingHeight);
+                this.DrawDirectionLines(largeMapRealCenter, trackingPos, trackingHeight);
+                this.DrawTgtIcons(largeMapRealCenter, trackingPos, trackingHeight, largeMapModifiedZoom * 5f);
+                this.DrawMapIcons(largeMapRealCenter, trackingPos, trackingHeight, largeMapModifiedZoom * 5f);
+                this.DrawEntityPaths(largeMapRealCenter, trackingPos, trackingHeight);
                 ImGui.End();
             }
 
@@ -367,9 +396,9 @@ namespace Radar
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
                 ImGui.Begin("###minimapRadar", ImGuiHelper.TransparentWindowFlags);
                 ImGui.PopStyleVar();
-                this.DrawTgtIcons(miniMapCenter, miniMap.Zoom);
-                this.DrawMapIcons(miniMapCenter, miniMap.Zoom);
-                this.DrawEntityPaths(miniMapCenter);
+                this.DrawTgtIcons(miniMapCenter, trackingPos, trackingHeight, miniMap.Zoom);
+                this.DrawMapIcons(miniMapCenter, trackingPos, trackingHeight, miniMap.Zoom);
+                this.DrawEntityPaths(miniMapCenter, trackingPos, trackingHeight);
                 ImGui.End();
             }
         }
@@ -462,7 +491,7 @@ namespace Radar
             }
         }
 
-        private void DrawLargeMap(Vector2 mapCenter)
+        private void DrawLargeMap(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             if (!this.Settings.DrawWalkableMap)
             {
@@ -474,26 +503,20 @@ namespace Radar
                 return;
             }
 
-            var player = Core.States.InGameStateObject.CurrentAreaInstance.Player;
-            if (!player.TryGetComponent<Render>(out var pRender))
-            {
-                return;
-            }
-
             var rectf = new RectangleF(
-                -pRender.GridPosition.X,
-                -pRender.GridPosition.Y,
+                -trackingPos.X,
+                -trackingPos.Y,
                 this.walkableMapDimension.X,
                 this.walkableMapDimension.Y);
 
             var p1 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Left, rectf.Top), -pRender.TerrainHeight);
+                new Vector2(rectf.Left, rectf.Top), -trackingHeight);
             var p2 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Right, rectf.Top), -pRender.TerrainHeight);
+                new Vector2(rectf.Right, rectf.Top), -trackingHeight);
             var p3 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Right, rectf.Bottom), -pRender.TerrainHeight);
+                new Vector2(rectf.Right, rectf.Bottom), -trackingHeight);
             var p4 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Left, rectf.Bottom), -pRender.TerrainHeight);
+                new Vector2(rectf.Left, rectf.Bottom), -trackingHeight);
             p1 += mapCenter;
             p2 += mapCenter;
             p3 += mapCenter;
@@ -509,7 +532,7 @@ namespace Radar
             }
         }
 
-        private void DrawTgtFiles(Vector2 mapCenter)
+        private void DrawTgtFiles(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             var col = ImGuiHelper.Color(
                 (uint)(this.Settings.POIColor.X * 255),
@@ -528,12 +551,7 @@ namespace Radar
             }
 
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
-
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var pPos = trackingPos;
             var clipMin = ImGui.GetWindowPos();
             var clipMax = clipMin + ImGui.GetWindowSize();
 
@@ -547,7 +565,7 @@ namespace Radar
                 }
 
                 var fpos = Helper.DeltaInWorldToMapDelta(
-                    location - pPos, -playerRender.TerrainHeight + height);
+                    location - pPos, -trackingHeight + height);
                 var textMin = mapCenter + fpos - stringImGuiSize;
                 var textMax = mapCenter + fpos + stringImGuiSize;
                 if (textMax.X < clipMin.X || textMin.X > clipMax.X || textMax.Y < clipMin.Y || textMin.Y > clipMax.Y)
@@ -628,7 +646,7 @@ namespace Radar
             }
         }
 
-        private void DrawDirectionLines(Vector2 mapCenter)
+        private void DrawDirectionLines(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             var showStraight = this.Settings.ShowStraightLine;
             var showSmooth = this.Settings.ShowSmoothPath;
@@ -650,7 +668,8 @@ namespace Radar
                 return;
             }
 
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var actualPlayerPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var pPos = actualPlayerPos;
             var gridHeightData = currentAreaInstance.GridHeightData;
 
             // Build door-override map: open doors force their cells to walkable
@@ -769,9 +788,10 @@ namespace Radar
                 }
 
                 var poiFpos = Helper.DeltaInWorldToMapDelta(
-                    gridPos - pPos, -playerRender.TerrainHeight + poiHeight);
+                    gridPos - trackingPos, -trackingHeight + poiHeight);
                 var poiScreen = mapCenter + poiFpos;
-                var playerScreen = mapCenter;
+                var playerScreen = mapCenter + Helper.DeltaInWorldToMapDelta(
+                    actualPlayerPos - trackingPos, -trackingHeight + playerRender.TerrainHeight);
 
                 // --- Straight-line arrow ---
                 if (showStraight)
@@ -800,7 +820,7 @@ namespace Radar
                     this.poiPathCache.TryGetValue(cacheKey, out var cachedPath) &&
                     cachedPath != null && cachedPath.Count > 1)
                 {
-                    var prevScreen = mapCenter;
+                    var prevScreen = playerScreen;
                     for (var pi = 1; pi < cachedPath.Count; pi++)
                     {
                         var pt = cachedPath[pi];
@@ -813,7 +833,7 @@ namespace Radar
                             ptHeight = gridHeightData[iy][ix];
                         }
 
-                        var ptFpos = Helper.DeltaInWorldToMapDelta(pt - pPos, -playerRender.TerrainHeight + ptHeight);
+                        var ptFpos = Helper.DeltaInWorldToMapDelta(pt - trackingPos, -trackingHeight + ptHeight);
                         var ptScreen = mapCenter + ptFpos;
                         fgDraw.AddLine(prevScreen, ptScreen, paletteColor, thickness + 1f);
                         prevScreen = ptScreen;
@@ -822,16 +842,10 @@ namespace Radar
             }
         }
 
-        private void DrawTgtIcons(Vector2 mapCenter, float iconSizeMultiplier)
+        private void DrawTgtIcons(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight, float iconSizeMultiplier)
         {
             var fgDraw = ImGui.GetWindowDrawList();
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
-
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
 
             foreach (var tgtKV in currentAreaInstance.TgtTilesLocations)
             {
@@ -842,7 +856,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, templeIcon, iconSizeMultiplier, shiftUp: true);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, templeIcon, iconSizeMultiplier, shiftUp: true);
                 }
                 else if (tgtKV.Key.StartsWith(RunestoneTgtPrefix) && tgtKV.Key.EndsWith(":1-y:1"))
                 {
@@ -851,7 +865,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, runestoneIcon, iconSizeMultiplier, shiftUp: true);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, runestoneIcon, iconSizeMultiplier, shiftUp: true);
                 }
                 else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
                 {
@@ -860,7 +874,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, bossIcon, iconSizeMultiplier);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, bossIcon, iconSizeMultiplier);
                 }
                 else if (this.Settings.StairsTgts.ContainsKey(tgtKV.Key))
                 {
@@ -869,7 +883,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, stairsIcon, iconSizeMultiplier);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, stairsIcon, iconSizeMultiplier);
                 }
             }
         }
@@ -877,8 +891,8 @@ namespace Radar
         private void DrawIconAtTgtLocations(
             ImDrawListPtr fgDraw,
             Vector2 mapCenter,
-            Vector2 pPos,
-            Render playerRender,
+            Vector2 trackingPos,
+            float trackingHeight,
             List<Vector2> locations,
             IconPicker icon,
             float iconSizeMultiplier,
@@ -896,7 +910,7 @@ namespace Radar
                 }
 
                 var fpos = Helper.DeltaInWorldToMapDelta(
-                    location - pPos, -playerRender.TerrainHeight + height);
+                    location - trackingPos, -trackingHeight + height);
                 var iconSizeMultiplierVector = new Vector2(iconSizeMultiplier);
                 iconSizeMultiplierVector *= icon.IconScale;
                 var offset = shiftUp ? new Vector2(0, iconSizeMultiplierVector.Y) : Vector2.Zero;
@@ -909,19 +923,15 @@ namespace Radar
             }
         }
 
-        private void DrawMapIcons(Vector2 mapCenter, float iconSizeMultiplier)
+        private void DrawMapIcons(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight, float iconSizeMultiplier)
         {
             var fgDraw = ImGui.GetWindowDrawList();
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
 
             var clipMin = ImGui.GetWindowPos();
             var clipMax = clipMin + ImGui.GetWindowSize();
             var clipPadding = iconSizeMultiplier * 4f;
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var pPos = trackingPos;
 
             var baseIcons = this.Settings.BaseIcons;
             var expeditionIcons = this.Settings.ExpeditionIcons;
@@ -970,7 +980,7 @@ namespace Radar
                 }
 
                 var ePos = new Vector2(entityRender.GridPosition.X, entityRender.GridPosition.Y);
-                var fpos = Helper.DeltaInWorldToMapDelta(ePos - pPos, entityRender.TerrainHeight - playerRender.TerrainHeight);
+                var fpos = Helper.DeltaInWorldToMapDelta(ePos - pPos, entityRender.TerrainHeight - trackingHeight);
                 var screenPos = mapCenter + fpos;
                 if (screenPos.X < clipMin.X - clipPadding || screenPos.X > clipMax.X + clipPadding ||
                     screenPos.Y < clipMin.Y - clipPadding || screenPos.Y > clipMax.Y + clipPadding)
@@ -1502,7 +1512,7 @@ namespace Radar
         /// <summary>
         /// Draws cached entity paths. Must be called after CollectEntityPaths.
         /// </summary>
-        private void DrawEntityPaths(Vector2 mapCenter)
+        private void DrawEntityPaths(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             if (!this.Settings.ShowEntityPaths ||
                 (this.entityPathSnapshot.Count == 0 && this.tileIconPathSnapshot.Count == 0))
@@ -1511,12 +1521,6 @@ namespace Radar
             }
 
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
-
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
             var gridHeightData = currentAreaInstance.GridHeightData;
 
             ImDrawListPtr fgDraw;
@@ -1545,7 +1549,17 @@ namespace Radar
                     (uint)(color.Z * 255),
                     (uint)(color.W * 255));
 
-                var prevScreen = mapCenter;
+                var startPt = cachedPath[0];
+                float startPtHeight = 0;
+                var sx = (int)startPt.X;
+                var sy = (int)startPt.Y;
+                if (sx >= 0 && sx < gridHeightData[0].Length &&
+                    sy >= 0 && sy < gridHeightData.Length)
+                {
+                    startPtHeight = gridHeightData[sy][sx];
+                }
+                var prevScreen = mapCenter + Helper.DeltaInWorldToMapDelta(startPt - trackingPos, -trackingHeight + startPtHeight);
+
                 for (var pi = 1; pi < cachedPath.Count; pi++)
                 {
                     var pt = cachedPath[pi];
@@ -1558,7 +1572,7 @@ namespace Radar
                         ptHeight = gridHeightData[iy][ix];
                     }
 
-                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - pPos, -playerRender.TerrainHeight + ptHeight);
+                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - trackingPos, -trackingHeight + ptHeight);
                     var ptScreen = mapCenter + ptFpos;
                     fgDraw.AddLine(prevScreen, ptScreen, pathColor, thickness + 1f);
                     prevScreen = ptScreen;
@@ -1580,7 +1594,17 @@ namespace Radar
                     (uint)(color.Z * 255),
                     (uint)(color.W * 255));
 
-                var prevScreen = mapCenter;
+                var startPt = cachedPath[0];
+                float startPtHeight = 0;
+                var sx = (int)startPt.X;
+                var sy = (int)startPt.Y;
+                if (sx >= 0 && sx < gridHeightData[0].Length &&
+                    sy >= 0 && sy < gridHeightData.Length)
+                {
+                    startPtHeight = gridHeightData[sy][sx];
+                }
+                var prevScreen = mapCenter + Helper.DeltaInWorldToMapDelta(startPt - trackingPos, -trackingHeight + startPtHeight);
+
                 for (var pi = 1; pi < cachedPath.Count; pi++)
                 {
                     var pt = cachedPath[pi];
@@ -1593,7 +1617,7 @@ namespace Radar
                         ptHeight = gridHeightData[iy][ix];
                     }
 
-                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - pPos, -playerRender.TerrainHeight + ptHeight);
+                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - trackingPos, -trackingHeight + ptHeight);
                     var ptScreen = mapCenter + ptFpos;
                     fgDraw.AddLine(prevScreen, ptScreen, pathColor, thickness + 1f);
                     prevScreen = ptScreen;
@@ -2016,6 +2040,36 @@ namespace Radar
             this.tileIconPathSnapshot.Clear();
             this.RemoveMapTexture();
             this.currentAreaName = string.Empty;
+        }
+
+        private bool IsLocalCoopActive(Render playerRender, bool hasOtherPlayer)
+        {
+            if (!this.Settings.AutoDetectCoopMode)
+            {
+                return this.Settings.EnableCoopMode;
+            }
+
+            if (!Core.GHSettings.EnableControllerMode || !hasOtherPlayer)
+            {
+                return false;
+            }
+
+            var worldData = Core.States.InGameStateObject.CurrentWorldInstance;
+            if (worldData == null || worldData.Address == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var screenPos = worldData.WorldToScreen(playerRender.WorldPosition, playerRender.TerrainHeight);
+            if (screenPos == Vector2.Zero)
+            {
+                return false;
+            }
+
+            var screenCenter = new Vector2(
+                Core.Process.WindowArea.Width / 2f,
+                Core.Process.WindowArea.Height / 2f);
+            return Vector2.Distance(screenPos, screenCenter) > 35f;
         }
     }
 }

@@ -15,7 +15,7 @@ namespace GameOffsets.Objects.States.InGameState
         [FieldOffset(0x730)] public IntPtr PassiveSkillTreePanel;
         [FieldOffset(0x7C8)] public IntPtr MapParentPtr;
         [FieldOffset(0x988)] public IntPtr WorldMapPanelPtr;
-        [FieldOffset(0xAA8)] public IntPtr ControllerModeMapParentPtr;
+        [FieldOffset(0xB98)] public IntPtr ControllerModeMapParentPtr;
     }
 
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
