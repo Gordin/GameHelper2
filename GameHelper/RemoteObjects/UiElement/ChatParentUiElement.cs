@@ -1,6 +1,7 @@
 ﻿namespace GameHelper.RemoteObjects.UiElement
 {
     using GameHelper.Cache;
+    using GameOffsets.Natives;
     using ImGuiNET;
     using System;
 
@@ -17,7 +18,12 @@
         internal ChatParentUiElement(IntPtr address, UiElementParents parents) :
             base(address, parents) {}
 
-        public bool IsChatActive => this.backgroundColor.W * 255 >= 0x8C;
+        // The chat-active background-alpha heuristic stopped working (alpha is now
+        // always 255). The game instead toggles bit 18 (0x40000) of the chat parent
+        // UiElement flags when the chat is focused/active.
+        private const int CHAT_ACTIVE_BINARY_POS = 0x12;
+
+        public bool IsChatActive => Util.isBitSetUint(this.flags, CHAT_ACTIVE_BINARY_POS);
 
         /// <summary>
         ///     Converts the <see cref="ChatParentUiElement" /> class data to ImGui.
@@ -25,7 +31,7 @@
         internal override void ToImGui()
         {
             base.ToImGui();
-            ImGui.Text($"IsChatActive: {this.IsChatActive} ({this.backgroundColor.W * 255})");
+            ImGui.Text($"IsChatActive: {this.IsChatActive} (flags: {this.flags:X})");
         }
     }
 }
