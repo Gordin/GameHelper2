@@ -92,6 +92,19 @@ namespace Radar
         public float IconScale => this.iconScale;
 
         /// <summary>
+        /// Gets or sets a value indicating whether this icon should be drawn on the map.
+        /// Toggled independently of <see cref="IconScale"/> so the size is preserved while hidden.
+        /// </summary>
+        public bool Show = true;
+
+        /// <summary>
+        /// Gets a value indicating whether this icon should actually be drawn:
+        /// enabled via <see cref="Show"/> and has a positive scale.
+        /// </summary>
+        [JsonIgnore]
+        public bool Draw => this.Show && this.iconScale > 0f;
+
+        /// <summary>
         /// Gets or sets a value indicating whether to compute and draw a path to this entity type.
         /// </summary>
         public bool ShowPath = false;

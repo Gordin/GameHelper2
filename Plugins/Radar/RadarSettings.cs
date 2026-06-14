@@ -283,6 +283,12 @@ namespace Radar
         public Dictionary<string, IconPicker> RitualIcons = new();
 
         /// <summary>
+        /// Icons to display on the map for Abyss nodes. "Abyss Crack" and "Abyss Pit"
+        /// match specific paths; "Other" matches any other entity with "Abyss" in its path.
+        /// </summary>
+        public Dictionary<string, IconPicker> AbyssIcons = new();
+
+        /// <summary>
         /// The group number used for expedition markers in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
@@ -311,6 +317,18 @@ namespace Radar
         /// </summary>
         [JsonIgnore]
         public const int RitualGroup = 104;
+
+        /// <summary>
+        /// The group number used for Abyss nodes in SpecialMiscObjPaths.
+        /// </summary>
+        [JsonIgnore]
+        public const int AbyssGroup = 105;
+
+        /// <summary>
+        /// The group number used for Breach initiators in SpecialMiscObjPaths.
+        /// </summary>
+        [JsonIgnore]
+        public const int BreachInitiatorGroup = 106;
 
         /// <summary>
         /// Maps mod name substrings to display names used as keys in ExpeditionRemnantIcons.
@@ -373,6 +391,8 @@ namespace Radar
                 ImGui.Columns(2, $"icons columns##{headingText}", false);
                 foreach (var icon in icons)
                 {
+                    ImGui.Checkbox($"##show{headingText}{icon.Key}", ref icon.Value.Show);
+                    ImGui.SameLine();
                     ImGui.Text(icon.Key);
                     ImGui.NextColumn();
                     icon.Value.ShowSettingWidget();
@@ -395,6 +415,8 @@ namespace Radar
                 ImGui.Columns(2, $"icons columns##POIMonsterCol", false);
                 foreach (var poimonster in this.POIMonsters)
                 {
+                    ImGui.Checkbox($"##showpoimonster{poimonster.Key}", ref poimonster.Value.Show);
+                    ImGui.SameLine();
                     ImGui.Text(poimonster.Key  == -1 ? "Default Group" : $"Group {poimonster.Key}");
                     ImGui.NextColumn();
                     poimonster.Value.ShowSettingWidget();
@@ -436,6 +458,8 @@ namespace Radar
                 ImGui.Columns(2, $"icons columns##SpecialObjects", false);
                 foreach (var obj in this.OtherImportantObjects)
                 {
+                    ImGui.Checkbox($"##showspecialobj{obj.Key}", ref obj.Value.Show);
+                    ImGui.SameLine();
                     ImGui.Text(obj.Key == -1 ? "Default Group" : $"Group {obj.Key}");
                     ImGui.NextColumn();
                     obj.Value.ShowSettingWidget();
@@ -483,6 +507,7 @@ namespace Radar
             this.AddDefaultExpeditionRemnantIcons(basicIconPathName);
             this.AddDefaultRunestoneIcons(basicIconPathName);
             this.AddDefaultRitualIcons(basicIconPathName);
+            this.AddDefaultAbyssIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
             this.AddDefaultBossIcons(basicIconPathName);
         }
@@ -526,6 +551,9 @@ namespace Radar
         private void AddDefaultBreachIcons(string iconPathName)
         {
             this.BreachIcons.TryAdd("Breach Chest", new IconPicker(iconPathName, 6, 41, 30, IconSize));
+            this.BreachIcons.TryAdd("Breach", new IconPicker(iconPathName, 8, 12, 50, IconSize,
+                showPath: true,
+                pathColor: new System.Numerics.Vector4(0.8f, 0.1f, 0.5f, 1f)));
         }
 
         private void AddDefaultDeliriumIcons(string iconPathName)
@@ -574,6 +602,18 @@ namespace Radar
                 new IconPicker(iconPathName, 8, 40, 50, IconSize,
                     showPath: true,
                     pathColor: new System.Numerics.Vector4(113f / 255f, 0f, 1f, 1f)));
+        }
+
+        private void AddDefaultAbyssIcons(string iconPathName)
+        {
+            var abyssCrack = new IconPicker(iconPathName, 5, 63, 40, IconSize,
+                showPath: false,
+                pathColor: new System.Numerics.Vector4(140f / 255f, 1f, 0f, 1f));
+            abyssCrack.Show = false; // hidden by default (icon + path off)
+            this.AbyssIcons.TryAdd("Abyss Crack", abyssCrack);
+            this.AbyssIcons.TryAdd("Abyss Pit", new IconPicker(iconPathName, 7, 63, 50, IconSize,
+                showPath: true,
+                pathColor: new System.Numerics.Vector4(140f / 255f, 1f, 0f, 1f)));
         }
 
         private void AddDefaultExpeditionRemnantIcons(string iconPathName)

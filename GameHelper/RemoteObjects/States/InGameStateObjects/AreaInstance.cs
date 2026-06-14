@@ -36,6 +36,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private string entityPathFilter;
         private Rarity entityRarityFilter;
         private byte filterBy;
+        private int lastSleepingScanCount;
 
         private StdVector environmentPtr;
         private readonly List<int> environments;
@@ -61,6 +62,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.ServerDataObject = new(IntPtr.Zero);
             this.Player = new();
             this.AwakeEntities = new();
+            this.SleepingEntities = new();
             this.EntityCaches = new()
             {
                 new("/LeagueDelirium/", 1105, 1105, this.AwakeEntities), // always keep this at index 0.
@@ -105,6 +107,13 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     are opposite of awake entities e.g. Decorations, Effects, particles and etc.
         /// </summary>
         public ConcurrentDictionary<EntityNodeKey, Entity> AwakeEntities { get; }
+
+        /// <summary>
+        ///     Gets the result of the last on-demand scan of the game's SleepingEntities map,
+        ///     filtered to entities whose path contains "Abyss". Populated only when the
+        ///     "Scan Sleeping Entities" button in DataVisualization is pressed; investigative only.
+        /// </summary>
+        public ConcurrentDictionary<EntityNodeKey, Entity> SleepingEntities { get; }
 
         /// <summary>
         ///     Gets important environments entity caches. This only contain awake entities.
@@ -206,6 +215,18 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             ImGui.Text($"Total Entity Removed Per Area: {this.totalEntityRemoved}");
             ImGui.Text($"Entities in network bubble: {this.NetworkBubbleEntityCount}");
             this.EntitiesWidget("Awake", this.AwakeEntities);
+
+            if (ImGui.Button("Scan Sleeping Entities for 'Abyss'"))
+            {
+                this.ScanSleepingEntitiesForAbyss();
+            }
+
+            ImGuiHelper.ToolTip(
+                "One-shot scan of the game's SleepingEntities memory map (decorations/effects/etc). " +
+                "Keeps only entities whose path contains 'Abyss'. May briefly hitch on large maps.");
+            ImGui.SameLine();
+            ImGui.Text($"(last scan saw {this.lastSleepingScanCount} sleeping entities)");
+            this.EntitiesWidget("Sleeping Abyss", this.SleepingEntities);
         }
 
         /// <inheritdoc />
@@ -553,6 +574,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.totalEntityRemoved = 0;
             this.uselesssEntities = 0;
             this.AwakeEntities.Clear();
+            this.SleepingEntities.Clear();
+            this.lastSleepingScanCount = 0;
             this.EntityCaches.ForEach((e) => e.Clear());
 
             if (!isAreaChange)
@@ -569,6 +592,52 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.GridWalkableData = Array.Empty<byte>();
                 this.TgtTilesLocations.Clear();
             }
+        }
+
+        /// <summary>
+        ///     Scans the game's SleepingEntities memory map (decorations / out-of-bubble objects)
+        ///     and invokes <paramref name="onMatch"/> for each entity whose path satisfies
+        ///     <paramref name="pathFilter"/>. Sleeping entities exist at a larger radius than awake
+        ///     ones, so this can surface objects beyond the network bubble.
+        ///     NOTE: the callback runs in parallel (see <see cref="SafeMemoryHandle.ReadStdMap"/>),
+        ///     so <paramref name="onMatch"/> and anything it writes to must be thread-safe.
+        /// </summary>
+        /// <param name="pathFilter">Predicate on the entity path deciding which entities to keep.</param>
+        /// <param name="onMatch">Invoked (possibly concurrently) for each matching entity.</param>
+        /// <returns>Total number of sleeping entities scanned.</returns>
+        public int ScanSleepingEntities(Func<string, bool> pathFilter, Action<EntityNodeKey, Entity> onMatch)
+        {
+            if (this.Address == IntPtr.Zero)
+            {
+                return 0;
+            }
+
+            var reader = Core.Process.Handle;
+            var data = reader.ReadMemory<AreaInstanceOffsets>(this.Address);
+            return reader.ReadStdMap<EntityNodeKey, EntityNodeValue>(
+                data.Entities.SleepingEntities,
+                500000,
+                true,
+                (key, value) =>
+                {
+                    var entity = new Entity(value.EntityPtr);
+                    if (!string.IsNullOrEmpty(entity.Path) && pathFilter(entity.Path))
+                    {
+                        onMatch(key, entity);
+                    }
+
+                    return true;
+                });
+        }
+
+        private void ScanSleepingEntitiesForAbyss()
+        {
+            this.SleepingEntities.Clear();
+
+            // Investigative one-shot scan: keep any entity with "Abyss" in its path.
+            this.lastSleepingScanCount = this.ScanSleepingEntities(
+                p => p.Contains("Abyss", StringComparison.OrdinalIgnoreCase),
+                (key, entity) => this.SleepingEntities[key] = entity);
         }
 
         private void EntitiesWidget(string label, ConcurrentDictionary<EntityNodeKey, Entity> data)

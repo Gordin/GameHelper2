@@ -5,6 +5,7 @@
 namespace Radar
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
@@ -89,6 +90,15 @@ namespace Radar
         // reachedPathKeys points at the active instance's set. Render-thread only.
         private readonly Dictionary<string, HashSet<string>> reachedPathKeysByArea = new();
         private HashSet<string> reachedPathKeys = new();
+
+        // Abyss cracks/pit remembered per map instance (keyed by AreaHash, then by a stable
+        // position+type key). Fed by both the awake-entity pass and a throttled background scan
+        // of the game's larger-range SleepingEntities map, so the abyss line persists once seen.
+        private const int AbyssScanIntervalMs = 1000;
+        private readonly Dictionary<string, ConcurrentDictionary<string, (Vector2 gridPos, float height, string iconKey)>> abyssNodesByArea = new();
+        private ConcurrentDictionary<string, (Vector2 gridPos, float height, string iconKey)> abyssNodes = new();
+        private long nextAbyssScanTime;
+        private Task? pendingAbyssScanTask;
 
         private string SettingPathname => Path.Join(this.DllDirectory, "config", "settings.txt");
 
@@ -279,6 +289,11 @@ namespace Radar
                     "Icon for Ritual rune objects.");
 
                 this.Settings.DrawIconsSettingToImGui(
+                    "Abyss Icons",
+                    this.Settings.AbyssIcons,
+                    "Icons for Abyss nodes. 'Other' matches any remaining Abyss-path entity.");
+
+                this.Settings.DrawIconsSettingToImGui(
                     "Boss Icons",
                     this.Settings.BossIcons,
                     "Icons for map boss arenas.");
@@ -366,6 +381,7 @@ namespace Radar
 
             this.CollectEntityPaths();
             this.RebuildEntityPaths();
+            this.RebuildAbyssNodes();
 
             if (largeMap.IsVisible && !Core.States.InGameStateObject.GameUi.WorldMapPanel.IsVisible)
             {
@@ -944,6 +960,11 @@ namespace Radar
             float iconSizeMultiplier,
             bool shiftUp = false)
         {
+            if (!icon.Draw)
+            {
+                return;
+            }
+
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
             for (var i = 0; i < locations.Count; i++)
             {
@@ -1038,6 +1059,11 @@ namespace Radar
 
                 void DrawIcon(IconPicker icon)
                 {
+                    if (!icon.Draw)
+                    {
+                        return;
+                    }
+
                     var scaled = iconSizeMultiplierVector * icon.IconScale;
                     fgDraw.AddImage(
                         icon.TexturePtr,
@@ -1089,7 +1115,7 @@ namespace Radar
                             case EntitySubtypes.ExpeditionChest:
                                 if (entityValue.Path.Contains("LeagueFaction") &&
                                     this.Settings.ExpeditionMarkerIcons.TryGetValue("Logbook", out var logbookIcon) &&
-                                    logbookIcon.IconScale > 0)
+                                    logbookIcon.Draw)
                                 {
                                     DrawIcon(logbookIcon);
                                 }
@@ -1160,7 +1186,7 @@ namespace Radar
                                 !string.IsNullOrEmpty(minimapIcon.IconName) &&
                                 RadarSettings.ExpeditionMarkerIconNameMap.TryGetValue(minimapIcon.IconName, out var displayName) &&
                                 this.Settings.ExpeditionMarkerIcons.TryGetValue(displayName, out var expMarkerIcon) &&
-                                expMarkerIcon.IconScale > 0)
+                                expMarkerIcon.Draw)
                             {
                                 DrawIcon(expMarkerIcon);
                             }
@@ -1175,7 +1201,7 @@ namespace Radar
                                     {
                                         if (modName.Contains(modSubstring) &&
                                             this.Settings.ExpeditionRemnantIcons.TryGetValue(remnantDisplayName, out var remnantIcon) &&
-                                            remnantIcon.IconScale > 0)
+                                            remnantIcon.Draw)
                                         {
                                             DrawIcon(remnantIcon);
                                             goto doneRemnant;
@@ -1194,13 +1220,13 @@ namespace Radar
                                 !string.IsNullOrEmpty(runeMmIcon!.IconName) &&
                                 RadarSettings.RunestoneIconNameMap.TryGetValue(runeMmIcon.IconName, out var runeDisplayName) &&
                                 this.Settings.RunestoneIcons.TryGetValue(runeDisplayName, out var runeIcon) &&
-                                runeIcon.IconScale > 0)
+                                runeIcon.Draw)
                             {
                                 DrawIcon(runeIcon);
                                 drawnRuneIcon = runeIcon;
                             }
                             else if (this.Settings.RunestoneIcons.TryGetValue("Runestone Encounter", out runeIcon) &&
-                                     runeIcon.IconScale > 0)
+                                     runeIcon.Draw)
                             {
                                 DrawIcon(runeIcon);
                                 drawnRuneIcon = runeIcon;
@@ -1211,6 +1237,12 @@ namespace Radar
                             if (drawnRuneIcon != null &&
                                 entityValue.TryGetComponent<StateMachine>(out var runeSm))
                             {
+                                // Hide the socket count once the player gets close, reusing the
+                                // pathfinding "reached" mechanism and its single Reached Distance
+                                // value (remembered per map, keyed like the entity's path).
+                                var runeReachKey = $"entity|{entity.Key.id}";
+                                this.MarkReachedIfClose(runeReachKey, pPos, ePos);
+
                                 long sockets = 0;
                                 foreach (var state in runeSm.States)
                                 {
@@ -1221,7 +1253,7 @@ namespace Radar
                                     }
                                 }
 
-                                if (sockets > 0)
+                                if (sockets > 0 && !this.IsReached(runeReachKey))
                                 {
                                     var socketText = sockets.ToString();
 
@@ -1249,9 +1281,30 @@ namespace Radar
                         else if (entityValue.EntityCustomGroup == RadarSettings.RitualGroup)
                         {
                             if (this.Settings.RitualIcons.TryGetValue("Ritual", out var ritualIcon) &&
-                                ritualIcon.IconScale > 0)
+                                ritualIcon.Draw)
                             {
                                 DrawIcon(ritualIcon);
+                            }
+                        }
+                        else if (entityValue.EntityCustomGroup == RadarSettings.AbyssGroup)
+                        {
+                            // Cracks and the pit are static: record them into the per-map cache
+                            // (drawn from there so they persist and merge with the sleeping scan).
+                            if (entityValue.Path.Contains("AbyssCrack"))
+                            {
+                                this.RecordAbyssNode("Abyss Crack", ePos, entityRender.TerrainHeight);
+                            }
+                            else if (entityValue.Path.Contains("AbyssFinalNodeBase"))
+                            {
+                                this.RecordAbyssNode("Abyss Pit", ePos, entityRender.TerrainHeight);
+                            }
+                        }
+                        else if (entityValue.EntityCustomGroup == RadarSettings.BreachInitiatorGroup)
+                        {
+                            if (this.Settings.BreachIcons.TryGetValue("Breach", out var breachIcon) &&
+                                breachIcon.Draw)
+                            {
+                                DrawIcon(breachIcon);
                             }
                         }
                         else
@@ -1269,6 +1322,28 @@ namespace Radar
                         fgDraw.AddCircleFilled(screenPos, 3f, 0xFFFFFFFF);
                         break;
                 }
+            }
+
+            // Draw cached Abyss cracks/pit (persisted per-map; fed by the awake pass above and
+            // the throttled sleeping-entity scan). Static objects, so cached positions stay valid.
+            foreach (var node in this.abyssNodes)
+            {
+                var (gridPos, height, iconKey) = node.Value;
+                if (!this.Settings.AbyssIcons.TryGetValue(iconKey, out var icon) || !icon.Draw)
+                {
+                    continue;
+                }
+
+                var fpos = Helper.DeltaInWorldToMapDelta(gridPos - pPos, height - trackingHeight);
+                var sp = mapCenter + fpos;
+                if (sp.X < clipMin.X - clipPadding || sp.X > clipMax.X + clipPadding ||
+                    sp.Y < clipMin.Y - clipPadding || sp.Y > clipMax.Y + clipPadding)
+                {
+                    continue;
+                }
+
+                var scaled = Vector2.One * iconSizeMultiplier * icon.IconScale;
+                fgDraw.AddImage(icon.TexturePtr, sp - scaled, sp + scaled, icon.UV0, icon.UV1);
             }
         }
 
@@ -1299,7 +1374,7 @@ namespace Radar
             // Helper: if icon exists and has ShowPath, add to snapshot
             void TryAdd(uint entityId, Vector2 ePos, IconPicker icon)
             {
-                if (icon != null && icon.ShowPath && icon.IconScale > 0)
+                if (icon != null && icon.ShowPath && icon.Draw)
                 {
                     // Record "reached" here (player position is available), but keep the
                     // target in the snapshot so the background recompute pipeline stays
@@ -1358,7 +1433,7 @@ namespace Radar
                             EntitySubtypes.BreachChest => this.Settings.BreachIcons["Breach Chest"],
                             EntitySubtypes.Strongbox => baseIcons["Strongbox"],
                             EntitySubtypes.ExpeditionChest => ev.Path.Contains("LeagueFaction") &&
-                                this.Settings.ExpeditionMarkerIcons.TryGetValue("Logbook", out var lb) && lb.IconScale > 0
+                                this.Settings.ExpeditionMarkerIcons.TryGetValue("Logbook", out var lb) && lb.Draw
                                     ? lb
                                     : this.Settings.ExpeditionIcons["Generic Expedition Chests"],
                             _ => baseIcons["All Other Chest"],
@@ -1429,7 +1504,7 @@ namespace Radar
                                     mmIcon.IconName, out var displayName) &&
                                 this.Settings.ExpeditionMarkerIcons.TryGetValue(
                                     displayName, out var expIcon) &&
-                                expIcon.IconScale > 0)
+                                expIcon.Draw)
                             {
                                 TryAdd(eId, ePos, expIcon);
                             }
@@ -1446,7 +1521,7 @@ namespace Radar
                                         if (modName.Contains(modSubstring) &&
                                             this.Settings.ExpeditionRemnantIcons.TryGetValue(
                                                 remnantDisplayName, out var remnantIcon) &&
-                                            remnantIcon.IconScale > 0)
+                                            remnantIcon.Draw)
                                         {
                                             TryAdd(eId, ePos, remnantIcon);
                                             goto doneRemnantCollect;
@@ -1465,13 +1540,13 @@ namespace Radar
                                     runeMmIcon.IconName, out var runeDisplayName) &&
                                 this.Settings.RunestoneIcons.TryGetValue(
                                     runeDisplayName, out var runeIcon) &&
-                                runeIcon.IconScale > 0)
+                                runeIcon.Draw)
                             {
                                 TryAdd(eId, ePos, runeIcon);
                             }
                             else if (this.Settings.RunestoneIcons.TryGetValue(
                                          "Runestone Encounter", out runeIcon) &&
-                                     runeIcon.IconScale > 0)
+                                     runeIcon.Draw)
                             {
                                 TryAdd(eId, ePos, runeIcon);
                             }
@@ -1479,9 +1554,17 @@ namespace Radar
                         else if (ev.EntityCustomGroup == RadarSettings.RitualGroup)
                         {
                             if (this.Settings.RitualIcons.TryGetValue("Ritual", out var ritualIcon) &&
-                                ritualIcon.IconScale > 0)
+                                ritualIcon.Draw)
                             {
                                 TryAdd(eId, ePos, ritualIcon);
+                            }
+                        }
+                        else if (ev.EntityCustomGroup == RadarSettings.BreachInitiatorGroup)
+                        {
+                            if (this.Settings.BreachIcons.TryGetValue("Breach", out var breachIcon) &&
+                                breachIcon.Draw)
+                            {
+                                TryAdd(eId, ePos, breachIcon);
                             }
                         }
                         else
@@ -1524,7 +1607,7 @@ namespace Radar
                     this.Settings.BaseIcons.TryGetValue("Stairs", out tileIcon);
                 }
 
-                if (tileIcon != null && tileIcon.ShowPath && tileIcon.IconScale > 0)
+                if (tileIcon != null && tileIcon.ShowPath && tileIcon.Draw)
                 {
                     for (var i = 0; i < tgtKV.Value.Count; i++)
                     {
@@ -1536,6 +1619,23 @@ namespace Radar
                             tileIcon.PathColor));
                     }
                 }
+            }
+
+            // --- Abyss cracks/pit paths (from the persisted cache) ---
+            // Paths come from the cache rather than the awake-entity pass, so far nodes such as
+            // the pit — which usually live only in SleepingEntities and never become awake — still
+            // get a path. Reused through the tile-path machinery (computed + drawn the same way).
+            foreach (var node in this.abyssNodes)
+            {
+                var (gridPos, _, iconKey) = node.Value;
+                if (!this.Settings.AbyssIcons.TryGetValue(iconKey, out var abyssIcon) ||
+                    !abyssIcon.ShowPath || !abyssIcon.Draw)
+                {
+                    continue;
+                }
+
+                this.MarkReachedIfClose(node.Key, pPos, gridPos);
+                this.tileIconPathSnapshot.Add((node.Key, gridPos, abyssIcon.PathColor));
             }
         }
 
@@ -1563,7 +1663,7 @@ namespace Radar
 
             this.nextEntityRecomputeTime = now + this.Settings.PathRecomputeIntervalMs;
 
-            if (this.entityPathSnapshot.Count == 0)
+            if (this.entityPathSnapshot.Count == 0 && this.tileIconPathSnapshot.Count == 0)
             {
                 return;
             }
@@ -1758,6 +1858,7 @@ namespace Radar
             if (string.IsNullOrEmpty(areaHash))
             {
                 this.reachedPathKeys = new HashSet<string>();
+                this.abyssNodes = new ConcurrentDictionary<string, (Vector2, float, string)>();
                 return;
             }
 
@@ -1768,6 +1869,76 @@ namespace Radar
             }
 
             this.reachedPathKeys = set;
+
+            if (!this.abyssNodesByArea.TryGetValue(areaHash, out var abyss))
+            {
+                abyss = new ConcurrentDictionary<string, (Vector2, float, string)>();
+                this.abyssNodesByArea[areaHash] = abyss;
+            }
+
+            this.abyssNodes = abyss;
+        }
+
+        /// <summary>
+        /// Records a static Abyss node (crack or pit) into the per-map cache so it stays drawn
+        /// for the rest of the map. Keyed by type + rounded grid position (stable for static
+        /// objects). Safe to call from any thread (<see cref="abyssNodes"/> is concurrent).
+        /// </summary>
+        private void RecordAbyssNode(string iconKey, Vector2 gridPos, float height)
+        {
+            var key = $"{iconKey}|{(int)gridPos.X}|{(int)gridPos.Y}";
+            this.abyssNodes[key] = (gridPos, height, iconKey);
+        }
+
+        /// <summary>
+        /// Throttled background scan of the game's SleepingEntities map for Abyss cracks/pit only
+        /// (never monsters/other, which move). Found nodes are merged into the per-map cache so the
+        /// abyss line is revealed at the larger sleeping-entity radius and persists once seen.
+        /// </summary>
+        private void RebuildAbyssNodes()
+        {
+            var crackOn = this.Settings.AbyssIcons.TryGetValue("Abyss Crack", out var crackIcon) && crackIcon.Draw;
+            var pitOn = this.Settings.AbyssIcons.TryGetValue("Abyss Pit", out var pitIcon) && pitIcon.Draw;
+            if (!crackOn && !pitOn)
+            {
+                return;
+            }
+
+            var now = Environment.TickCount64;
+            if (now < this.nextAbyssScanTime)
+            {
+                return;
+            }
+
+            this.nextAbyssScanTime = now + AbyssScanIntervalMs;
+
+            if (this.pendingAbyssScanTask != null && !this.pendingAbyssScanTask.IsCompleted)
+            {
+                return;
+            }
+
+            var areaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            var target = this.abyssNodes;
+            this.pendingAbyssScanTask = Task.Run(() =>
+            {
+                areaInstance.ScanSleepingEntities(
+                    p => p.Contains("AbyssCrack", StringComparison.Ordinal) ||
+                         p.Contains("AbyssFinalNodeBase", StringComparison.Ordinal),
+                    (key, entity) =>
+                    {
+                        if (!entity.TryGetComponent<Render>(out var r))
+                        {
+                            return;
+                        }
+
+                        var gridPos = new Vector2(r.GridPosition.X, r.GridPosition.Y);
+                        var iconKey = entity.Path.Contains("AbyssCrack", StringComparison.Ordinal)
+                            ? "Abyss Crack"
+                            : "Abyss Pit";
+                        var k = $"{iconKey}|{(int)gridPos.X}|{(int)gridPos.Y}";
+                        target[k] = (gridPos, r.TerrainHeight, iconKey);
+                    });
+            });
         }
 
         /// <summary>
