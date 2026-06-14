@@ -234,6 +234,7 @@ namespace GameHelper.Settings
             ("Metadata/Terrain/Gallows/Leagues/Expedition/Objects/Expedition", 100),
             ("Metadata/MiscellaneousObjects/Checkpoints/Checkpoint_Endgame_Boss", 102),
             ("Metadata/MiscellaneousObjects/Expedition2/Expedition2Encounter", 103),
+            ("Metadata/Terrain/Leagues/Ritual/RitualRuneObject", 104),
         };
 
         /// <summary>

@@ -278,6 +278,11 @@ namespace Radar
         public Dictionary<string, IconPicker> RunestoneIcons = new();
 
         /// <summary>
+        /// Icon to display on the map for Ritual rune objects.
+        /// </summary>
+        public Dictionary<string, IconPicker> RitualIcons = new();
+
+        /// <summary>
         /// The group number used for expedition markers in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
@@ -300,6 +305,12 @@ namespace Radar
         /// </summary>
         [JsonIgnore]
         public const int RuneEncounterGroup = 103;
+
+        /// <summary>
+        /// The group number used for Ritual rune objects in SpecialMiscObjPaths.
+        /// </summary>
+        [JsonIgnore]
+        public const int RitualGroup = 104;
 
         /// <summary>
         /// Maps mod name substrings to display names used as keys in ExpeditionRemnantIcons.
@@ -471,6 +482,7 @@ namespace Radar
             this.AddDefaultExpeditionMarkerIcons(basicIconPathName);
             this.AddDefaultExpeditionRemnantIcons(basicIconPathName);
             this.AddDefaultRunestoneIcons(basicIconPathName);
+            this.AddDefaultRitualIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
             this.AddDefaultBossIcons(basicIconPathName);
         }
@@ -550,10 +562,18 @@ namespace Radar
         private void AddDefaultRunestoneIcons(string iconPathName)
         {
             this.RunestoneIcons.TryAdd("Runestone Encounter",
-                new IconPicker(iconPathName, 3, 12, 70, IconSize,
+                new IconPicker(iconPathName, 8, 40, 50, IconSize,
                     showPath: true,
-                    pathColor: new System.Numerics.Vector4(1f, 0.15f, 0.15f, 1f)));
+                    pathColor: new System.Numerics.Vector4(0f, 145f / 255f, 209f / 255f, 1f)));
             this.RunestoneIcons.TryAdd("Runestones", new IconPicker(iconPathName, 13, 1, 70, IconSize));
+        }
+
+        private void AddDefaultRitualIcons(string iconPathName)
+        {
+            this.RitualIcons.TryAdd("Ritual",
+                new IconPicker(iconPathName, 8, 40, 50, IconSize,
+                    showPath: true,
+                    pathColor: new System.Numerics.Vector4(113f / 255f, 0f, 1f, 1f)));
         }
 
         private void AddDefaultExpeditionRemnantIcons(string iconPathName)
