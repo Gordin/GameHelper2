@@ -278,13 +278,15 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                         ImGui.Text($"Content Tokens: {map.ContentTokens.Count}");
                         foreach (var token in map.ContentTokens)
                         {
-                            ImGui.Text($"- 0x{token:X8}");
+                            var tokenName = AtlasMapNode.GetContentTokenName(token);
+                            ImGui.Text(tokenName != null ? $"- {tokenName} (0x{token:X8})" : $"- 0x{token:X8}");
                         }
 
                         ImGui.Text($"Badge Content Ids: {map.BadgeContentIds.Count}");
                         foreach (var id in map.BadgeContentIds)
                         {
-                            ImGui.Text($"- 0x{id:X8}");
+                            var badgeName = AtlasMapNode.GetBadgeContentName(id);
+                            ImGui.Text(badgeName != null ? $"- {badgeName} (0x{id:X8})" : $"- 0x{id:X8}");
                         }
 
                         ImGui.TreePop();
@@ -710,6 +712,17 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 {
                     return IntPtr.Zero;
                 }
+            }
+
+            // Only hand back addresses that are actually Ui elements. The panel UiElementBase
+            // instances (Atlas/Act/WorldMapPanel/...) use forceUpdate=true, so assigning a non-Ui
+            // address — which this fixed child-index path can land on for screens whose layout
+            // differs — makes UiElementBase.UpdateData throw, caught and re-logged by Address.set
+            // every frame. This is the same self-pointer check UiElementBase itself uses.
+            var resolved = reader.ReadMemory<UiElementBaseOffset>(currentAddress);
+            if (resolved.Self != IntPtr.Zero && resolved.Self != currentAddress)
+            {
+                return IntPtr.Zero;
             }
 
             return currentAddress;

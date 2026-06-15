@@ -45,7 +45,7 @@
             "Eastern Gateway", "Western Enigma Chamber", "Eastern Enigma Chamber", "The Origin Tower",
         };
         private static readonly HashSet<string> QuestsMaps = new(StringComparer.OrdinalIgnoreCase) { "The Withered Willow" };
-        private static readonly HashSet<string> RitualMaps = new(StringComparer.OrdinalIgnoreCase) { "Caer Tarth" };
+        private static readonly HashSet<string> RitualMaps = new(StringComparer.OrdinalIgnoreCase) { "Caer Tarth", "Crux of Nothingness" };
         private static readonly HashSet<string> BreachMaps = new(StringComparer.OrdinalIgnoreCase) { "Hive Colony" };
         private static readonly HashSet<string> ExpeditionMaps = new(StringComparer.OrdinalIgnoreCase) { "Ruins of Kingsmarch" };
         private static readonly HashSet<string> AbyssMaps = new(StringComparer.OrdinalIgnoreCase) { "The Well of Souls" };
@@ -68,6 +68,8 @@
             public AtlasNodeState State;
             public int BadgeCount;
             public List<string> RawContents;
+            public List<string> ContentDisplay;    // merged, de-duped MAPPED content names (tokens + badges)
+            public List<string> ContentDisplayAll; // same, but also includes raw hex for unmapped values (debug)
             public string Type;             // "normal" or "unique"
             public List<string> Tags;       // e.g. "lineage", "arbiter"
         }
@@ -142,6 +144,15 @@
             ImGui.Checkbox("Hide Not Accessible Maps", ref Settings.HideNotAccessibleMaps);
             ImGui.Checkbox("Show Map Counts", ref Settings.ShowMapCounts);
             ImGuiHelper.ToolTip("Draw connected-node and badge counts under each map label on the Atlas.");
+            ImGui.Checkbox("Show Content", ref Settings.ShowContent);
+            ImGuiHelper.ToolTip("Draw the node's content under each map label, using the known names.");
+            if (Settings.ShowContent)
+            {
+                ImGui.Indent();
+                ImGui.Checkbox("Debug Content", ref Settings.ShowContentDebug);
+                ImGuiHelper.ToolTip("Also show unmapped content as its raw 0x value (for identifying new content).");
+                ImGui.Unindent();
+            }
             ImGui.Checkbox("Show Biome Border", ref Settings.ShowBiomeBorder);
             if (Settings.ShowBiomeBorder)
                 if (ImGui.TreeNode("Biome Settings"))
@@ -568,6 +579,21 @@
                         var countTextSize = ImGui.CalcTextSize(countText);
                         var countPos = new Vector2(labelCenterX - countTextSize.X * 0.5f, nextRowTopY);
                         drawList.AddText(countPos, ImGuiHelper.Color(fontColor), countText);
+                        nextRowTopY += countTextSize.Y + rowGap;
+                    }
+
+                    if (Settings.ShowContent)
+                    {
+                        // Merged, de-duped content (tokens + badges) from core: one line each. Normally
+                        // only mapped names; with Debug Content on, also show unmapped values as raw hex.
+                        var contentList = Settings.ShowContentDebug ? nd.ContentDisplayAll : nd.ContentDisplay;
+                        if (contentList is { Count: > 0 })
+                        {
+                            foreach (var content in contentList)
+                            {
+                                DrawContentLine(drawList, content, labelCenterX, ref nextRowTopY, rowGap, fontColor);
+                            }
+                        }
                     }
                 }
 
@@ -597,6 +623,8 @@
                     State = ToAtlasNodeState(map.State),
                     BadgeCount = map.BadgeCount,
                     RawContents = map.ContentNames.ToList(),
+                    ContentDisplay = map.GetContentDisplayNames(includeUnmapped: false).ToList(),
+                    ContentDisplayAll = map.GetContentDisplayNames(includeUnmapped: true).ToList(),
                     Type = map.Type ?? "normal",
                     Tags = map.Tags.ToList(),
                 });
@@ -779,6 +807,16 @@
             var sx = io.DisplaySize.X / MathF.Max(1f, refW);
             var sy = io.DisplaySize.Y / MathF.Max(1f, refH);
             return MathF.Min(sx, sy);
+        }
+
+        // Draw one centered content line under the map label, advancing the layout cursor.
+        private static void DrawContentLine(ImDrawListPtr drawList, string text, float centerX,
+            ref float nextRowTopY, float rowGap, Vector4 fontColor)
+        {
+            var size = ImGui.CalcTextSize(text);
+            var pos = new Vector2(centerX - size.X * 0.5f, nextRowTopY);
+            drawList.AddText(pos, ImGuiHelper.Color(fontColor), text);
+            nextRowTopY += size.Y + rowGap;
         }
 
         private static void DrawSquares(ImDrawListPtr drawList, List<ContentInfo> infos, float centerX,

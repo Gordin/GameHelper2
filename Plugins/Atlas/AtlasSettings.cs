@@ -60,6 +60,8 @@ namespace Atlas
         public float AtlasGraphOffsetY = -5f;
         public bool ShowMapBadges = true;
         public bool ShowMapCounts = false;
+        public bool ShowContent = true;
+        public bool ShowContentDebug = false;
         public bool ShowBiomeBorder = true;
         public float BiomeBorderThickness = 2.5f;
 
