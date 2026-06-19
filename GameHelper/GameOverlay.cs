@@ -32,6 +32,7 @@ namespace GameHelper
             GameUiExplorer.InitializeCoroutines();
             ElementFinder.InitializeCoroutines();
             PerformanceProfiler.InitializeCoroutines();
+            MemoryReadDiagnostics.InitializeCoroutines();
             OverlayKiller.InitializeCoroutines();
             NearbyVisualization.InitializeCoroutines();
             KrangledPassiveDetector.InitializeCoroutines();

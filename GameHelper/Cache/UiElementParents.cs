@@ -6,10 +6,12 @@
 namespace GameHelper.Cache
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using Coroutine;
     using GameHelper.RemoteObjects.UiElement;
     using GameHelper.CoroutineEvents;
+    using GameOffsets.Objects.UiElement;
     using ImGuiNET;
     using GameHelper.RemoteEnums;
     using System.Threading.Tasks;
@@ -114,10 +116,23 @@ namespace GameHelper.Cache
                 ((ICollection<KeyValuePair<IntPtr, UiElementBase>>)this.cache).CopyTo(snapshot, 0);
             }
 
+            // A cached parent can be freed/reused by the game after we cached it (the atlas, for
+            // example, churns through many node-container parents). Re-validate each parent's
+            // self-pointer before updating: if it's no longer a Ui element, prune it instead of
+            // re-assigning its Address — the forceUpdate setter would otherwise throw "not a Ui
+            // Element" and spam the log every frame for every stale entry.
+            var stale = new ConcurrentBag<IntPtr>();
             Parallel.ForEach(snapshot, (data) =>
             {
                 try
                 {
+                    var offsets = Core.Process.Handle.ReadMemory<UiElementBaseOffset>(data.Key);
+                    if (offsets.Self != IntPtr.Zero && offsets.Self != data.Key)
+                    {
+                        stale.Add(data.Key);
+                        return;
+                    }
+
                     data.Value.Address = data.Key;
                 }
                 catch (Exception e)
@@ -125,6 +140,17 @@ namespace GameHelper.Cache
                     Console.WriteLine($"Failed to update the UiElement Parent in the cache. 0x{data.Key.ToInt64():X} due to {e}");
                 }
             });
+
+            if (!stale.IsEmpty)
+            {
+                lock (this.cache)
+                {
+                    foreach (var key in stale)
+                    {
+                        this.cache.Remove(key);
+                    }
+                }
+            }
         }
 
         public void Clear()

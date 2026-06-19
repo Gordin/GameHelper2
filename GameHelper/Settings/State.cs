@@ -158,6 +158,13 @@ namespace GameHelper.Settings
         public bool ShowPerfProfiler = false;
 
         /// <summary>
+        ///     Gets or sets a value indicating whether to show the Memory Read Diagnostics
+        ///     window or not. While enabled, failed memory reads are recorded (incl. the ones
+        ///     normally silenced) so torn reads can be distinguished from offset breakage.
+        /// </summary>
+        public bool ShowMemoryDiagnostics = false;
+
+        /// <summary>
         ///     Gets or sets a value indicating what big nearby means to the user.
         /// </summary>
         public (int Meaning, bool IsVisible, bool FollowMouse) OuterCircle = (Meaning: 70, IsVisible: false, FollowMouse: false);

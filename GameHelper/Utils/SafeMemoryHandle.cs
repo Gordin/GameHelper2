@@ -76,23 +76,22 @@ namespace GameHelper.Utils
         internal T ReadMemory<T>(IntPtr address)
             where T : unmanaged
         {
-            // Silent skip for an unreadable address mirrors the historical behaviour
-            // (return default, no log) so only a genuine RPM failure on a plausible
-            // address is reported below.
-            if (this.IsInvalid || !IsValidAddress(address))
-            {
-                return default;
-            }
-
             if (this.TryReadMemory<T>(address, out var result))
             {
                 return result;
             }
 
-            Console.WriteLine("ERROR: Failed To Read the Memory (T)" +
-                              $" due to Error Number: 0x{NativeWrapper.LastError:X} on " +
-                              $"adress 0x{address.ToInt64():X} for type {typeof(T).Name}" +
-                              $" [caller: {DescribeCaller()}]");
+            // Only a genuine read failure on a plausible address warrants a console error;
+            // an out-of-range address is silently skipped (historical behaviour). Both cases
+            // are still captured by the diagnostics window via TryReadMemory.
+            if (!this.IsInvalid && IsValidAddress(address))
+            {
+                Console.WriteLine("ERROR: Failed To Read the Memory (T)" +
+                                  $" due to Error Number: 0x{NativeWrapper.LastError:X} on " +
+                                  $"adress 0x{address.ToInt64():X} for type {typeof(T).Name}" +
+                                  $" [caller: {DescribeCaller()}]");
+            }
+
             return default;
         }
 
@@ -115,6 +114,7 @@ namespace GameHelper.Utils
             result = default;
             if (this.IsInvalid || !IsValidAddress(address))
             {
+                RecordDiagnosticFailure(typeof(T).Name, address);
                 return false;
             }
 
@@ -123,6 +123,7 @@ namespace GameHelper.Utils
                 if (!NativeWrapper.ReadProcessMemory(this.handle, address, ref result))
                 {
                     result = default;
+                    RecordDiagnosticFailure(typeof(T).Name, address);
                     return false;
                 }
 
@@ -131,8 +132,25 @@ namespace GameHelper.Utils
             catch
             {
                 result = default;
+                RecordDiagnosticFailure(typeof(T).Name, address);
                 return false;
             }
+        }
+
+        /// <summary>
+        ///     Records a failed read into the diagnostics window when it is enabled. Gated up
+        ///     front so the (stack-walking) caller lookup is never paid in normal operation.
+        /// </summary>
+        /// <param name="typeName">name of the type that failed to read.</param>
+        /// <param name="address">the address that failed.</param>
+        private static void RecordDiagnosticFailure(string typeName, IntPtr address)
+        {
+            if (!Core.GHSettings.ShowMemoryDiagnostics)
+            {
+                return;
+            }
+
+            Ui.MemoryReadDiagnostics.RecordFailure(typeName, DescribeCaller(), address.ToInt64());
         }
 
         /// <summary>
@@ -181,6 +199,11 @@ namespace GameHelper.Utils
         {
             if (this.IsInvalid || !IsValidAddress(address) || nsize <= 0)
             {
+                if (nsize > 0)
+                {
+                    RecordDiagnosticFailure($"{typeof(T).Name}[]", address);
+                }
+
                 return Array.Empty<T>();
             }
 
@@ -190,6 +213,7 @@ namespace GameHelper.Utils
                 if (!NativeWrapper.ReadProcessMemoryArray(
                     this.handle, address, buffer, out var numBytesRead))
                 {
+                    RecordDiagnosticFailure($"{typeof(T).Name}[]", address);
                     throw new Exception("Failed To Read the Memory (array)" +
                                         $" due to Error Number: 0x{NativeWrapper.LastError:X}" +
                                         $" on address 0x{address.ToInt64():X} with size {nsize}" +
@@ -395,14 +419,17 @@ namespace GameHelper.Utils
                 // Child pointers are read from a live tree the game mutates concurrently, so a
                 // torn read can yield a non-pointer value. Use the non-logging read + validity
                 // check and simply stop descending that branch on failure (audit: torn-read noise).
+                // Color is the red/black flag and is always 0 or 1 in a real node; if a torn/bad
+                // pointer lands us on string or float data, Color is almost never 0/1, so this
+                // rejects garbage before we descend into it and propagate the failure further.
                 if (this.TryReadMemory<StdMapNode<TKey, TValue>>(current.Left, out var leftChild) &&
-                    !leftChild.IsNil)
+                    !leftChild.IsNil && leftChild.Color <= 1)
                 {
                     childrens.Enqueue(leftChild);
                 }
 
                 if (this.TryReadMemory<StdMapNode<TKey, TValue>>(current.Right, out var rightChild) &&
-                    !rightChild.IsNil)
+                    !rightChild.IsNil && rightChild.Color <= 1)
                 {
                     childrens.Enqueue(rightChild);
                 }

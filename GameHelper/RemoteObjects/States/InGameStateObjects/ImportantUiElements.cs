@@ -524,22 +524,28 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 return null;
             }
 
+            // The atlas child list can momentarily contain non-map-node children (or be read mid-
+            // mutation), in which case this pointer chain dereferences garbage. Use TryReadMemory so
+            // those expected, recoverable failures don't flood the log (and stall the app) — bail and
+            // skip the node instead. A real map node reads cleanly through the whole chain.
             var reader = Core.Process.Handle;
-            var nodeDataStorage = reader.ReadMemory<IntPtr>(nodeAddr + 0x10);
-            if (nodeDataStorage == IntPtr.Zero)
+            if (!reader.TryReadMemory<IntPtr>(nodeAddr + 0x10, out var nodeDataStorage) || nodeDataStorage == IntPtr.Zero)
             {
                 return null;
             }
 
-            var nodeData = reader.ReadMemory<IntPtr>(nodeDataStorage + 0x20);
-            if (nodeData == IntPtr.Zero)
+            if (!reader.TryReadMemory<IntPtr>(nodeDataStorage + 0x20, out var nodeData) || nodeData == IntPtr.Zero)
             {
                 return null;
             }
 
-            var gridPosition = reader.ReadMemory<StdTuple2D<int>>(nodeAddr + 0x320);
-            var biomeId = reader.ReadMemory<byte>(nodeData + AtlasNodeBiomeIdOffset);
-            var status = reader.ReadMemory<byte>(nodeData + AtlasNodeStatusByteOffset);
+            if (!reader.TryReadMemory<StdTuple2D<int>>(nodeAddr + 0x320, out var gridPosition) ||
+                !reader.TryReadMemory<byte>(nodeData + AtlasNodeBiomeIdOffset, out var biomeId) ||
+                !reader.TryReadMemory<byte>(nodeData + AtlasNodeStatusByteOffset, out var status))
+            {
+                return null;
+            }
+
             var state = (status & AtlasNodeCompletedBit) != 0
                 ? AtlasMapNodeState.CompletedBase
                 : (status & AtlasNodeAccessibleBit) != 0
@@ -547,18 +553,14 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     : AtlasMapNodeState.None;
 
             var mapId = string.Empty;
-            var mapDataWrapper = reader.ReadMemory<IntPtr>(nodeData + AtlasNodeMapDataOffset);
-            if (mapDataWrapper != IntPtr.Zero)
+            if (reader.TryReadMemory<IntPtr>(nodeData + AtlasNodeMapDataOffset, out var mapDataWrapper)
+                && mapDataWrapper != IntPtr.Zero
+                && reader.TryReadMemory<IntPtr>(mapDataWrapper, out var stringHeader)
+                && stringHeader != IntPtr.Zero
+                && reader.TryReadMemory<IntPtr>(stringHeader, out var stringBuffer)
+                && stringBuffer != IntPtr.Zero)
             {
-                var stringHeader = reader.ReadMemory<IntPtr>(mapDataWrapper);
-                if (stringHeader != IntPtr.Zero)
-                {
-                    var stringBuffer = reader.ReadMemory<IntPtr>(stringHeader);
-                    if (stringBuffer != IntPtr.Zero)
-                    {
-                        mapId = reader.ReadUnicodeString(stringBuffer);
-                    }
-                }
+                mapId = reader.ReadUnicodeString(stringBuffer);
             }
 
             ReadAtlasContentContainer(nodeUi, out var badgeAddresses, out var contentNames, out var badgeContentIds);
