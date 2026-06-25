@@ -652,6 +652,46 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 (key, entity) => this.SleepingEntities[key] = entity);
         }
 
+        // Debug aid: dumps the .ao model path of every nearby ExpeditionMarker entity (they all
+        // share one metadata path; only the model distinguishes the flag variants) to the console
+        // and to expedition_marker_models.txt next to the exe.
+        private static void DumpExpeditionMarkerModels(ConcurrentDictionary<EntityNodeKey, Entity> data)
+        {
+            const string markerPath = "Metadata/MiscellaneousObjects/Expedition/ExpeditionMarker";
+            var lines = new List<string>();
+            foreach (var entity in data)
+            {
+                if (!entity.Value.Path.StartsWith(markerPath, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var model = entity.Value.TryGetComponent<Animated>(out var animated)
+                    ? animated.ModelPath
+                    : "(no Animated component)";
+                var grid = entity.Value.TryGetComponent<Render>(out var render)
+                    ? $"({render.GridPosition.X:0},{render.GridPosition.Y:0})"
+                    : "(no pos)";
+                lines.Add($"Id {entity.Value.Id,-7} {grid,-16} {model}");
+            }
+
+            lines.Sort(StringComparer.Ordinal);
+            lines.Insert(0, $"ExpeditionMarker model dump - {lines.Count} marker(s)");
+            foreach (var line in lines)
+            {
+                Console.WriteLine($"[ExpeditionMarkerDump] {line}");
+            }
+
+            try
+            {
+                File.WriteAllLines("expedition_marker_models.txt", lines);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ExpeditionMarkerDump] failed to write file: {ex.Message}");
+            }
+        }
+
         private void EntitiesWidget(string label, ConcurrentDictionary<EntityNodeKey, Entity> data)
         {
             if (ImGui.TreeNode($"{label} Entities ({data.Count})###${label} Entities"))
@@ -686,6 +726,11 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                         break;
                     default:
                         break;
+                }
+
+                if (ImGui.Button($"Dump ExpeditionMarker models##{label}"))
+                {
+                    DumpExpeditionMarkerModels(data);
                 }
 
                 foreach (var entity in data)
