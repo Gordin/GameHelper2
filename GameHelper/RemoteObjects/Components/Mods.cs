@@ -1,4 +1,4 @@
-// <copyright file="Mods.cs" company="None">
+﻿// <copyright file="Mods.cs" company="None">
 // Copyright (c) None. All rights reserved.
 // </copyright>
 
@@ -7,7 +7,6 @@ namespace GameHelper.RemoteObjects.Components
     using System;
     using System.Collections.Generic;
     using GameHelper.RemoteEnums;
-    using GameHelper.Utils;
     using GameOffsets.Objects.Components;
     using ImGuiNET;
 
@@ -40,11 +39,6 @@ namespace GameHelper.RemoteObjects.Components
             HellscapeMods = new();
 
         /// <summary>
-        ///     Gets the stats that are on the entity due to entity Mods.
-        /// </summary>
-        public Dictionary<GameStats, int> StatsFromMods = new();
-
-        /// <summary>
         ///     Converts the <see cref="Mods" /> class data to ImGui.
         /// </summary>
         internal override void ToImGui()
@@ -55,7 +49,6 @@ namespace GameHelper.RemoteObjects.Components
             ObjectMagicProperties.ModsToImGui("ExplicitMods", this.ExplicitMods);
             ObjectMagicProperties.ModsToImGui("EnchantMods", this.EnchantMods);
             ObjectMagicProperties.ModsToImGui("HellscapeMods", this.HellscapeMods);
-            ImGuiHelper.StatsWidget(this.StatsFromMods, "Stats from Mods");
         }
 
         /// <inheritdoc />
@@ -77,7 +70,6 @@ namespace GameHelper.RemoteObjects.Components
                 ObjectMagicProperties.AddToMods(this.EnchantMods, reader.ReadStdVector<ModArrayStruct>(data.Details0.Mods.EnchantMods));
                 ObjectMagicProperties.AddToMods(this.HellscapeMods, reader.ReadStdVector<ModArrayStruct>(data.Details0.Mods.HellscapeMods));
                 ObjectMagicProperties.AddToMods(this.HellscapeMods, reader.ReadStdVector<ModArrayStruct>(data.Details0.Mods.CrucibleMods));
-                base.StatUpdator(this.StatsFromMods, data.Details0.StatsFromMods);
             }
         }
     }
