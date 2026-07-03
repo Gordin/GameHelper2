@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface;
     using GameHelper.Utils;
@@ -53,7 +54,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Player has");
+            ImGui.Text(AhkText.T("template.player_has", "Player has"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 3);
             ImGuiHelper.IEnumerableComboBox("##NearbyMonsterInRangeOperator", SupportedOperatorTypes, ref selectedOperator);
@@ -65,11 +66,11 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 14);
             ImGuiHelper.IEnumerableComboBox("##NearbyMonsterInRangeCountType", CountTypes.Keys, ref selectedCountType);
             ImGui.SameLine();
-            ImGui.Text("monsters of");
+            ImGui.Text(AhkText.T("template.monsters_of", "monsters of"));
 
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 10);
-            if (ImGui.BeginCombo($"rarity##nearby_monster_in_range_template", $"{selectedRarity}"))
+            if (ImGui.BeginCombo(AhkText.Label("template.rarity", "rarity", "nearby_monster_in_range_template"), $"{selectedRarity}"))
             {
                 foreach (var rarity in Enum.GetValues<MonsterRarity>())
                 {
@@ -90,15 +91,15 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                 ImGui.EndCombo();
             }
 
-            ImGui.Text("within range");
+            ImGui.Text(AhkText.T("template.within_range", "within range"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 12);
             ImGui.SliderInt("##NearbyMonsterInRangeDistance", ref range, MinRange, MaxRange);
             range = Math.Clamp(range, MinRange, MaxRange);
-            ImGuiHelper.ToolTip("Distance is in the same units as the inner/outer circle (default outer circle is 70). " +
-                                "Capped at ~150 (the network bubble); monsters beyond that are not loaded by the game.");
+            ImGuiHelper.ToolTip(AhkText.T("template.range.tooltip", "Distance is in the same units as the inner/outer circle (default outer circle is 70). " +
+                                "Capped at ~150 (the network bubble); monsters beyond that are not loaded by the game."));
 
-            if (ImGui.Button("Add##NearbyMonsterInRangeAdd"))
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "NearbyMonsterInRangeAdd")))
             {
                 if (selectedRarity != 0 && CountTypes.TryGetValue(selectedCountType, out var function))
                 {

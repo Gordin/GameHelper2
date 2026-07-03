@@ -106,48 +106,48 @@ namespace LootValue
         /// <inheritdoc/>
         public override void DrawSettings()
         {
-            ImGui.Checkbox("Show value over ground items", ref this.Settings.ShowOverlay);
-            ImGui.Checkbox("Anchor to loot labels (no overlap when items pile up)", ref this.Settings.AnchorToLootTags);
-            ImGui.Checkbox("Reveal unidentified uniques (by art)", ref this.Settings.RevealUnidentifiedUniques);
-            ImGui.Checkbox("Diagnostics window", ref this.Settings.DiagnosticsMode);
+            ImGui.Checkbox(this.PluginText.Label("settings.show_overlay", "Show value over ground items", "LootValueShowOverlay"), ref this.Settings.ShowOverlay);
+            ImGui.Checkbox(this.PluginText.Label("settings.anchor_to_loot_tags", "Anchor to loot labels (no overlap when items pile up)", "LootValueAnchorToLootTags"), ref this.Settings.AnchorToLootTags);
+            ImGui.Checkbox(this.PluginText.Label("settings.reveal_unidentified_uniques", "Reveal unidentified uniques (by art)", "LootValueRevealUnidentifiedUniques"), ref this.Settings.RevealUnidentifiedUniques);
+            ImGui.Checkbox(this.PluginText.Label("settings.diagnostics_window", "Diagnostics window", "LootValueDiagnosticsWindow"), ref this.Settings.DiagnosticsMode);
 
             ImGui.Separator();
-            ImGui.Text("Display");
-            if (ImGui.RadioButton("Chaos", this.Settings.DisplayCurrency == 2)) this.Settings.DisplayCurrency = 2;
+            ImGui.Text(this.PluginText.T("section.display", "Display"));
+            if (ImGui.RadioButton(this.PluginText.Label("currency.chaos", "Chaos", "LootValueCurrencyChaos"), this.Settings.DisplayCurrency == 2)) this.Settings.DisplayCurrency = 2;
             ImGui.SameLine();
-            if (ImGui.RadioButton("Exalted", this.Settings.DisplayCurrency == 1)) this.Settings.DisplayCurrency = 1;
+            if (ImGui.RadioButton(this.PluginText.Label("currency.exalted", "Exalted", "LootValueCurrencyExalted"), this.Settings.DisplayCurrency == 1)) this.Settings.DisplayCurrency = 1;
             ImGui.SameLine();
-            if (ImGui.RadioButton("Divine", this.Settings.DisplayCurrency == 0)) this.Settings.DisplayCurrency = 0;
+            if (ImGui.RadioButton(this.PluginText.Label("currency.divine", "Divine", "LootValueCurrencyDivine"), this.Settings.DisplayCurrency == 0)) this.Settings.DisplayCurrency = 0;
 
-            ImGui.SliderFloat("Min value to show (ex)", ref this.Settings.MinValueEx, 0f, 50f, "%.2f");
-            ImGui.SliderFloat("Highlight from (ex)", ref this.Settings.HighlightMinEx, 0f, 200f, "%.1f");
-            ImGui.SliderFloat("Font size", ref this.Settings.FontSize, 8f, 48f, "%.0f");
-            ImGui.SliderFloat("Highlight font size", ref this.Settings.HighlightFontSize, 8f, 64f, "%.0f");
-            ImGui.Checkbox("Highlight bold", ref this.Settings.HighlightBold);
-            ImGui.SliderFloat("Vertical offset", ref this.Settings.OffsetY, -50f, 50f);
-            ImGui.Checkbox("Smooth label motion (velocity tracking)", ref this.Settings.InterpolatePosition);
+            ImGui.SliderFloat(this.PluginText.Label("settings.min_value_to_show", "Min value to show (ex)", "LootValueMinValueToShow"), ref this.Settings.MinValueEx, 0f, 50f, "%.2f");
+            ImGui.SliderFloat(this.PluginText.Label("settings.highlight_from", "Highlight from (ex)", "LootValueHighlightFrom"), ref this.Settings.HighlightMinEx, 0f, 200f, "%.1f");
+            ImGui.SliderFloat(this.PluginText.Label("settings.font_size", "Font size", "LootValueFontSize"), ref this.Settings.FontSize, 8f, 48f, "%.0f");
+            ImGui.SliderFloat(this.PluginText.Label("settings.highlight_font_size", "Highlight font size", "LootValueHighlightFontSize"), ref this.Settings.HighlightFontSize, 8f, 64f, "%.0f");
+            ImGui.Checkbox(this.PluginText.Label("settings.highlight_bold", "Highlight bold", "LootValueHighlightBold"), ref this.Settings.HighlightBold);
+            ImGui.SliderFloat(this.PluginText.Label("settings.vertical_offset", "Vertical offset", "LootValueVerticalOffset"), ref this.Settings.OffsetY, -50f, 50f);
+            ImGui.Checkbox(this.PluginText.Label("settings.smooth_label_motion", "Smooth label motion (velocity tracking)", "LootValueSmoothLabelMotion"), ref this.Settings.InterpolatePosition);
             if (this.Settings.InterpolatePosition)
             {
-                ImGui.SliderInt("Jitter filter (lower=stronger, no lag)", ref this.Settings.InterpolationRate, 1, 1000);
+                ImGui.SliderInt(this.PluginText.Label("settings.jitter_filter", "Jitter filter (lower=stronger, no lag)", "LootValueJitterFilter"), ref this.Settings.InterpolationRate, 1, 1000);
             }
 
-            ImGui.SliderInt("Rescan interval (ms)", ref this.Settings.RescanIntervalMs, 16, 1000);
-            ImGui.TextDisabled("Positions redraw every frame; rescan only re-detects items/prices.");
+            ImGui.SliderInt(this.PluginText.Label("settings.rescan_interval", "Rescan interval (ms)", "LootValueRescanInterval"), ref this.Settings.RescanIntervalMs, 16, 1000);
+            ImGui.TextDisabled(this.PluginText.T("settings.rescan_interval.tooltip", "Positions redraw every frame; rescan only re-detects items/prices."));
 
-            ImGui.ColorEdit4("Text color", ref this.Settings.TextColor);
-            ImGui.ColorEdit4("Highlight color", ref this.Settings.HighlightColor);
+            ImGui.ColorEdit4(this.PluginText.Label("settings.text_color", "Text color", "LootValueTextColor"), ref this.Settings.TextColor);
+            ImGui.ColorEdit4(this.PluginText.Label("settings.highlight_color", "Highlight color", "LootValueHighlightColor"), ref this.Settings.HighlightColor);
 
             ImGui.Separator();
-            ImGui.Text("Price source");
+            ImGui.Text(this.PluginText.T("section.price_source", "Price source"));
             if (ImGui.RadioButton("poe2scout", this.Settings.PriceSource == PoeNinjaPriceFetcher.SourcePoe2Scout))
                 this.Settings.PriceSource = PoeNinjaPriceFetcher.SourcePoe2Scout;
             ImGui.SameLine();
             if (ImGui.RadioButton("poe.ninja", this.Settings.PriceSource == PoeNinjaPriceFetcher.SourcePoeNinja))
                 this.Settings.PriceSource = PoeNinjaPriceFetcher.SourcePoeNinja;
 
-            ImGui.InputText("League", ref this.Settings.League, 64);
-            ImGui.SliderInt("Refresh interval (min)", ref this.Settings.RefreshIntervalMin, 1, 120);
-            if (ImGui.Button("Refresh prices now"))
+            ImGui.InputText(this.PluginText.Label("settings.league", "League", "LootValueLeague"), ref this.Settings.League, 64);
+            ImGui.SliderInt(this.PluginText.Label("settings.refresh_interval", "Refresh interval (min)", "LootValueRefreshInterval"), ref this.Settings.RefreshIntervalMin, 1, 120);
+            if (ImGui.Button(this.PluginText.Label("button.refresh_prices_now", "Refresh prices now", "LootValueRefreshPricesNow")))
             {
                 PoeNinjaPriceFetcher.Configure(this.Settings.PriceSource, this.Settings.League ?? string.Empty, this.Settings.RefreshIntervalMin);
                 PoeNinjaPriceFetcher.ForceRefresh(this.DllDirectory, ignoreCooldown: true);
@@ -156,12 +156,12 @@ namespace LootValue
             ImGui.SameLine();
             if (PoeNinjaPriceFetcher.IsFetching)
             {
-                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.2f, 1f), "Loading...");
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.2f, 1f), this.PluginText.T("status.loading", "Loading..."));
             }
             else if (PoeNinjaPriceFetcher.LastFetchUtc > DateTime.MinValue)
             {
                 var mins = Math.Max(0, (int)(DateTime.UtcNow - PoeNinjaPriceFetcher.LastFetchUtc).TotalMinutes);
-                ImGui.TextColored(new Vector4(0.5f, 0.8f, 0.5f, 1f), $"{PoeNinjaPriceFetcher.LoadedItemCount} items | {mins} min ago");
+                ImGui.TextColored(new Vector4(0.5f, 0.8f, 0.5f, 1f), this.PluginText.F("status.loaded_items", "{0} items | {1} min ago", PoeNinjaPriceFetcher.LoadedItemCount, mins));
             }
         }
 
@@ -521,27 +521,27 @@ namespace LootValue
                 {
                     this.diagSamples.Add(ok
                         ? $"{rarity} {baseName} [art={art}] -> {lbl} ({ex:0.##} ex)"
-                        : $"{rarity} {baseName} [art={art}] -> NO PRICE");
+                        : $"{rarity} {baseName} [art={art}] -> {this.PluginText.T("diagnostics.no_price", "NO PRICE")}");
                 }
             }
 
             this.diagSummary =
-                $"InGame={Core.States.GameCurrentState == GameStateTypes.InGameState}  PanelOpen={Core.States.InGameStateObject.GameUi.IsAnyLargePanelOpen}\n" +
-                $"AwakeEntities={total}\n" +
-                $"path contains 'WorldItem'={wiPath}    path starts 'Metadata/Items'={metaItemsPath}\n" +
-                $"WorldItem component (inner!=0)={wiComp}    inner item read OK={innerOk}\n" +
-                $"priced={priced}    belowFloor(<{this.Settings.MinValueEx}ex)={belowFloor}    would draw={priced - belowFloor}\n" +
-                $"priceDB items={PoeNinjaPriceFetcher.LoadedItemCount}  fetching={PoeNinjaPriceFetcher.IsFetching}";
+                this.PluginText.F("diagnostics.summary.ingame", "InGame={0}  PanelOpen={1}", Core.States.GameCurrentState == GameStateTypes.InGameState, Core.States.InGameStateObject.GameUi.IsAnyLargePanelOpen) + "\n" +
+                this.PluginText.F("diagnostics.summary.awake_entities", "AwakeEntities={0}", total) + "\n" +
+                this.PluginText.F("diagnostics.summary.paths", "path contains 'WorldItem'={0}    path starts 'Metadata/Items'={1}", wiPath, metaItemsPath) + "\n" +
+                this.PluginText.F("diagnostics.summary.components", "WorldItem component (inner!=0)={0}    inner item read OK={1}", wiComp, innerOk) + "\n" +
+                this.PluginText.F("diagnostics.summary.pricing", "priced={0}    belowFloor(<{1}ex)={2}    would draw={3}", priced, this.Settings.MinValueEx, belowFloor, priced - belowFloor) + "\n" +
+                this.PluginText.F("diagnostics.summary.price_db", "priceDB items={0}  fetching={1}", PoeNinjaPriceFetcher.LoadedItemCount, PoeNinjaPriceFetcher.IsFetching);
         }
 
         private void DrawDiagnosticsWindow()
         {
             ImGui.SetNextWindowSize(new Vector2(580, 440), ImGuiCond.FirstUseEver);
-            if (ImGui.Begin("LootValue Diagnostics", ref this.Settings.DiagnosticsMode))
+            if (ImGui.Begin(this.PluginText.Title("diagnostics.window_title", "LootValue Diagnostics", "LootValueDiagnostics"), ref this.Settings.DiagnosticsMode))
             {
                 ImGui.TextUnformatted(this.diagSummary);
                 ImGui.Separator();
-                ImGui.TextUnformatted($"Samples ({this.diagSamples.Count}):");
+                ImGui.TextUnformatted(this.PluginText.F("diagnostics.samples", "Samples ({0}):", this.diagSamples.Count));
                 foreach (var s in this.diagSamples)
                 {
                     ImGui.TextUnformatted(s);

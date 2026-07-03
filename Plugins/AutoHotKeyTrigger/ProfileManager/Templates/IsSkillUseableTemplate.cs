@@ -6,6 +6,7 @@
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
 
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using GameHelper;
     using GameHelper.RemoteObjects.Components;
@@ -27,7 +28,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Skill");
+            ImGui.Text(AhkText.T("template.skill", "Skill"));
             ImGui.SameLine();
             if (Core.States.InGameStateObject.CurrentAreaInstance.Player.TryGetComponent<Actor>(out var actor))
             {
@@ -35,7 +36,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             }
             else
             {
-                ImGui.Text("NO_SKILL_FOUND, Please put skill in the Gem Socket first.");
+                ImGui.Text(AhkText.T("template.no_skill_found", "NO_SKILL_FOUND, Please put skill in the Gem Socket first."));
                 if (!string.IsNullOrEmpty(skillId))
                 {
                     skillId = string.Empty;
@@ -43,7 +44,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             }
 
             ImGui.SameLine();
-            return ImGui.Button("Add##SkillUsable") ? $"PlayerSkillIsUseable.Contains(\"{skillId}\")" : string.Empty;
+            return ImGui.Button(AhkText.Label("button.add", "Add", "SkillUsable")) ? $"PlayerSkillIsUseable.Contains(\"{skillId}\")" : string.Empty;
         }
     }
 }

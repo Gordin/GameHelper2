@@ -8,6 +8,7 @@ namespace Radar
     using System.IO;
     using System.Numerics;
     using GameHelper;
+    using GameHelper.Localization;
     using ImGuiNET;
     using Newtonsoft.Json;
 
@@ -141,14 +142,14 @@ namespace Radar
         /// Show the Setting Widget for the selection of icon. This function assumes
         /// that the ImGui window is already created.
         /// </summary>
-        public void ShowSettingWidget()
+        public void ShowSettingWidget(PluginLocalization text)
         {
             ImGui.PushID(this.GetHashCode());
             ImGui.PushItemWidth(200);
             ImGui.InputFloat($"##iconscale", ref this.iconScale, 1f, 1f);
             ImGui.PopItemWidth();
             ImGui.SameLine();
-            ImGui.Checkbox("Path", ref this.ShowPath);
+            ImGui.Checkbox(text.Label("icon_picker.path", "Path", "RadarIconPath"), ref this.ShowPath);
             if (this.ShowPath)
             {
                 ImGui.SameLine();
@@ -174,7 +175,7 @@ namespace Radar
             {
                 ImGui.SetNextWindowPos(this.popUpPos, ImGuiCond.Appearing);
                 ImGui.SetNextWindowSize(new Vector2(400), ImGuiCond.Appearing);
-                var title = $"Icon Picker (Double click to select an item)";
+                var title = text.Title("icon_picker.window", "Icon Picker (Double click to select an item)", "RadarIconPicker");
                 if (ImGui.Begin(title, ref this.showPopUp, PopUpFlags))
                 {
                     if (ImGui.IsWindowHovered() && ImGui.GetIO().MouseDoubleClicked[0])

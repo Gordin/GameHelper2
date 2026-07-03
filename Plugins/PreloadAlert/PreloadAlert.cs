@@ -91,8 +91,8 @@ namespace PreloadAlert
         /// </summary>
         public override void DrawSettings()
         {
-            ImGui.TextWrapped("If you find something new and want to add it to the preload " +
-                              "you can use Core -> Data Visualization -> CurrentAreaLoadedFiles feature.");
+            ImGui.TextWrapped(this.PluginText.T("settings.description", "If you find something new and want to add it to the preload " +
+                              "you can use Core -> Data Visualization -> CurrentAreaLoadedFiles feature."));
             ImGui.Separator();
             this.DisplaySettings();
             this.DisplayAllImportantPreloads();
@@ -124,7 +124,7 @@ namespace PreloadAlert
                 return;
             }
 
-            const string windowName = "Preload Window";
+            var windowName = this.PluginText.Title("window.preload", "Preload Window", "PreloadAlertWindow");
             ImGui.PushStyleColor(ImGuiCol.WindowBg, this.isPreloadAlertHovered ? Vector4.Zero : this.Settings.BackgroundColor);
             ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, this.isPreloadAlertHovered ? 0.0f : 0.5f);
 
@@ -140,24 +140,24 @@ namespace PreloadAlert
             else
             {
                 ImGui.Begin(windowName, ImGuiWindowFlags.NoSavedSettings);
-                ImGui.TextColored(new Vector4(.86f, .71f, .36f, 1), "Edit Background Color: ");
+                ImGui.TextColored(new Vector4(.86f, .71f, .36f, 1), this.PluginText.T("window.edit_background_color", "Edit Background Color: "));
                 ImGui.SameLine();
                 ImGui.ColorEdit4(
-                    "Background Color##PreloadAlertBackground",
+                    this.PluginText.Label("window.background_color", "Background Color", "PreloadAlertBackground"),
                     ref this.Settings.BackgroundColor,
                     ColorEditFlags);
-                ImGui.TextColored(new Vector4(1, 1, 1, 1), "Dummy Preload 1");
+                ImGui.TextColored(new Vector4(1, 1, 1, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 1));
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 1, 1, 1), "Dummy Preload 2");
-                ImGui.TextColored(new Vector4(1, 0, 1, 1), "Dummy Preload 3");
+                ImGui.TextColored(new Vector4(0, 1, 1, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 2));
+                ImGui.TextColored(new Vector4(1, 0, 1, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 3));
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(1, 1, 0, 1), "Dummy Preload 4");
-                ImGui.TextColored(new Vector4(1, 0, 0, 1), "Dummy Preload 5");
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 4));
+                ImGui.TextColored(new Vector4(1, 0, 0, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 5));
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 1, 0, 1), "Dummy Preload 6");
-                ImGui.TextColored(new Vector4(0, 0, 1, 1), "Dummy Preload 7");
+                ImGui.TextColored(new Vector4(0, 1, 0, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 6));
+                ImGui.TextColored(new Vector4(0, 0, 1, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 7));
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0, 0, 0, 1), "Dummy Preload 8");
+                ImGui.TextColored(new Vector4(0, 0, 0, 1), this.PluginText.F("window.dummy_preload", "Dummy Preload {0}", 8));
                 this.Settings.Pos = ImGui.GetWindowPos();
                 this.Settings.Size = ImGui.GetWindowSize();
                 if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
@@ -170,16 +170,16 @@ namespace PreloadAlert
             {
                 if (this.Settings.TimeSinceLastMapSpawn)
                 {
-                    ImGui.Text($"Timer: {this.lastMapSpawnTimer.Elapsed.TotalSeconds:00s}");
+                    ImGui.Text(this.PluginText.F("window.timer", "Timer: {0:00s}", this.lastMapSpawnTimer.Elapsed.TotalSeconds));
                     ImGui.Separator();
                 }
                 if (areaDetails.IsHideout)
                 {
-                    ImGui.Text("Preloads are not updated in hideout.");
+                    ImGui.Text(this.PluginText.T("window.not_updated_hideout", "Preloads are not updated in hideout."));
                 }
                 else if (areaDetails.IsTown)
                 {
-                    ImGui.Text("Preloads are not updated in town.");
+                    ImGui.Text(this.PluginText.T("window.not_updated_town", "Preloads are not updated in town."));
                 }
                 else if (this.Settings.Locked)
                 {
@@ -197,63 +197,63 @@ namespace PreloadAlert
 
         private void DisplaySettings()
         {
-            if (ImGui.CollapsingHeader("Settings"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.settings", "Settings", "PreloadAlertSettings")))
             {
-                ImGui.Checkbox("Lock/Unlock preload window", ref this.Settings.Locked);
-                ImGuiHelper.ToolTip("You can also lock it by double clicking the preload window. " +
-                                  "However, you can only unlock it from here.");
-                ImGui.Checkbox("Hide when locked & not ingame", ref this.Settings.EnableHideUi);
-                ImGui.Checkbox("Hide when no preload found", ref this.Settings.HideWindowWhenEmpty);
-                ImGui.Checkbox("Hide when in town or hideout", ref this.Settings.HideWhenInTownOrHideout);
-                ImGui.Checkbox("Show time since last map opened", ref this.Settings.TimeSinceLastMapSpawn);
+                ImGui.Checkbox(this.PluginText.Label("settings.lock_window", "Lock/Unlock preload window", "PreloadAlertLockWindow"), ref this.Settings.Locked);
+                ImGuiHelper.ToolTip(this.PluginText.T("settings.lock_window.tooltip", "You can also lock it by double clicking the preload window. " +
+                                  "However, you can only unlock it from here."));
+                ImGui.Checkbox(this.PluginText.Label("settings.hide_locked_not_ingame", "Hide when locked & not ingame", "PreloadAlertHideLockedNotIngame"), ref this.Settings.EnableHideUi);
+                ImGui.Checkbox(this.PluginText.Label("settings.hide_when_empty", "Hide when no preload found", "PreloadAlertHideWhenEmpty"), ref this.Settings.HideWindowWhenEmpty);
+                ImGui.Checkbox(this.PluginText.Label("settings.hide_in_town_hideout", "Hide when in town or hideout", "PreloadAlertHideInTownHideout"), ref this.Settings.HideWhenInTownOrHideout);
+                ImGui.Checkbox(this.PluginText.Label("settings.show_time_since_last_map", "Show time since last map opened", "PreloadAlertShowTimeSinceLastMap"), ref this.Settings.TimeSinceLastMapSpawn);
             }
         }
 
         private void DisplayAllImportantPreloads()
         {
-            if (ImGui.CollapsingHeader("All Important Preloads"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.all_important_preloads", "All Important Preloads", "PreloadAlertAllImportantPreloads")))
             {
-                ImGui.InputText("Preload Alert List Filter", ref this.preloadListFilter, 200);
+                ImGui.InputText(this.PluginText.Label("preloads.filter", "Preload Alert List Filter", "PreloadAlertListFilter"), ref this.preloadListFilter, 200);
                 if (this.preloads.Count() == 0)
                 {
-                    ImGui.Text("No important preload found. Did you forget to copy preload.txt " +
-                        "file in the preload alert plugin folder?");
+                    ImGui.Text(this.PluginText.T("preloads.none_found", "No important preload found. Did you forget to copy preload.txt " +
+                        "file in the preload alert plugin folder?"));
                 }
                 else
                 {
                     ImGui.BeginTable("AllImportantPreloadsTable", 7, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY);
-                    ImGui.TableSetupColumn("Enable", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
-                    ImGui.TableSetupColumn("Priority", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
-                    ImGui.TableSetupColumn("Log", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
-                    ImGui.TableSetupColumn("Color", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
-                    ImGui.TableSetupColumn("Display Name", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.NoHide);
-                    ImGui.TableSetupColumn("Path", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.NoHide);
-                    ImGui.TableSetupColumn("Delete", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide | ImGuiTableColumnFlags.NoHeaderLabel);
+                    ImGui.TableSetupColumn(this.PluginText.T("preloads.column.enable", "Enable"), ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
+                    ImGui.TableSetupColumn(this.PluginText.T("preloads.column.priority", "Priority"), ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
+                    ImGui.TableSetupColumn(this.PluginText.T("preloads.column.log", "Log"), ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
+                    ImGui.TableSetupColumn(this.PluginText.T("preloads.column.color", "Color"), ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide);
+                    ImGui.TableSetupColumn(this.PluginText.T("preloads.column.display_name", "Display Name"), ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.NoHide);
+                    ImGui.TableSetupColumn(this.PluginText.T("preloads.column.path", "Path"), ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.NoHide);
+                    ImGui.TableSetupColumn(this.PluginText.T("preloads.column.delete", "Delete"), ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoHide | ImGuiTableColumnFlags.NoHeaderLabel);
                     ImGui.TableSetupScrollFreeze(7, 4);
 
                     ImGui.TableNextColumn();
-                    ImGui.TableHeader("Enabled");
-                    ImGuiHelper.ToolTip("Enables the preload.");
+                    ImGui.TableHeader(this.PluginText.T("preloads.header.enabled", "Enabled"));
+                    ImGuiHelper.ToolTip(this.PluginText.T("preloads.header.enabled.tooltip", "Enables the preload."));
 
                     ImGui.TableNextColumn();
-                    ImGui.TableHeader("Priority");
-                    ImGuiHelper.ToolTip("Sets the priority of the preload. Lower numbers show up at the top of the preload window.", 20f);
+                    ImGui.TableHeader(this.PluginText.T("preloads.header.priority", "Priority"));
+                    ImGuiHelper.ToolTip(this.PluginText.T("preloads.header.priority.tooltip", "Sets the priority of the preload. Lower numbers show up at the top of the preload window."), 20f);
 
                     ImGui.TableNextColumn();
-                    ImGui.TableHeader("Log");
-                    ImGuiHelper.ToolTip("Log to file when preload found in area/zone.");
+                    ImGui.TableHeader(this.PluginText.T("preloads.header.log", "Log"));
+                    ImGuiHelper.ToolTip(this.PluginText.T("preloads.header.log.tooltip", "Log to file when preload found in area/zone."));
 
                     ImGui.TableNextColumn();
-                    ImGui.TableHeader("Color");
-                    ImGuiHelper.ToolTip("Sets the color of the preload");
+                    ImGui.TableHeader(this.PluginText.T("preloads.header.color", "Color"));
+                    ImGuiHelper.ToolTip(this.PluginText.T("preloads.header.color.tooltip", "Sets the color of the preload"));
 
                     ImGui.TableNextColumn();
-                    ImGui.TableHeader("Display Name");
-                    ImGuiHelper.ToolTip("Sets the name that appears in the preload window. Press Enter to save changes.", 20f);
+                    ImGui.TableHeader(this.PluginText.T("preloads.header.display_name", "Display Name"));
+                    ImGuiHelper.ToolTip(this.PluginText.T("preloads.header.display_name.tooltip", "Sets the name that appears in the preload window. Press Enter to save changes."), 20f);
 
                     ImGui.TableNextColumn();
-                    ImGui.TableHeader("Path");
-                    ImGuiHelper.ToolTip("Path of the preload you want to show in the preload window. Press Enter to save changes.", 20f);
+                    ImGui.TableHeader(this.PluginText.T("preloads.header.path", "Path"));
+                    ImGuiHelper.ToolTip(this.PluginText.T("preloads.header.path.tooltip", "Path of the preload you want to show in the preload window. Press Enter to save changes."), 20f);
 
 
                     ImGui.TableNextColumn();
@@ -287,7 +287,7 @@ namespace PreloadAlert
                     ImGui.InputText($"##Path", ref this.tmpAddPreloadKey, 250);
 
                     ImGui.TableNextColumn();
-                    if (ImGui.Button("Add"))
+                    if (ImGui.Button(this.PluginText.Label("button.add", "Add", "PreloadAlertAddPreload")))
                     {
                         if (!string.IsNullOrEmpty(this.tmpAddPreloadKey) || !string.IsNullOrEmpty(this.tmpAddPreloadValue.DisplayName))
                         {
@@ -374,7 +374,7 @@ namespace PreloadAlert
                         ImGui.PopStyleColor();
 
                         ImGui.TableNextColumn();
-                        if (ImGui.SmallButton($"Delete##{key}"))
+                        if (ImGui.SmallButton($"{this.PluginText.T("button.delete", "Delete")}##{key}"))
                         {
                             this.preloads.Remove(key);
                         }

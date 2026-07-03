@@ -7,6 +7,7 @@ namespace Radar
     using System.Collections.Generic;
     using System.IO;
     using System.Numerics;
+    using GameHelper.Localization;
     using GameHelper.Plugin;
     using ImGuiNET;
     using Newtonsoft.Json;
@@ -522,10 +523,12 @@ namespace Radar
         /// <param name="headingText">Text to display as heading.</param>
         /// <param name="icons">Icons settings to draw.</param>
         /// <param name="helpingText">helping text to display at the top.</param>
+        /// <param name="text">Plugin localization resources.</param>
         public void DrawIconsSettingToImGui(
             string headingText,
             Dictionary<string, IconPicker> icons,
-            string helpingText)
+            string helpingText,
+            PluginLocalization text)
         {
             var isOpened = ImGui.TreeNode($"{headingText}##treeNode");
             if (!string.IsNullOrEmpty(helpingText))
@@ -542,7 +545,7 @@ namespace Radar
                     ImGui.SameLine();
                     ImGui.Text(icon.Key);
                     ImGui.NextColumn();
-                    icon.Value.ShowSettingWidget();
+                    icon.Value.ShowSettingWidget(text);
                     ImGui.NextColumn();
                 }
 
@@ -555,20 +558,21 @@ namespace Radar
         ///     draws the POIMonster setting widget.
         /// </summary>
         /// <param name="dllDirectory">directory where the plugin dll is located.</param>
-        public void DrawPOIMonsterSettingToImGui(string dllDirectory)
+        /// <param name="text">Plugin localization resources.</param>
+        public void DrawPOIMonsterSettingToImGui(string dllDirectory, PluginLocalization text)
         {
-            if (ImGui.TreeNode($"Monster POI Icons"))
+            if (ImGui.TreeNode(text.Title("icons.monster_poi", "Monster POI Icons", "RadarMonsterPoiIcons")))
             {
                 ImGui.Columns(2, $"icons columns##POIMonsterCol", false);
                 foreach (var poimonster in this.POIMonsters)
                 {
                     ImGui.Checkbox($"##showpoimonster{poimonster.Key}", ref poimonster.Value.Show);
                     ImGui.SameLine();
-                    ImGui.Text(poimonster.Key  == -1 ? "Default Group" : $"Group {poimonster.Key}");
+                    ImGui.Text(poimonster.Key  == -1 ? text.T("icons.default_group", "Default Group") : text.F("icons.group", "Group {0}", poimonster.Key));
                     ImGui.NextColumn();
-                    poimonster.Value.ShowSettingWidget();
+                    poimonster.Value.ShowSettingWidget(text);
                     ImGui.SameLine();
-                    if (poimonster.Key != -1 && ImGui.Button($"Delete##{poimonster.Key}"))
+                    if (poimonster.Key != -1 && ImGui.Button(text.Label("button.delete", "Delete", poimonster.Key.ToString())))
                     {
                         _ = this.POIMonsters.Remove(poimonster.Key);
                     }
@@ -579,13 +583,13 @@ namespace Radar
                 ImGui.Columns(1);
                 ImGui.Separator();
                 ImGui.SetNextItemWidth(ImGui.GetFontSize() * 5);
-                if (ImGui.InputInt("Group Number##poimonster", ref poiMonsterGroupNumber) && poiMonsterGroupNumber < 0)
+                if (ImGui.InputInt(text.Label("icons.group_number", "Group Number", "poimonster"), ref poiMonsterGroupNumber) && poiMonsterGroupNumber < 0)
                 {
                     poiMonsterGroupNumber = 0;
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button("Add##POIMonsterGroupAdd"))
+                if (ImGui.Button(text.Label("button.add", "Add", "POIMonsterGroupAdd")))
                 {
                     this.POIMonsters.TryAdd(poiMonsterGroupNumber, new(Path.Join(dllDirectory, "icons.png"), 12, 44, 30, IconSize));
                 }
@@ -598,20 +602,21 @@ namespace Radar
         ///     draws the OtherImportantObjects setting widget.
         /// </summary>
         /// <param name="dllDirectory">directory where the plugin dll is located.</param>
-        public void OtherImportantObjectsSettingToImGui(string dllDirectory)
+        /// <param name="text">Plugin localization resources.</param>
+        public void OtherImportantObjectsSettingToImGui(string dllDirectory, PluginLocalization text)
         {
-            if (ImGui.TreeNode($"Special Objects Icons"))
+            if (ImGui.TreeNode(text.Title("icons.special_objects", "Special Objects Icons", "RadarSpecialObjectsIcons")))
             {
                 ImGui.Columns(2, $"icons columns##SpecialObjects", false);
                 foreach (var obj in this.OtherImportantObjects)
                 {
                     ImGui.Checkbox($"##showspecialobj{obj.Key}", ref obj.Value.Show);
                     ImGui.SameLine();
-                    ImGui.Text(obj.Key == -1 ? "Default Group" : $"Group {obj.Key}");
+                    ImGui.Text(obj.Key == -1 ? text.T("icons.default_group", "Default Group") : text.F("icons.group", "Group {0}", obj.Key));
                     ImGui.NextColumn();
-                    obj.Value.ShowSettingWidget();
+                    obj.Value.ShowSettingWidget(text);
                     ImGui.SameLine();
-                    if (obj.Key != -1 && ImGui.Button($"Delete##{obj.Key}"))
+                    if (obj.Key != -1 && ImGui.Button(text.Label("button.delete", "Delete", obj.Key.ToString())))
                     {
                         _ = this.OtherImportantObjects.Remove(obj.Key);
                     }
@@ -622,13 +627,13 @@ namespace Radar
                 ImGui.Columns(1);
                 ImGui.Separator();
                 ImGui.SetNextItemWidth(ImGui.GetFontSize() * 5);
-                if (ImGui.InputInt("Group Number##SpecialObjects", ref poiMonsterGroupNumber) && poiMonsterGroupNumber < 0)
+                if (ImGui.InputInt(text.Label("icons.group_number", "Group Number", "SpecialObjects"), ref poiMonsterGroupNumber) && poiMonsterGroupNumber < 0)
                 {
                     poiMonsterGroupNumber = 0;
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button("Add##SpecialObjects"))
+                if (ImGui.Button(text.Label("button.add", "Add", "SpecialObjects")))
                 {
                     this.OtherImportantObjects.TryAdd(poiMonsterGroupNumber, new(Path.Join(dllDirectory, "icons.png"), 1, 37, 30, IconSize));
                 }

@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using GameHelper.Utils;
     using ImGuiNET;
@@ -27,17 +28,17 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         public static string Add()
         {
             var ret = string.Empty;
-            ImGui.Text("Player animation");
+            ImGui.Text(AhkText.T("template.player_animation", "Player animation"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 4);
             ImGuiHelper.IEnumerableComboBox("##AnimationOperator", SupportedOperatorTypes, ref selectedOperator);
             ImGui.SameLine();
             ImGui.InputInt("##AnimationRHS", ref animation);
-            ImGuiHelper.ToolTip("Open Core -> DV -> States -> InGameStateObject -> " +
+            ImGuiHelper.ToolTip(AhkText.T("template.animation.tooltip", "Open Core -> DV -> States -> InGameStateObject -> " +
                 "CurrentAreaInstance -> Player -> Components -> Actor -> AnimationId to figure " +
-                "out what value to put here. Make sure you are doing that animation after opening.");
+                "out what value to put here. Make sure you are doing that animation after opening."));
             ImGui.SameLine();
-            if (ImGui.Button("Add##Animation"))
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "Animation")))
             {
                 ret = $"PlayerAnimation.Equals({animation})";
                 if (selectedOperator == "is")

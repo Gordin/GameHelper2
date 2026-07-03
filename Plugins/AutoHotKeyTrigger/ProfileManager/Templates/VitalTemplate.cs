@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using AutoHotKeyTrigger.ProfileManager.Enums;
     using GameHelper.Utils;
@@ -35,10 +36,10 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Player");
+            ImGui.Text(AhkText.T("template.player", "Player"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
-            ImGuiHelper.EnumComboBox("is##VitalSelector", ref vitalType);
+            ImGuiHelper.EnumComboBox(AhkText.Label("template.is", "is", "VitalSelector"), ref vitalType);
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 3);
             ImGuiHelper.IEnumerableComboBox("##VitalOperator", SupportedOperatorTypes, ref selectedOperator);
@@ -46,7 +47,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 5);
             ImGui.InputInt("##VitalThreshold", ref threshold);
             ImGui.SameLine();
-            if (ImGui.Button("Add##Vital"))
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "Vital")))
             {
                 return $"PlayerVitals.{vitalType.ToString().Replace("_", ".")} {selectedOperator} {threshold}";
             }

@@ -5,6 +5,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Component
 {
+    using AutoHotKeyTrigger;
     using ImGuiNET;
     using Newtonsoft.Json;
     using System.Diagnostics;
@@ -39,18 +40,18 @@ namespace AutoHotKeyTrigger.ProfileManager.Component
         {
             if (expand)
             {
-                ImGui.Text("Condition WAITS for");
+                ImGui.Text(AhkText.T("component.wait.prefix", "Condition WAITS for"));
                 ImGui.SameLine();
-                ImGui.DragFloat("(seconds)##WAITCOMPONENT", ref this.duration, 0.05f, 0.0f, 5f);
+                ImGui.DragFloat(AhkText.Label("component.wait.seconds", "(seconds)", "WAITCOMPONENT"), ref this.duration, 0.05f, 0.0f, 5f);
             }
             else
             {
                 ImGui.SameLine();
-                ImGui.Text("for");
+                ImGui.Text(AhkText.T("component.wait.for", "for"));
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(255, 255, 0, 255), $"{this.duration}");
                 ImGui.SameLine();
-                ImGui.Text("seconds.");
+                ImGui.Text(AhkText.T("component.wait.seconds_suffix", "seconds."));
             }
         }
 

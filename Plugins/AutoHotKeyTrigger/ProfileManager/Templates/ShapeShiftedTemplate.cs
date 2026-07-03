@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using ImGuiNET;
 
@@ -22,8 +23,8 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Checkbox("Player is shape shifted to daemon/wolf/etc.", ref yesOrNo);
-            if (ImGui.Button("Add##ShapeShifted"))
+            ImGui.Checkbox(AhkText.Label("template.shape_shifted", "Player is shape shifted to daemon/wolf/etc.", "ShapeShifted"), ref yesOrNo);
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "ShapeShifted")))
             {
                 return yesOrNo ? "PlayerIsShapeShifted" : "!PlayerIsShapeShifted";
             }

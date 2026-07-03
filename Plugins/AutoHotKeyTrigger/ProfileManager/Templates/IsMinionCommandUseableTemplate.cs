@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using GameHelper;
     using GameHelper.RemoteObjects.Components;
@@ -27,7 +28,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Minion command");
+            ImGui.Text(AhkText.T("template.minion_command", "Minion command"));
             ImGui.SameLine();
             if (Core.States.InGameStateObject.CurrentAreaInstance.Player.TryGetComponent<Actor>(out var actor))
             {
@@ -35,7 +36,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             }
             else
             {
-                ImGui.Text("NO_MINION_FOUND, summon a minion that has a command skill first.");
+                ImGui.Text(AhkText.T("template.no_minion_found", "NO_MINION_FOUND, summon a minion that has a command skill first."));
                 if (!string.IsNullOrEmpty(commandName))
                 {
                     commandName = string.Empty;
@@ -43,7 +44,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             }
 
             ImGui.SameLine();
-            return ImGui.Button("Add##MinionCommandUsable")
+            return ImGui.Button(AhkText.Label("button.add", "Add", "MinionCommandUsable"))
                 ? $"MinionCommandSkillIsUsable.Contains(\"{commandName}\")"
                 : string.Empty;
         }

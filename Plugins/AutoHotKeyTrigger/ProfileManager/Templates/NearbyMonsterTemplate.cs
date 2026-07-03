@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface;
     using GameHelper.Utils;
@@ -38,21 +39,21 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Checkbox("Enable friendly monster condition##friendly_nearby_monster_template", ref friendly);
-            ImGui.Text("Player has");
+            ImGui.Checkbox(AhkText.Label("template.friendly_monster_condition", "Enable friendly monster condition", "friendly_nearby_monster_template"), ref friendly);
+            ImGui.Text(AhkText.T("template.player_has", "Player has"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 3);
             ImGuiHelper.IEnumerableComboBox("##NearbyMonsterOperator", SupportedOperatorTypes, ref selectedOperator);
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 5);
-            ImGui.InputInt(friendly ? "friendly monsters" : "monsters", ref counter);
+            ImGui.InputInt(friendly ? AhkText.Label("template.friendly_monsters", "friendly monsters", "NearbyFriendlyMonsterCounter") : AhkText.Label("template.monsters", "monsters", "NearbyMonsterCounter"), ref counter);
             if (!friendly)
             {
                 ImGui.SameLine();
-                ImGui.Text("near them of");
+                ImGui.Text(AhkText.T("template.near_them_of", "near them of"));
                 ImGui.SameLine();
                 ImGui.SetNextItemWidth(ImGui.GetFontSize() * 10);
-                if (ImGui.BeginCombo($"rarity##nearby_monster_template", $"{selectedRarity}"))
+                if (ImGui.BeginCombo(AhkText.Label("template.rarity", "rarity", "nearby_monster_template"), $"{selectedRarity}"))
                 {
                     foreach (var rarity in Enum.GetValues<MonsterRarity>())
                     {
@@ -75,12 +76,12 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             }
 
             ImGui.SameLine();
-            ImGui.Text("in");
+            ImGui.Text(AhkText.T("template.in", "in"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
             ImGuiHelper.EnumComboBox(".##NearbyZoneSelector", ref zones);
 
-            if (ImGui.Button("Add##NearbyMonsterAdd"))
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "NearbyMonsterAdd")))
             {
                 if (friendly)
                 {

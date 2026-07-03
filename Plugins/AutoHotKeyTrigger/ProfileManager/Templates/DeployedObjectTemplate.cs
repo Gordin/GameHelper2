@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using GameHelper.Utils;
     using ImGuiNET;
@@ -44,7 +45,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Player has deployed the object of type");
+            ImGui.Text(AhkText.T("template.deployed_object", "Player has deployed the object of type"));
             ImGui.SameLine();
             ImGui.PushItemWidth(ImGui.GetFontSize() * 6);
             ImGui.InputInt("##DeployedObjectType", ref objectType);
@@ -53,13 +54,13 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                 objectType = 0;
             }
 
-            ImGuiHelper.ToolTip("Open Core -> DV -> States -> InGameStateObject -> " +
+            ImGuiHelper.ToolTip(AhkText.T("template.deployed_object.tooltip", "Open Core -> DV -> States -> InGameStateObject -> " +
                 "CurrentAreaInstance -> Player -> Components -> Actor -> Deployed Objects to figure " +
-                "out what value to put here. PoE2 uses large type ids (e.g. 22938), not 0-255.");
+                "out what value to put here. PoE2 uses large type ids (e.g. 22938), not 0-255."));
             ImGui.SameLine();
             ImGuiHelper.IEnumerableComboBox("##DeployedObjectOperator", SupportedOperatorTypes, ref selectedOperator);
             ImGui.SameLine();
-            ImGui.InputInt("times##DeployedObjectCount", ref count);
+            ImGui.InputInt(AhkText.Label("template.times", "times", "DeployedObjectCount"), ref count);
             if (count < 0)
             {
                 count = 0;
@@ -67,7 +68,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
 
             ImGui.PopItemWidth();
             ImGui.SameLine();
-            if (ImGui.Button("Add##DeployedObject"))
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "DeployedObject")))
             {
                 return $"DeployedObjectsCount[{objectType}] {selectedOperator} {count}";
             }

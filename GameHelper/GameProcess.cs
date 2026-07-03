@@ -14,6 +14,7 @@ namespace GameHelper
     using ImGuiNET;
     using System.Drawing;
     using Utils;
+    using L = GameHelper.Localization.OverlayLocalization;
 
     /// <summary>
     ///     Allows process manipulation. It uses the (time/event based) co-routines
@@ -217,14 +218,16 @@ namespace GameHelper
                     for (var i = 0; i < this.processesInfo.Count; i++)
                     {
                         var foreground = GetForegroundWindow() == this.processesInfo[i].MainWindowHandle;
-                        if (ImGui.RadioButton($"{i} - PathOfExile - Focused: {foreground}", i == this.clientSelected))
+                        if (ImGui.RadioButton(
+                                $"{i} - PathOfExile - {L.F("game_process.focused", "Focused: {0}", foreground)}",
+                                i == this.clientSelected))
                         {
                             this.clientSelected = i;
                         }
                     }
 
                     ImGui.BeginDisabled(this.clientSelected < 0 || this.clientSelected >= this.processesInfo.Count);
-                    if (ImGui.Button("Done"))
+                    if (ImGui.Button(L.Label("game_process.done", "Done", "SelectGameDone")))
                     {
                         this.Information = this.processesInfo[this.clientSelected];
                         this.userPickedProcess = true;
@@ -234,7 +237,7 @@ namespace GameHelper
 
                     ImGui.EndDisabled();
                     ImGui.SameLine();
-                    if (ImGui.Button("Retry or Delay Selection"))
+                    if (ImGui.Button(L.Label("game_process.retry_or_delay", "Retry or Delay Selection", "SelectGameRetryOrDelay")))
                     {
                         this.HideSelectGameMenu();
                         ImGui.CloseCurrentPopup();

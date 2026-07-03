@@ -1,6 +1,7 @@
 ﻿namespace HealthBars
 {
     using System.Numerics;
+    using GameHelper.Localization;
     using GameHelper.Utils;
     using ImGuiNET;
     using Newtonsoft.Json;
@@ -133,45 +134,45 @@
         /// <summary>
         ///     Display the Config on imgui.
         /// </summary>
-        public void Draw()
+        public void Draw(PluginLocalization text)
         {
-            ImGui.Text("NOTE: For going above/below the limit, or for manual editing, press CTRL + Left Mouse Button click.");
+            ImGui.Text(text.T("config.manual_edit_note", "NOTE: For going above/below the limit, or for manual editing, press CTRL + Left Mouse Button click."));
             if (ImGui.BeginTable("config_table", 2))
             {
                 ImGui.TableNextColumn();
-                ImGui.Checkbox("Enable Healthbar", ref this.Enable);
+                ImGui.Checkbox(text.Label("config.enable_healthbar", "Enable Healthbar", "HealthBarsConfigEnableHealthbar"), ref this.Enable);
                 ImGui.TableNextColumn();
-                ImGui.Checkbox("Visualize Culling Strike Range", ref this.ShowCullStrike);
+                ImGui.Checkbox(text.Label("config.visualize_culling_strike", "Visualize Culling Strike Range", "HealthBarsConfigVisualizeCull"), ref this.ShowCullStrike);
                 ImGui.TableNextColumn();
-                ImGui.Checkbox("Show health+ES (absolute) as text", ref this.ShowText);
+                ImGui.Checkbox(text.Label("config.show_health_es_text", "Show health+ES (absolute) as text", "HealthBarsConfigShowText"), ref this.ShowText);
                 ImGui.TableNextColumn();
-                ImGui.ColorEdit4("Text Color", ref this.TextColor);
+                ImGui.ColorEdit4(text.Label("config.text_color", "Text Color", "HealthBarsConfigTextColor"), ref this.TextColor);
                 ImGui.TableNextColumn();
-                if (ImGuiHelper.Vector2SliderInt("Scale (x, y)", ImGui.GetColumnWidth(), ref this.Scale, 160, 500, 16, 128, ImGuiSliderFlags.Logarithmic))
+                if (ImGuiHelper.Vector2SliderInt(text.Label("config.scale", "Scale (x, y)", "HealthBarsConfigScale"), ImGui.GetColumnWidth(), ref this.Scale, 160, 500, 16, 128, ImGuiSliderFlags.Logarithmic))
                 {
                     this.UpdateGrauationsLocationData();
                 }
 
-                ImGuiHelper.ToolTip("By default texture is of height 16, " +
+                ImGuiHelper.ToolTip(text.T("config.scale.tooltip", "By default texture is of height 16, " +
                     "If increasing the Y axis ruins the texture, " +
                     "feel free to modify the texture height via your fav texture editor. " +
-                    "This doesn't apply to x axis.");
+                    "This doesn't apply to x axis."));
                 ImGui.TableNextColumn();
-                ImGuiHelper.Vector2SliderInt("Shift (x, y)", ImGui.GetColumnWidth(), ref this.Shift, -4000, 4000, -2500, 2500, ImGuiSliderFlags.Logarithmic);
+                ImGuiHelper.Vector2SliderInt(text.Label("config.shift", "Shift (x, y)", "HealthBarsConfigShift"), ImGui.GetColumnWidth(), ref this.Shift, -4000, 4000, -2500, 2500, ImGuiSliderFlags.Logarithmic);
                 ImGui.TableNextColumn();
-                ImGui.ColorEdit4("Healthbar", ref this.HealthbarColor);
+                ImGui.ColorEdit4(text.Label("config.healthbar_color", "Healthbar", "HealthBarsConfigHealthbarColor"), ref this.HealthbarColor);
                 ImGui.TableNextColumn();
-                ImGui.ColorEdit4("Background", ref this.BackgroundColor);
+                ImGui.ColorEdit4(text.Label("config.background_color", "Background", "HealthBarsConfigBackgroundColor"), ref this.BackgroundColor);
                 ImGui.TableNextColumn();
-                if (ImGui.DragInt("Gradation Marks", ref this.Graduations, 0.05f, 0, 9))
+                if (ImGui.DragInt(text.Label("config.gradation_marks", "Gradation Marks", "HealthBarsConfigGradationMarks"), ref this.Graduations, 0.05f, 0, 9))
                 {
                     this.UpdateGrauationsLocationData();
                 }
 
-                ImGuiHelper.ToolTip("Graduation thickness depends on Font size. Also, " +
-                    "Gradation marks are expensive to draw, on non rare/unique monsters keep it to 0.");
+                ImGuiHelper.ToolTip(text.T("config.gradation_marks.tooltip", "Graduation thickness depends on Font size. Also, " +
+                    "Gradation marks are expensive to draw, on non rare/unique monsters keep it to 0."));
                 ImGui.TableNextColumn();
-                ImGui.ColorEdit4("ES Bar", ref this.ESColor);
+                ImGui.ColorEdit4(text.Label("config.es_bar_color", "ES Bar", "HealthBarsConfigEsBarColor"), ref this.ESColor);
                 ImGui.EndTable();
             }
         }
