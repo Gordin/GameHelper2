@@ -43,6 +43,26 @@ To author a plugin, copy `Plugins/SamplePluginTemplate/Changeme`. A plugin is ex
 - The plugin DLL filename **must match its directory name** (`PluginName*.dll` in `Plugins\PluginName\`), or it won't be discovered.
 - `DrawUI` is called every frame for enabled plugins via the `OnRender` coroutine (wrapped in profiling + try/catch). Read game data through `Core.*`.
 
+## Localization
+
+Overlay text is translated through keyed JSON resources. There are **two parallel systems** — pick the one that owns the text:
+
+- **`GameHelper.Localization.OverlayLocalization`** (static) — **core/overlay** text (settings window, core popups). Resources live in `GameHelper/Localization/<lang>.json` and are staged to the output root by a `None Include="Localization\*.json"` in `GameHelper.csproj`.
+- **`GameHelper.Localization.PluginLocalization`** (instance) — **plugin** text. Every `PCore<TSettings>` exposes it as `protected PluginLocalization PluginText`. Each plugin owns its resources under `Plugins/<Name>/Localization/<lang>.json`, staged next to the plugin DLL by `Plugins/Directory.Build.targets` (auto-imported for every plugin project — no per-plugin `.csproj` change needed). A `static` helper (see AutoHotKeyTrigger's `AhkText`) is the pattern when a static class needs `PluginText` it can't reach through `this`.
+
+Both expose the same four functions:
+
+- `T(key, fallback)` — plain text.
+- `F(key, fallback, args...)` — `string.Format` with the current culture.
+- `Label(key, fallback, id)` — appends a hidden `##id` so the ImGui ID stays stable across languages while the visible text changes.
+- `Title(key, fallback, id)` — appends `###id` for windows / tabs / collapsing headers (visible title localizes, ID stable).
+
+`fallback` is the English string, returned only when the key is missing from both the current language and `en-US.json`; keep it matching `en-US.json`. Language is chosen by the user via `Core.GHSettings.UiLanguage` (an `OverlayLanguage`) — a dropdown in Settings → General. Supported: `en-US`, `fr-FR`, `de-DE`, `es-ES`, `ja-JP`, `ko-KR`, `pt-BR`, `ru-RU`, `th-TH`, `zh-CN`, `zh-Hant`; `en-US.json` is the baseline and other files may be partial (missing keys fall back to English).
+
+Key naming: `settings.<section>.<name>` for the settings window, `<feature>.<name>` elsewhere — lower-case dotted, descriptive rather than a copy of the English text. A plugin's `plugin.description` key is shown in the plugin-manager list via `PCore.GetDescription()` (override it to change the source). Full authoring guide: `GameHelper/Localization/README.md`.
+
+Do **not** reintroduce the old `OverlayLocalization.L(english, german)` / `IsGerman` bilingual shim — it was removed in 2.5.0; all text goes through the keyed system above.
+
 ## Memory offset / patch-day recovery
 
 When PoE2 patches, the app breaks until offsets are refreshed — this is a recurring core maintenance task. Two independent layers:
