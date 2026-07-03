@@ -51,12 +51,16 @@ namespace GameHelper
             {
                 try
                 {
-                    return (uint)this.Information.Id;
-                }
-                catch (NullReferenceException)
-                {
-                    // Information not yet populated — game not yet found. Expected pre-attach.
-                    return 0;
+                    // Information is null until the game is found. Guard explicitly instead of
+                    // catching a NullReferenceException so the debugger doesn't break on a
+                    // first-chance exception every startup.
+                    var info = this.Information;
+                    if (info == null)
+                    {
+                        return 0;
+                    }
+
+                    return (uint)info.Id;
                 }
                 catch (InvalidOperationException)
                 {
