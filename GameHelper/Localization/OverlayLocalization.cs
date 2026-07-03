@@ -103,21 +103,6 @@ namespace GameHelper.Localization
         public static OverlayLanguage CurrentLanguage => Core.GHSettings.UiLanguage;
 
         /// <summary>
-        ///     Gets a value indicating whether the overlay language is German.
-        ///     Kept for compatibility with plugins ported from older localized forks.
-        /// </summary>
-        public static bool IsGerman => CurrentLanguage == OverlayLanguage.German;
-
-        /// <summary>
-        ///     Returns the localized string for compatibility with older plugins.
-        ///     The main UI should use keyed resources through <see cref="T"/>.
-        /// </summary>
-        /// <param name="english">The English string (always returned).</param>
-        /// <param name="german">The German string.</param>
-        /// <returns>The localized legacy string.</returns>
-        public static string L(string english, string german) => IsGerman ? german : english;
-
-        /// <summary>
         ///     Resolves a localized string by key, falling back to English and then
         ///     <paramref name="fallback"/> when a resource is missing.
         /// </summary>
