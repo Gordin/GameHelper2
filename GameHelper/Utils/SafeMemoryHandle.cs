@@ -210,29 +210,23 @@ namespace GameHelper.Utils
             var buffer = new T[nsize];
             try
             {
-                if (!NativeWrapper.ReadProcessMemoryArray(
-                    this.handle, address, buffer, out var numBytesRead))
+                // Array/blob/string reads are inherently speculative — the source pointer comes
+                // from a container (std::vector/string) that may be torn or stale, so failures
+                // and short reads are routine and recoverable. Record them for the diagnostics
+                // window but keep the console clean, matching TryReadMemory (audit: torn-read noise).
+                var expectedBytes = (long)nsize * Marshal.SizeOf<T>();
+                if (!NativeWrapper.ReadProcessMemoryArray(this.handle, address, buffer, out var numBytesRead) ||
+                    numBytesRead.ToInt64() < expectedBytes)
                 {
                     RecordDiagnosticFailure($"{typeof(T).Name}[]", address);
-                    throw new Exception("Failed To Read the Memory (array)" +
-                                        $" due to Error Number: 0x{NativeWrapper.LastError:X}" +
-                                        $" on address 0x{address.ToInt64():X} with size {nsize}" +
-                                        $" for type {typeof(T).Name} [caller: {DescribeCaller()}]");
-                }
-
-                var expectedBytes = (long)nsize * Marshal.SizeOf<T>();
-                if (numBytesRead.ToInt64() < expectedBytes)
-                {
-                    throw new Exception($"Number of bytes read {numBytesRead.ToInt64()} is less " +
-                        $"than the expected {expectedBytes} bytes ({nsize} elements of size {Marshal.SizeOf<T>()}) " +
-                        $"on address 0x{address.ToInt64():X}.");
+                    return Array.Empty<T>();
                 }
 
                 return buffer;
             }
-            catch (Exception e)
+            catch
             {
-                Console.WriteLine($"ERROR: {e.Message}");
+                RecordDiagnosticFailure($"{typeof(T).Name}[]", address);
                 return Array.Empty<T>();
             }
         }
@@ -504,18 +498,22 @@ namespace GameHelper.Utils
         }
 
         /// <summary>
-        ///     Walks the current call stack to find the first frame outside this class and
-        ///     returns "AssemblyName!Type.Method". Used only on the (rare) memory-read error
-        ///     path to attribute a bad read to core vs. a specific plugin assembly. The
-        ///     assembly name distinguishes plugins (each loaded under its own ALC/name) from
-        ///     GameHelper core. Stack capture is skipped for line info to keep it cheap.
+        ///     Walks the current call stack to attribute a bad read to core vs. a specific
+        ///     plugin assembly (each plugin is loaded under its own ALC/name). Skips this
+        ///     class's own frames, then returns the first application frame as
+        ///     "AssemblyName!Type.Method". Because objects are frequently constructed via
+        ///     reflection (Activator.CreateInstance), the real caller can sit above a
+        ///     runtime/reflection trampoline; when the first frame we hit is such infrastructure
+        ///     we keep walking (recording the chain) until we reach real application code, so the
+        ///     trampoline doesn't mask the true origin. Stack capture skips line info to stay cheap.
         /// </summary>
-        /// <returns>caller description, or a fallback string if it can't be determined.</returns>
+        /// <returns>caller chain, or a fallback string if it can't be determined.</returns>
         private static string DescribeCaller()
         {
             try
             {
                 var stack = new System.Diagnostics.StackTrace(1, false);
+                var parts = new List<string>();
                 foreach (var frame in stack.GetFrames())
                 {
                     var method = frame?.GetMethod();
@@ -526,15 +524,38 @@ namespace GameHelper.Utils
                     }
 
                     var asm = declaringType.Assembly.GetName().Name ?? "?";
-                    return $"{asm}!{declaringType.Name}.{method!.Name}";
+                    parts.Add($"{asm}!{declaringType.Name}.{method!.Name}");
+
+                    // Stop at the first real application frame. Keep collecting through
+                    // runtime/reflection frames (with a hard cap) so a reflection invoke
+                    // shows "trampoline <- realCaller" instead of just the trampoline.
+                    if (!IsInfrastructureAssembly(asm) || parts.Count >= 4)
+                    {
+                        break;
+                    }
                 }
 
-                return "<unknown>";
+                return parts.Count > 0 ? string.Join(" <- ", parts) : "<unknown>";
             }
             catch
             {
                 return "<unavailable>";
             }
+        }
+
+        /// <summary>
+        ///     Whether an assembly is .NET runtime / reflection infrastructure rather than
+        ///     application (GameHelper or plugin) code. Used by <see cref="DescribeCaller"/> to
+        ///     walk past reflection trampolines.
+        /// </summary>
+        /// <param name="assemblyName">the assembly's simple name.</param>
+        /// <returns>true if it is a framework/runtime assembly.</returns>
+        private static bool IsInfrastructureAssembly(string assemblyName)
+        {
+            return assemblyName.StartsWith("System", StringComparison.Ordinal) ||
+                   assemblyName == "mscorlib" ||
+                   assemblyName == "netstandard" ||
+                   assemblyName == "?";
         }
 
         /// <summary>
