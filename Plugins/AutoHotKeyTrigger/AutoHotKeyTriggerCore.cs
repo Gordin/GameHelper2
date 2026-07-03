@@ -28,10 +28,6 @@ namespace AutoHotKeyTrigger
     /// </summary>
     public sealed class AutoHotKeyTriggerCore : PCore<AutoHotKeyTriggerSettings>
     {
-        private readonly string warningMsg = "The current condition you have put for AutoQuit is yielding true.\n" +
-            "This mean you will automatically logout as soon as you leave town/hideout.\n" +
-            "Please update your AutoQuit condition and/or disable it and/or fix your exile state.";
-
         private readonly List<(string name, Profile value)> clonesToAdd = new();
         private readonly Vector4 impTextColor = new(255, 255, 0, 255);
         private readonly Vector2 size = new(624, 380);
@@ -53,50 +49,51 @@ namespace AutoHotKeyTrigger
         /// <inheritdoc />
         public override void DrawSettings()
         {
+            AhkText.Current = this.PluginText;
             ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
-            ImGui.TextColored(this.impTextColor, "Do not trust Settings.txt files for Auto Hokey Trigger from sources you have not personally verified. " + 
+            ImGui.TextColored(this.impTextColor, this.PluginText.T("warning.settings_file", "Do not trust Settings.txt files for Auto Hokey Trigger from sources you have not personally verified. " +
                               "They may contain malicious content that can compromise your computer. " +
                               "Using profiles with incorrectly configured rules may also lead to you being kicked from the server, " +
-                              "or your account being banned as a result of preforming to many actions repeatedly.") ;
+                              "or your account being banned as a result of preforming to many actions repeatedly.")) ;
             ImGui.NewLine();
-            ImGui.TextColored(this.impTextColor, "Again, all profiles/rules created to use a specified flask(s) should have at a minimum " +
+            ImGui.TextColored(this.impTextColor, this.PluginText.T("warning.flask_rules", "Again, all profiles/rules created to use a specified flask(s) should have at a minimum " +
                               "the FLASK_EFFECT and an appropriate number of FLASK_CHARGES defined as part of the use condition of a given profile rule. " +
                               "Failing to to include these two conditions as part of a rule will likely result in Auto Hotkey Trigger spamming the flask(s), " + 
                               "resulting in a possible kick or ban from the game servers because of sending to many actions to the server. " +
-                              "You have been warrned, use common sense when creating profiles/rulse with this tool.");
+                              "You have been warrned, use common sense when creating profiles/rulse with this tool."));
             ImGui.PopTextWrapPos();
-            if (ImGui.CollapsingHeader("Common Config"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.common_config", "Common Config", "AhkCommonConfig")))
             {
-                ImGui.Checkbox("Debug Mode", ref this.Settings.DebugMode);
+                ImGui.Checkbox(this.PluginText.Label("settings.debug_mode", "Debug Mode", "AhkDebugMode"), ref this.Settings.DebugMode);
                 ImGui.SameLine();
-                ImGui.Checkbox("Trigger rules or execute Autoquit in Hideout", ref this.Settings.ShouldRunInHideout);
-                ImGuiHelper.ToolTip("The debug mode may prove to be a helpful tool in troubleshooting Auto HotKey Trigger profile rules that are not preforming as expected. " +
+                ImGui.Checkbox(this.PluginText.Label("settings.run_in_hideout", "Trigger rules or execute Autoquit in Hideout", "AhkRunInHideout"), ref this.Settings.ShouldRunInHideout);
+                ImGuiHelper.ToolTip(this.PluginText.T("settings.debug_mode.tooltip", "The debug mode may prove to be a helpful tool in troubleshooting Auto HotKey Trigger profile rules that are not preforming as expected. " +
                                     "It can also be used to verify if AutoHotKeyTrigger is spamming the profile rule action or not based on the included conditions of a given profile rule. " +
-                                    "It is highly suggested to create and test all new profiles/rules with the debug mode turned on to insure that all rules are preforming as expected.");
-                ImGuiHelper.NonContinuousEnumComboBox("Dump Player Status Effects",
+                                    "It is highly suggested to create and test all new profiles/rules with the debug mode turned on to insure that all rules are preforming as expected."));
+                ImGuiHelper.NonContinuousEnumComboBox(this.PluginText.Label("settings.dump_status_effects", "Dump Player Status Effects", "AhkDumpStatusEffects"),
                     ref this.Settings.DumpStatusEffectOnMe);
-                ImGuiHelper.ToolTip($"This hotkey will dump the current active player's buff(s), debuff(s) into a text file in the GameHelper -> Plugins -> " +
+                ImGuiHelper.ToolTip(this.PluginText.T("settings.dump_status_effects.tooltip", "This hotkey will dump the current active player's buff(s), debuff(s) into a text file in the GameHelper -> Plugins -> " +
                                     $"AutoHotKeyTrigger folder. Use this hotkey if the AutoHotKeyTrigger plugin fails to detect for example: " +
-                                    $"bleeds, corrupting blood, poison, freeze, ignites or other de(buffs) currently active on the character.");
-                ImGui.Checkbox("Scan nearby Unique monsters for invuln markers (1/sec)",
+                                    $"bleeds, corrupting blood, poison, freeze, ignites or other de(buffs) currently active on the character."));
+                ImGui.Checkbox(this.PluginText.Label("settings.scan_invuln_markers", "Scan nearby Unique monsters for invuln markers (1/sec)", "AhkScanInvulnMarkers"),
                     ref this.Settings.ScanUniqueInvulnMarkers);
-                ImGuiHelper.ToolTip("Discovery tool. Once per second, logs any nearby Unique/boss monster whose Stats or Buffs " +
+                ImGuiHelper.ToolTip(this.PluginText.T("settings.scan_invuln_markers.tooltip", "Discovery tool. Once per second, logs any nearby Unique/boss monster whose Stats or Buffs " +
                                     "contain an entry that could mean it's currently invulnerable (names containing cannot_be_damaged, " +
                                     "invulnerable, cannot_die, immune, untargetable, etc.). It only logs when a monster's marker set CHANGES, " +
                                     "so the damageable<->invulnerable transition is easy to spot. Output goes to the AHK Debug Window " +
-                                    "(enable Debug Mode to see it live) and is appended to unique_invuln_markers.txt in the plugin folder.");
-                ImGuiHelper.IEnumerableComboBox("Profile", this.Settings.Profiles.Keys, ref this.Settings.CurrentProfile);
-                if (ImGui.Button("Add/Reset and Activate League Start Default Profile"))
+                                    "(enable Debug Mode to see it live) and is appended to unique_invuln_markers.txt in the plugin folder."));
+                ImGuiHelper.IEnumerableComboBox(this.PluginText.Label("settings.profile", "Profile", "AhkProfile"), this.Settings.Profiles.Keys, ref this.Settings.CurrentProfile);
+                if (ImGui.Button(this.PluginText.Label("button.default_profile", "Add/Reset and Activate League Start Default Profile", "AhkDefaultProfile")))
                 {
                     this.CreateDefaultProfile();
                 }
             }
 
-            if (ImGui.CollapsingHeader("Add New Profile"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.add_profile", "Add New Profile", "AhkAddProfile")))
             {
-                ImGui.InputText("Name", ref this.newProfileName, 100);
+                ImGui.InputText(this.PluginText.Label("settings.name", "Name", "AhkNewProfileName"), ref this.newProfileName, 100);
                 ImGui.SameLine();
-                if (ImGui.Button("Add"))
+                if (ImGui.Button(this.PluginText.Label("button.add", "Add", "AhkAddProfileButton")))
                 {
                     if (!string.IsNullOrEmpty(this.newProfileName))
                     {
@@ -110,16 +107,16 @@ namespace AutoHotKeyTrigger
             // does not really hurt performance and only called
             // when the settings window is open
             DynamicCondition.UpdateState();
-            if (ImGui.CollapsingHeader("Existing Profiles"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.existing_profiles", "Existing Profiles", "AhkExistingProfiles")))
             {
                 foreach (var (key, profile) in this.Settings.Profiles)
                 {
                     var isOpened = ImGui.TreeNode($"{key} (?)");
-                    ImGuiHelper.ToolTip("Rules (tabs) can be moved via drag and drop. They can be cloned by right click.");
+                    ImGuiHelper.ToolTip(this.PluginText.T("profiles.tooltip", "Rules (tabs) can be moved via drag and drop. They can be cloned by right click."));
                     if (isOpened)
                     {
                         ImGui.SameLine();
-                        if (ImGui.SmallButton("Delete Profile"))
+                        if (ImGui.SmallButton(this.PluginText.Label("button.delete_profile", "Delete Profile", $"AhkDeleteProfile_{key}")))
                         {
                             this.Settings.Profiles.Remove(key);
                             if (this.Settings.CurrentProfile == key)
@@ -129,7 +126,7 @@ namespace AutoHotKeyTrigger
                         }
 
                         ImGui.SameLine();
-                        if (ImGui.SmallButton("Clone Profile"))
+                        if (ImGui.SmallButton(this.PluginText.Label("button.clone_profile", "Clone Profile", $"AhkCloneProfile_{key}")))
                         {
                             this.clonesToAdd.Add(($"{key}1", new(profile)));
 
@@ -143,14 +140,14 @@ namespace AutoHotKeyTrigger
                 this.clonesToAdd.RemoveAll(k => this.Settings.Profiles.TryAdd(k.name, k.value) || true); // remove even if add fails.
             }
 
-            if (ImGui.CollapsingHeader("Auto Quit"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.auto_quit", "Auto Quit", "AhkAutoQuit")))
             {
                 ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X / 6);
-                ImGui.Checkbox("Enable AutoQuit", ref this.Settings.EnableAutoQuit);
+                ImGui.Checkbox(this.PluginText.Label("settings.enable_autoquit", "Enable AutoQuit", "AhkEnableAutoQuit"), ref this.Settings.EnableAutoQuit);
                 this.Settings.AutoQuitCondition.Display(true);
                 ImGui.Separator();
-                ImGui.Checkbox("Enable AutoQuit Manual Hotkey", ref this.Settings.EnableAutoQuitKey);
-                ImGui.Text("Hotkey to manually quit game connection: ");
+                ImGui.Checkbox(this.PluginText.Label("settings.enable_autoquit_hotkey", "Enable AutoQuit Manual Hotkey", "AhkEnableAutoQuitHotkey"), ref this.Settings.EnableAutoQuitKey);
+                ImGui.Text(this.PluginText.T("settings.autoquit_hotkey", "Hotkey to manually quit game connection: "));
                 ImGui.SameLine();
                 ImGuiHelper.NonContinuousEnumComboBox("##Manual Quit HotKey", ref this.Settings.AutoQuitKey);
                 ImGui.PopItemWidth();
@@ -160,6 +157,7 @@ namespace AutoHotKeyTrigger
         /// <inheritdoc />
         public override void DrawUI()
         {
+            AhkText.Current = this.PluginText;
             if (this.Settings.ScanUniqueInvulnMarkers)
             {
                 this.ScanUniqueInvulnMarkers();
@@ -168,13 +166,13 @@ namespace AutoHotKeyTrigger
             if (this.Settings.DebugMode)
             {
                 ImGui.SetNextWindowSize(size, ImGuiCond.FirstUseEver);
-                if (ImGui.Begin($"AHK Debug Window", ref this.Settings.DebugMode,
+                if (ImGui.Begin(this.PluginText.Title("window.debug", "AHK Debug Window", "AhkDebugWindow"), ref this.Settings.DebugMode,
                     this.isDebugWindowHovered ? ImGuiWindowFlags.MenuBar : ImGuiWindowFlags.None))
                 {
                     this.isDebugWindowHovered =  ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem);
                     if (ImGui.BeginMenuBar())
                     {
-                        if (ImGui.Button("Clear History"))
+                        if (ImGui.Button(this.PluginText.Label("button.clear_history", "Clear History", "AhkClearHistory")))
                         {
                             this.keyPressInfo.Clear();
                         }
@@ -196,7 +194,7 @@ namespace AutoHotKeyTrigger
                     if (!string.IsNullOrEmpty(this.debugMessage))
                     {
                         ImGui.Separator();
-                        ImGui.TextWrapped($"Issues: {this.debugMessage}");
+                        ImGui.TextWrapped(this.PluginText.F("debug.issues", "Issues: {0}", this.debugMessage));
                     }
                 }
 
@@ -527,8 +525,11 @@ namespace AutoHotKeyTrigger
 
             if (ImGui.BeginPopup("AutoQuitWarningUi"))
             {
-                ImGui.Text(this.warningMsg);
-                if (ImGui.Button("I understand", new Vector2(ImGui.CalcTextSize(this.warningMsg).X, 50f)))
+                var warningMsg = this.PluginText.T("warning.autoquit_true", "The current condition you have put for AutoQuit is yielding true.\n" +
+                    "This mean you will automatically logout as soon as you leave town/hideout.\n" +
+                    "Please update your AutoQuit condition and/or disable it and/or fix your exile state.");
+                ImGui.Text(warningMsg);
+                if (ImGui.Button(this.PluginText.Label("button.i_understand", "I understand", "AhkAutoQuitUnderstand"), new Vector2(ImGui.CalcTextSize(warningMsg).X, 50f)))
                 {
                     this.stopShowingAutoQuitWarning = true;
                     ImGui.CloseCurrentPopup();

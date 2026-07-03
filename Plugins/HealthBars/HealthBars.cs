@@ -49,25 +49,25 @@ namespace HealthBars
         /// <inheritdoc />
         public override void DrawSettings()
         {
-            ImGui.Text("Turn off in game health bars for best result.");
-            ImGui.Text("Enable/Disable plugin to reload textures.");
-            ImGui.Text($"Total Textures loaded: {this.textures.TotalTexturesLoaded}");
-            if (ImGui.CollapsingHeader("Common Configuration"))
+            ImGui.Text(this.PluginText.T("settings.turn_off_game_health_bars", "Turn off in game health bars for best result."));
+            ImGui.Text(this.PluginText.T("settings.reload_textures_hint", "Enable/Disable plugin to reload textures."));
+            ImGui.Text(this.PluginText.F("settings.total_textures_loaded", "Total Textures loaded: {0}", this.textures.TotalTexturesLoaded));
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.common_configuration", "Common Configuration", "HealthBarsCommonConfiguration")))
             {
                 if (ImGui.BeginTable("common_config_table", 2))
                 {
                     ImGui.TableNextColumn();
-                    ImGui.Checkbox("Draw healthbars in town", ref this.Settings.DrawInTown);
+                    ImGui.Checkbox(this.PluginText.Label("settings.draw_in_town", "Draw healthbars in town", "HealthBarsDrawInTown"), ref this.Settings.DrawInTown);
                     ImGui.TableNextColumn();
-                    ImGui.Checkbox("Draw healthbars in hideout", ref this.Settings.DrawInHideout);
+                    ImGui.Checkbox(this.PluginText.Label("settings.draw_in_hideout", "Draw healthbars in hideout", "HealthBarsDrawInHideout"), ref this.Settings.DrawInHideout);
                     ImGui.TableNextColumn();
-                    ImGui.Checkbox("Draw healthbars when game is in background", ref this.Settings.DrawWhenGameInBackground);
+                    ImGui.Checkbox(this.PluginText.Label("settings.draw_in_background", "Draw healthbars when game is in background", "HealthBarsDrawInBackground"), ref this.Settings.DrawWhenGameInBackground);
                     ImGui.TableNextColumn();
-                    ImGui.Checkbox("Interpolate position", ref this.Settings.InterpolatePosition);
-                    ImGuiHelper.ToolTip("Enable this if your healthbar is stuttering.");
+                    ImGui.Checkbox(this.PluginText.Label("settings.interpolate_position", "Interpolate position", "HealthBarsInterpolatePosition"), ref this.Settings.InterpolatePosition);
+                    ImGuiHelper.ToolTip(this.PluginText.T("settings.interpolate_position.tooltip", "Enable this if your healthbar is stuttering."));
                     if (this.Settings.InterpolatePosition)
                     {
-                        if (ImGui.DragInt("Interpolation Rate", ref this.Settings.InterpolationRate, 1f, 1, 1000))
+                        if (ImGui.DragInt(this.PluginText.Label("settings.interpolation_rate", "Interpolation Rate", "HealthBarsInterpolationRate"), ref this.Settings.InterpolationRate, 1f, 1, 1000))
                         {
                             if (this.Settings.InterpolationRate <= 0)
                             {
@@ -81,23 +81,23 @@ namespace HealthBars
                     }
 
                     ImGui.TableNextColumn();
-                    ImGui.Text("white       magic      rare         unique");
-                    ImGui.DragInt4("Cull Strike (%health)", ref this.Settings.CullingStrikeRangePerRarity[0], 1, 0, 100);
+                    ImGui.Text(this.PluginText.T("settings.rarity_row", "white       magic      rare         unique"));
+                    ImGui.DragInt4(this.PluginText.Label("settings.cull_strike_percent", "Cull Strike (%health)", "HealthBarsCullStrikePercent"), ref this.Settings.CullingStrikeRangePerRarity[0], 1, 0, 100);
                     ImGui.TableNextColumn();
-                    ImGui.Checkbox("Show mana rather than ES on self player", ref this.Settings.ShowManaRatherThanESOnSelf);
+                    ImGui.Checkbox(this.PluginText.Label("settings.show_mana_instead_of_es", "Show mana rather than ES on self player", "HealthBarsShowManaInsteadOfES"), ref this.Settings.ShowManaRatherThanESOnSelf);
                     ImGui.EndTable();
                 }
             }
 
-            if (ImGui.CollapsingHeader("Monster Configuration"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.monster_configuration", "Monster Configuration", "HealthBarsMonsterConfiguration")))
             {
                 if (ImGui.BeginTabBar("monster_config"))
                 {
                     foreach (var item in this.Settings.Monster)
                     {
-                        if (ImGui.BeginTabItem(item.Key))
+                        if (ImGui.BeginTabItem(this.PluginText.Title($"tab.monster.{item.Key}", item.Key, $"HealthBarsMonster{item.Key}")))
                         {
-                            item.Value.Draw();
+                            item.Value.Draw(this.PluginText);
                             ImGui.EndTabItem();
                         }
                     }
@@ -106,16 +106,16 @@ namespace HealthBars
                 }
             }
 
-            if (ImGui.CollapsingHeader("POI Configuration"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.poi_configuration", "POI Configuration", "HealthBarsPoiConfiguration")))
             {
                 ImGui.SetNextItemWidth(ImGui.GetFontSize() * 10);
-                if(ImGui.InputInt("Group Number##poimonsterconfig", ref this.poiMonsterConfigToAdd) && this.poiMonsterConfigToAdd < 0)
+                if(ImGui.InputInt(this.PluginText.Label("settings.group_number", "Group Number", "poimonsterconfig"), ref this.poiMonsterConfigToAdd) && this.poiMonsterConfigToAdd < 0)
                 {
                     this.poiMonsterConfigToAdd = 0;
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button("Add"))
+                if (ImGui.Button(this.PluginText.Label("button.add", "Add", "HealthBarsAddPoiGroup")))
                 {
                     this.Settings.POIMonster.TryAdd(this.poiMonsterConfigToAdd, new());
                 }
@@ -124,11 +124,13 @@ namespace HealthBars
                 {
                     foreach (var conf in this.Settings.POIMonster)
                     {
-                        var text = conf.Key < 0 ? "Default" : $"Group {conf.Key}";
+                        var text = conf.Key < 0
+                            ? this.PluginText.Title("tab.default", "Default", "HealthBarsPoiDefault")
+                            : $"{this.PluginText.F("tab.group", "Group {0}", conf.Key)}###HealthBarsPoiGroup{conf.Key}";
                         var shouldNotDelete = true;
                         if (ImGui.BeginTabItem(text, ref shouldNotDelete, ImGuiTabItemFlags.NoAssumedClosure))
                         {
-                            conf.Value.Draw();
+                            conf.Value.Draw(this.PluginText);
                             ImGui.EndTabItem();
                         }
 
@@ -144,15 +146,15 @@ namespace HealthBars
                 }
             }
 
-            if (ImGui.CollapsingHeader("Player Configuration"))
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.player_configuration", "Player Configuration", "HealthBarsPlayerConfiguration")))
             {
                 if (ImGui.BeginTabBar("player_config"))
                 {
                     foreach (var item in this.Settings.Player)
                     {
-                        if (ImGui.BeginTabItem(item.Key))
+                        if (ImGui.BeginTabItem(this.PluginText.Title($"tab.player.{item.Key}", item.Key, $"HealthBarsPlayer{item.Key}")))
                         {
-                            item.Value.Draw();
+                            item.Value.Draw(this.PluginText);
                             ImGui.EndTabItem();
                         }
                     }
@@ -415,9 +417,9 @@ namespace HealthBars
             ImGui.SetNextWindowPos(new Vector2(Core.Overlay.Size.Width / 3f, Core.Overlay.Size.Height / 3f));
             if (ImGui.BeginPopup("POIConfigHealthbarDeleteConfirmation"))
             {
-                ImGui.Text($"Do you want to delete group {this.poiMonsterConfigToDelete} POI Monster healthbar config?");
+                ImGui.Text(this.PluginText.F("popup.delete_poi_config", "Do you want to delete group {0} POI Monster healthbar config?", this.poiMonsterConfigToDelete));
                 ImGui.Separator();
-                if (ImGui.Button("Yes",
+                if (ImGui.Button(this.PluginText.Label("button.yes", "Yes", "HealthBarsDeletePoiYes"),
                     new Vector2(ImGui.GetContentRegionAvail().X / 2f, ImGui.GetTextLineHeight() * 2)))
                 {
                     _ = this.Settings.POIMonster.Remove(poiMonsterConfigToDelete);
@@ -425,7 +427,7 @@ namespace HealthBars
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button("No", new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight() * 2)))
+                if (ImGui.Button(this.PluginText.Label("button.no", "No", "HealthBarsDeletePoiNo"), new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight() * 2)))
                 {
                     ImGui.CloseCurrentPopup();
                 }

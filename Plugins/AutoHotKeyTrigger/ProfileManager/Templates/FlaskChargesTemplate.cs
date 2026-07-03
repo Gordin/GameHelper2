@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using GameHelper.Utils;
     using ImGuiNET;
@@ -34,17 +35,17 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Flask");
+            ImGui.Text(AhkText.T("template.flask", "Flask"));
             ImGui.SameLine();
             ImGui.PushItemWidth(ImGui.GetFontSize() * 3);
-            ImGui.DragInt("has##FlaskChargesFlaskSlot", ref flaskSlot, 0.02f, 1, 2);
+            ImGui.DragInt(AhkText.Label("template.has", "has", "FlaskChargesFlaskSlot"), ref flaskSlot, 0.02f, 1, 2);
             ImGui.SameLine();
             ImGuiHelper.IEnumerableComboBox("##FlaskChargesOperator", SupportedOperatorTypes, ref selectedOperator);
             ImGui.SameLine();
-            ImGui.DragInt("charges##FlaskChargesFlaskCharge", ref flaskCharges, 0.1f, 2, 80);
+            ImGui.DragInt(AhkText.Label("template.charges", "charges", "FlaskChargesFlaskCharge"), ref flaskCharges, 0.1f, 2, 80);
             ImGui.PopItemWidth();
             ImGui.SameLine();
-            return ImGui.Button("Add##FlaskCharges") ?
+            return ImGui.Button(AhkText.Label("button.add", "Add", "FlaskCharges")) ?
                 $"Flasks.Flask{flaskSlot}.Charges {selectedOperator} {flaskCharges}" :
                 string.Empty;
         }

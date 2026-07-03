@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using ClickableTransparentOverlay.Win32;
     using GameHelper.Utils;
@@ -24,10 +25,10 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("User has pressed");
+            ImGui.Text(AhkText.T("template.user_pressed", "User has pressed"));
             ImGui.SameLine();
-            ImGuiHelper.NonContinuousEnumComboBox("Key##IsKeyPressedTemplate", ref pressedKey);
-            if (ImGui.Button("Add##IsKeyPressed"))
+            ImGuiHelper.NonContinuousEnumComboBox(AhkText.Label("rule.key", "Key", "IsKeyPressedTemplate"), ref pressedKey);
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "IsKeyPressed")))
             {
                 return $"IsKeyPressedForAction(VK.{pressedKey})";
             }

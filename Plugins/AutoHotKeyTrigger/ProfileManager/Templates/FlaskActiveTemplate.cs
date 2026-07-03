@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using ImGuiNET;
 
@@ -22,12 +23,12 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Player does not have effect of flask");
+            ImGui.Text(AhkText.T("template.flask_not_active", "Player does not have effect of flask"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 3);
             ImGui.DragInt("##FlaskEffectFlaskSlot", ref flaskSlot, 0.02f, 1, 2);
             ImGui.SameLine();
-            return ImGui.Button("Add##FlaskEffect") ? $"!Flasks.Flask{flaskSlot}.Active" : string.Empty;
+            return ImGui.Button(AhkText.Label("button.add", "Add", "FlaskEffect")) ? $"!Flasks.Flask{flaskSlot}.Active" : string.Empty;
         }
     }
 }

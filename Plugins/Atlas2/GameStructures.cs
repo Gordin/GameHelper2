@@ -1,4 +1,4 @@
-namespace Atlas
+namespace Atlas2
 {
     /// <summary>
     ///     Enum AtlasNodeState — encodes the observable states a node can have on the

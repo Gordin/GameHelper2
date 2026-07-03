@@ -8,6 +8,7 @@ namespace GameHelper.Settings
     using System.IO;
     using ClickableTransparentOverlay;
     using ClickableTransparentOverlay.Win32;
+    using GameHelper.Localization;
     using GameHelper.RemoteEnums;
     using GameHelper.RemoteEnums.Entity;
     using Newtonsoft.Json;
@@ -72,6 +73,11 @@ namespace GameHelper.Settings
         ///     Gets a value indicating whether user wants to hide the overlay on start or not.
         /// </summary>
         public bool HideSettingWindowOnStart = false;
+
+        /// <summary>
+        ///     Gets the language used by the main overlay UI.
+        /// </summary>
+        public OverlayLanguage UiLanguage = OverlayLanguage.English;
 
         /// <summary>
         ///     Gets or sets a value indicating whether the overlay is running or not.

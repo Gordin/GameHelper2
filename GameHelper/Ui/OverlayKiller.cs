@@ -10,6 +10,7 @@ namespace GameHelper.Ui
     using Coroutine;
     using CoroutineEvents;
     using ImGuiNET;
+    using L = GameHelper.Localization.OverlayLocalization;
 
     /// <summary>
     ///     Kills the overlay.
@@ -41,10 +42,12 @@ namespace GameHelper.Ui
                 }
 
                 ImGui.SetNextWindowSize(Size);
-                ImGui.Begin("Player Vs Player (PVP) Detected");
-                ImGui.TextWrapped("Please don't cheat in PvP mode. GameHelper was not " +
-                                  "created for PvP cheating. Overlay will close " +
-                                  $"in {Timelimit - (int)Sw.Elapsed.TotalSeconds} seconds.");
+                ImGui.Begin(L.Title("overlay_killer.title", "Player Vs Player (PVP) Detected", "PvpDetected"));
+                ImGui.TextWrapped(
+                    L.F(
+                        "overlay_killer.message",
+                        "Please don't cheat in PvP mode. GameHelper was not created for PvP cheating. Overlay will close in {0} seconds.",
+                        Timelimit - (int)Sw.Elapsed.TotalSeconds));
                 ImGui.End();
 
                 if (Sw.Elapsed.TotalSeconds > Timelimit)

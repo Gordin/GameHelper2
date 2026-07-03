@@ -166,7 +166,7 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         ///     Counts nearby monsters of the given rarity within an explicit distance (in the same
         ///     units as the inner/outer circle settings). Unlike the zone-based counts, this is not
         ///     bound by the configured outer circle, so it can reach out to the network bubble
-        ///     (~<see cref="GameOffsets.Objects.States.InGameState.AreaInstanceOffsets.NETWORK_BUBBLE_RADIUS"/>);
+        ///     (~<see cref="GameOffsets.Objects.States.InGameState.AreaInstanceConstants.NETWORK_BUBBLE_RADIUS"/>);
         ///     monsters beyond that are not loaded by the game and cannot be counted.
         /// </summary>
         /// <param name="rarity">filter monster based on rarity</param>

@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using GameHelper.Utils;
     using ImGuiNET;
@@ -23,7 +24,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Text("Player has");
+            ImGui.Text(AhkText.T("template.player_has", "Player has"));
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 11f);
             ImGuiHelper.IEnumerableComboBox(
@@ -31,7 +32,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                     JsonDataHelper.StatusEffectGroups.Keys,
                     ref statusEffectGroupKey);
             ImGui.SameLine();
-            if (ImGui.Button("Add##AilmentAdd"))
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "AilmentAdd")))
             {
                 return $"PlayerAilments.Contains(\"{statusEffectGroupKey}\")";
             }

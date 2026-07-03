@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using ImGuiNET;
 
@@ -22,8 +23,8 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         /// </returns>
         public static string Add()
         {
-            ImGui.Checkbox("Player has first weapon set active", ref yesOrNo);
-            if (ImGui.Button("Add##WeaponSetActive"))
+            ImGui.Checkbox(AhkText.Label("template.weapon_set_active", "Player has first weapon set active", "WeaponSetActive"), ref yesOrNo);
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "WeaponSetActive")))
             {
                 return yesOrNo ? "PlayerFirstWeaponSetActive" : "PlayerSecondWeaponSetActive";
             }

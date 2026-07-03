@@ -7,6 +7,7 @@ namespace AutoHotKeyTrigger.ProfileManager
     using System;
     using System.Collections.Generic;
     using System.Numerics;
+    using AutoHotKeyTrigger;
     using GameHelper;
     using GameHelper.Utils;
     using ImGuiNET;
@@ -145,14 +146,14 @@ namespace AutoHotKeyTrigger.ProfileManager
                     {
                         if (ImGui.BeginPopupContextWindow())
                         {
-                            if (ImGui.Button("Clone"))
+                            if (ImGui.Button(AhkText.Label("button.clone", "Clone", "AhkRuleClone")))
                             {
                                 this.Rules.Add(new(this.Rules[this.contextWindowOn]));
                                 this.contextWindowOn = -1;
                             }
 
                             ImGui.SameLine();
-                            if (ImGui.Button("Cancel"))
+                            if (ImGui.Button(AhkText.Label("button.cancel", "Cancel", "AhkRuleCloneCancel")))
                             {
                                 this.contextWindowOn = -1;
                             }
@@ -178,9 +179,9 @@ namespace AutoHotKeyTrigger.ProfileManager
             ImGui.SetNextWindowPos(new Vector2(Core.Overlay.Size.Width / 3f, Core.Overlay.Size.Height / 3f));
             if (ImGui.BeginPopup("RuleDeleteConfirmation"))
             {
-                ImGui.Text($"Do you want to delete rule with name: {this.Rules[this.ruleIndexToDelete].Name}?");
+                ImGui.Text(AhkText.F("rule.delete_confirm", "Do you want to delete rule with name: {0}?", this.Rules[this.ruleIndexToDelete].Name));
                 ImGui.Separator();
-                if (ImGui.Button("Yes",
+                if (ImGui.Button(AhkText.Label("button.yes", "Yes", "AhkRuleDeleteYes"),
                     new Vector2(ImGui.GetContentRegionAvail().X / 2f, ImGui.GetTextLineHeight() * 2)))
                 {
                     var ruleToDelete = this.Rules[this.ruleIndexToDelete];
@@ -191,7 +192,7 @@ namespace AutoHotKeyTrigger.ProfileManager
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button("No", new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight() * 2)))
+                if (ImGui.Button(AhkText.Label("button.no", "No", "AhkRuleDeleteNo"), new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight() * 2)))
                 {
                     this.ruleIndexToDelete = -1;
                     ImGui.CloseCurrentPopup();

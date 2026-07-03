@@ -17,6 +17,11 @@ namespace GameHelper.Plugin
         public void SetPluginDllLocation(string dllLocation);
 
         /// <summary>
+        ///     Gets the localized one-line plugin description shown in plugin management.
+        /// </summary>
+        public string GetDescription();
+
+        /// <summary>
         ///     Called when the plugin is enabled by the user or when GameOverlay
         ///     starts and plugin is already enabled.
         /// </summary>

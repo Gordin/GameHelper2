@@ -6,6 +6,49 @@ Path of Exile 2; "0.5.x" references are the game patch the build targets.
 Sections marked **For plugin devs** describe newly exposed APIs you can read
 from your own plugins via `Core.*`.
 
+## [2.5.0] - 2026-07-03
+
+### Added
+
+- **Multi-language overlay UI.** Overlay text is now translated through keyed JSON
+  resources, with a **UI Language** selector in the Settings → General tab.
+  Supported languages: English, French, German, Spanish (Spain), Japanese, Korean,
+  Portuguese (Brazil), Russian, Thai, Simplified Chinese, and Traditional Chinese.
+  Missing keys fall back to English. The core UI and the bundled plugins are
+  localized; each plugin owns its translations under
+  `Plugins/<Name>/Localization/<lang>.json`.
+
+  **For plugin devs:**
+  - `GameHelper.Localization.OverlayLocalization` — static helpers for core/overlay
+    text: `T(key, fallback)`, `F(key, fallback, args)`, `Label(key, fallback, id)`,
+    `Title(key, fallback, id)`, plus `CurrentLanguage` and `SupportedLanguages`.
+  - `PCore<TSettings>.PluginText` (a `PluginLocalization`) — loads your plugin's own
+    `Localization/*.json` and exposes the same `T`/`F`/`Label`/`Title` API. Override
+    `GetDescription()` (defaults to the `plugin.description` key) to show a localized
+    one-liner in the plugin manager.
+  - `Plugins/Directory.Build.targets` auto-copies each plugin's `Localization/*.json`
+    into the deployed plugin folder — no per-plugin `.csproj` change required.
+- **Plugin manager description column.** The plugin list now shows a short,
+  localized description for each plugin next to its enable toggle.
+- **Atlas Skills panel is now a "large panel".** Radar and Health Bars hide while
+  the Atlas skill tree is open, matching the other large panels.
+
+### Changed
+
+- **Confirmed compatible with game patch 0.5.4b** — no offset or signature
+  changes were required; the version shown in the About section is now `0.5.4b`.
+- **Renamed the `Atlas` plugin to `Atlas2`.**
+- **Removed the legacy German/English-only translation shim**
+  (`OverlayLocalization.L(english, german)` / `IsGerman`) in favor of the keyed
+  multi-language system above. Plugins that used it (MapKillCounter, PlayerBuffBar)
+  were migrated, and their German text is preserved as `de-DE.json` resources.
+
+### Fixed
+
+- Reduced memory read-failure log spam.
+- The debugger no longer breaks on a first-chance `NullReferenceException` in
+  `GameProcess.Pid` on every startup (now a null check instead of throw/catch).
+
 ## [2.4.2] - 2026-06-26
 
 ### Added
@@ -80,5 +123,6 @@ from your own plugins via `Core.*`.
 - Disabled plugins' settings being overwritten on close.
 - Co-op (multiplayer) read fix.
 
+[2.5.0]: https://github.com/Gordin/GameHelper2/compare/2.4.2...2.5.0
 [2.4.2]: https://github.com/Gordin/GameHelper2/compare/2.4.1...2.4.2
 [2.4.1]: https://github.com/Gordin/GameHelper2/compare/v2.4.0...2.4.1

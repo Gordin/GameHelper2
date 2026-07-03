@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.Templates
 {
+    using AutoHotKeyTrigger;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using AutoHotKeyTrigger.ProfileManager.Enums;
     using GameHelper.Utils;
@@ -41,20 +42,20 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             ImGui.PushID("StatusEffectDuration");
             if (selectedOperator == "has" || selectedOperator == "not has")
             {
-                ImGui.Text("Player");
+                ImGui.Text(AhkText.T("template.player", "Player"));
                 ImGui.SameLine();
                 ImGui.SetNextItemWidth(ImGui.GetFontSize() * 4);
                 ImGuiHelper.IEnumerableComboBox("##StatusEffectOperator", SupportedOperatorTypes, ref selectedOperator);
                 ImGui.SameLine();
                 ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
-                ImGui.InputText("(de)buff", ref buffId, 200);
+                ImGui.InputText(AhkText.Label("template.debuff", "(de)buff", "StatusEffectBuff"), ref buffId, 200);
                 HelpBox();
             }
             else
             {
-                ImGui.Text("Player has (de)buff");
+                ImGui.Text(AhkText.T("template.player_has_debuff", "Player has (de)buff"));
                 ImGui.SameLine();
-                ImGui.InputText("with", ref buffId, 200);
+                ImGui.InputText(AhkText.Label("template.with", "with", "StatusEffectWith"), ref buffId, 200);
                 HelpBox();
                 ImGui.SameLine();
                 ImGuiHelper.IEnumerableComboBox("##StatusEffectOperator", SupportedOperatorTypes, ref selectedOperator);
@@ -62,14 +63,14 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                 ImGui.InputFloat("##threshold", ref threshold);
                 ImGui.SameLine();
                 ImGuiHelper.EnumComboBox("##checkType", ref checkType);
-                ImGuiHelper.ToolTip($"What to compare. {StatusEffectCheckType.PercentTimeLeft} ranges from " +
+                ImGuiHelper.ToolTip(AhkText.F("template.status_compare.tooltip", "What to compare. {0} ranges from " +
                     $"0 to 100, 0 being buff will expire imminently and 100 meaning " +
-                    $"it was just applied");
+                    $"it was just applied", StatusEffectCheckType.PercentTimeLeft));
             }
 
             ImGui.PopID();
             ImGui.SameLine();
-            if (ImGui.Button("Add##StatusEffect"))
+            if (ImGui.Button(AhkText.Label("button.add", "Add", "StatusEffect")))
             {
                 return selectedOperator switch
                 {
@@ -86,9 +87,9 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
 
         private static void HelpBox()
         {
-            ImGuiHelper.ToolTip("Open Core -> DV -> States -> InGameStateObject -> " +
+            ImGuiHelper.ToolTip(AhkText.T("template.status_effect.tooltip", "Open Core -> DV -> States -> InGameStateObject -> " +
                 "CurrentAreaInstance -> Player -> Components -> Buffs -> Status Effect to figure " +
-                "out what value to put here. Make sure that (de)buff is active.");
+                "out what value to put here. Make sure that (de)buff is active."));
         }
     }
 }

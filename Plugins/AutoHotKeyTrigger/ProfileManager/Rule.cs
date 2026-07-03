@@ -9,6 +9,7 @@ namespace AutoHotKeyTrigger.ProfileManager
     using System.Diagnostics;
     using System.Linq;
     using System.Numerics;
+    using AutoHotKeyTrigger;
     using GameHelper.Utils;
     using ImGuiNET;
     using Newtonsoft.Json;
@@ -109,10 +110,10 @@ namespace AutoHotKeyTrigger.ProfileManager
         /// </summary>
         public void DrawSettings()
         {
-            ImGui.Checkbox("Enable", ref this.Enabled);
-            ImGui.InputText("Name", ref this.Name, 100);
+            ImGui.Checkbox(AhkText.Label("rule.enable", "Enable", "AhkRuleEnable"), ref this.Enabled);
+            ImGui.InputText(AhkText.Label("rule.name", "Name", "AhkRuleName"), ref this.Name, 100);
             var tmpKey = this.Key;
-            if (ImGuiHelper.NonContinuousEnumComboBox("Key", ref tmpKey))
+            if (ImGuiHelper.NonContinuousEnumComboBox(AhkText.Label("rule.key", "Key", "AhkRuleKey"), ref tmpKey))
             {
                 this.Key = tmpKey;
             }
@@ -220,7 +221,7 @@ namespace AutoHotKeyTrigger.ProfileManager
 
         private void DrawCooldownWidget()
         {
-            ImGui.DragFloat("Cooldown time (seconds)##DelayTimerConditionDelay", ref this.delayBetweenRuns, 0.1f, 0.0f, 30.0f);
+            ImGui.DragFloat(AhkText.Label("rule.cooldown", "Cooldown time (seconds)", "DelayTimerConditionDelay"), ref this.delayBetweenRuns, 0.1f, 0.0f, 30.0f);
             if (this.delayBetweenRuns > 0)
             {
                 var cooldownTimeFraction = this.delayBetweenRuns <= 0f ? 1f :
@@ -229,16 +230,16 @@ namespace AutoHotKeyTrigger.ProfileManager
                 ImGui.ProgressBar(
                     (float)cooldownTimeFraction,
                     Vector2.Zero,
-                    cooldownTimeFraction < 1f ? $"Cooling {(cooldownTimeFraction * 100f):0}%" : "Ready");
+                    cooldownTimeFraction < 1f ? AhkText.F("rule.cooling", "Cooling {0:0}%", cooldownTimeFraction * 100f) : AhkText.T("rule.ready", "Ready"));
                 ImGui.PopStyleColor();
             }
         }
 
         private void DrawExistingConditions()
         {
-            var isOpened = ImGui.TreeNodeEx("Existing Conditions (?)", ImGuiTreeNodeFlags.DefaultOpen);
-            ImGuiHelper.ToolTip("All of the conditions needs to be true. Conditions can be moved up and " +
-                "down via drag and drop when not expanded.");
+            var isOpened = ImGui.TreeNodeEx(AhkText.Title("rule.existing_conditions", "Existing Conditions (?)", "AhkExistingConditions"), ImGuiTreeNodeFlags.DefaultOpen);
+            ImGuiHelper.ToolTip(AhkText.T("rule.existing_conditions.tooltip", "All of the conditions needs to be true. Conditions can be moved up and " +
+                "down via drag and drop when not expanded."));
             if (isOpened)
             {
                 ImGui.PushItemWidth(ImGui.GetContentRegionAvail().X / 6);
@@ -258,7 +259,7 @@ namespace AutoHotKeyTrigger.ProfileManager
 
                     ImGui.PopStyleColor();
                     ImGui.SameLine();
-                    if (expand && ImGui.SmallButton("Delete"))
+                    if (expand && ImGui.SmallButton(AhkText.Label("button.delete", "Delete", "AhkDeleteCondition")))
                     {
                         this.RemoveAt(i);
                         ImGui.PopID();
@@ -266,13 +267,13 @@ namespace AutoHotKeyTrigger.ProfileManager
                     }
 
                     ImGui.SameLine();
-                    if (expand && ImGui.SmallButton("Add Component"))
+                    if (expand && ImGui.SmallButton(AhkText.Label("button.add_component", "Add Component", "AhkAddComponent")))
                     {
                         this.conditions[i].Add(new Wait(0));
                     }
 
                     ImGui.SameLine();
-                    if (expand && ImGui.SmallButton("Edit Via Template"))
+                    if (expand && ImGui.SmallButton(AhkText.Label("button.edit_template", "Edit Via Template", "AhkEditTemplate")))
                     {
                         this.conditionToModify = i;
                         ImGui.OpenPopup("ModifyExistingConditionPopUp");
@@ -280,9 +281,9 @@ namespace AutoHotKeyTrigger.ProfileManager
 
                     if (ImGui.BeginPopup("ModifyExistingConditionPopUp"))
                     {
-                        ImGui.Text("NOTE: Click outside this popup to close it.");
-                        ImGui.Text("NOTE: This Overwrites the whole condition.");
-                        ImGuiHelper.EnumComboBox("Condition Type", ref this.newConditionType);
+                        ImGui.Text(AhkText.T("popup.click_outside", "NOTE: Click outside this popup to close it."));
+                        ImGui.Text(AhkText.T("popup.overwrite_condition", "NOTE: This Overwrites the whole condition."));
+                        ImGuiHelper.EnumComboBox(AhkText.Label("condition.type", "Condition Type", "AhkModifyConditionType"), ref this.newConditionType);
                         ImGui.Separator();
                         this.ModifyExistingCondition(this.newConditionType, this.conditionToModify);
                         ImGui.EndPopup();
@@ -320,7 +321,7 @@ namespace AutoHotKeyTrigger.ProfileManager
                         var evaluationResult = this.conditions[i].Evaluate();
                         ImGui.TextColored(
                             evaluationResult ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1),
-                            evaluationResult ? "(true)" : "(false)");
+                            evaluationResult ? AhkText.T("condition.true", "(true)") : AhkText.T("condition.false", "(false)"));
                     }
 
                     ImGui.PopID();
@@ -333,23 +334,23 @@ namespace AutoHotKeyTrigger.ProfileManager
 
         private void DrawAddNewCondition()
         {
-            if (ImGui.Button("Add New Condition"))
+            if (ImGui.Button(AhkText.Label("button.add_condition", "Add New Condition", "AhkAddNewCondition")))
             {
                 ImGui.OpenPopup("AddNewConditionPopUp");
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Clear All Conditions"))
+            if (ImGui.Button(AhkText.Label("button.clear_conditions", "Clear All Conditions", "AhkClearConditions")))
             {
                 this.Clear();
             }
 
             ImGui.SameLine();
-            var isClicked = ImGui.Button("Merge All conditions");
-            ImGuiHelper.ToolTip("This merges all the conditions into one so you " +
+            var isClicked = ImGui.Button(AhkText.Label("button.merge_conditions", "Merge All conditions", "AhkMergeConditions"));
+            ImGuiHelper.ToolTip(AhkText.T("button.merge_conditions.tooltip", "This merges all the conditions into one so you " +
                 "can easily copy paste it into multiple rules. Conditions with " +
                 "component can not be merged so this button will create a new " +
-                "condition when it encounter a component attached to the condition.");
+                "condition when it encounter a component attached to the condition."));
             if (isClicked)
             {
                 var newConditions = new List<DynamicCondition>();
@@ -373,8 +374,8 @@ namespace AutoHotKeyTrigger.ProfileManager
 
             if (ImGui.BeginPopup("AddNewConditionPopUp"))
             {
-                ImGui.Text("NOTE: Click outside this popup to close it.");
-                ImGuiHelper.EnumComboBox("Condition Type", ref this.newConditionType);
+                ImGui.Text(AhkText.T("popup.click_outside", "NOTE: Click outside this popup to close it."));
+                ImGuiHelper.EnumComboBox(AhkText.Label("condition.type", "Condition Type", "AhkAddConditionType"), ref this.newConditionType);
                 ImGui.Separator();
                 this.Add(this.newConditionType);
                 ImGui.EndPopup();

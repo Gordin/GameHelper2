@@ -114,10 +114,10 @@ namespace Radar
         /// <inheritdoc/>
         public override void DrawSettings()
         {
-            ImGui.TextWrapped("If your mini/large map icon are not working/visible. Open this " +
-                "setting window, click anywhere on it and then hide this setting window. It will fix the issue.");
-            ImGui.DragFloat("Large Map Fix", ref this.Settings.LargeMapScaleMultiplier, 0.001f, 0.1f, 2.0f);
-            ImGuiHelper.ToolTip("This slider is for fixing large map (icons) offset. " +
+            ImGui.TextWrapped(this.PluginText.T("settings.intro", "If your mini/large map icon are not working/visible. Open this " +
+                "setting window, click anywhere on it and then hide this setting window. It will fix the issue."));
+            ImGui.DragFloat(this.PluginText.Label("settings.large_map_fix", "Large Map Fix", "RadarLargeMapFix"), ref this.Settings.LargeMapScaleMultiplier, 0.001f, 0.1f, 2.0f);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.large_map_fix.tooltip", "This slider is for fixing large map (icons) offset. " +
                 "You have to use it if you feel that LargeMap Icons " +
                 "are moving while your player is moving. You only have " +
                 "to find a value that works for you per game window resolution. " +
@@ -126,28 +126,28 @@ namespace Radar
                 "what resolution you use and what value works best for you. " +
                 "This slider has no impact on mini-map icons. For windowed-full-screen " +
                 "default value should be good enough. If you want to add precise value " +
-                "(e.g. 0.137345) press CTRL + LMB");
-            ImGui.DragFloat("Large Map X Offset", ref this.Settings.LargeMapXOffset, 0.1f);
-            ImGuiHelper.ToolTip("Adjusts only the large map overlay horizontally. Negative moves it left, positive moves it right.");
-            ImGui.DragFloat("Large Map Y Offset", ref this.Settings.LargeMapYOffset, 0.1f);
-            ImGuiHelper.ToolTip("Adjusts only the large map overlay vertically. Negative moves it up, positive moves it down.");
-            ImGui.DragFloat("Mini Map X Offset", ref this.Settings.MiniMapXOffset, 0.1f);
-            ImGuiHelper.ToolTip("Adjusts only the mini-map overlay horizontally. Negative moves it left, positive moves it right.");
-            ImGui.DragFloat("Mini Map Zoom", ref this.Settings.MiniMapZoomMultiplier, 0.001f, 0.01f, 3f, "%.3f");
-            ImGuiHelper.ToolTip("Controls how far mini-map icons sit from your character (the mini-map's effective zoom).");
+                "(e.g. 0.137345) press CTRL + LMB"));
+            ImGui.DragFloat(this.PluginText.Label("settings.large_map_x_offset", "Large Map X Offset", "RadarLargeMapXOffset"), ref this.Settings.LargeMapXOffset, 0.1f);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.large_map_x_offset.tooltip", "Adjusts only the large map overlay horizontally. Negative moves it left, positive moves it right."));
+            ImGui.DragFloat(this.PluginText.Label("settings.large_map_y_offset", "Large Map Y Offset", "RadarLargeMapYOffset"), ref this.Settings.LargeMapYOffset, 0.1f);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.large_map_y_offset.tooltip", "Adjusts only the large map overlay vertically. Negative moves it up, positive moves it down."));
+            ImGui.DragFloat(this.PluginText.Label("settings.mini_map_x_offset", "Mini Map X Offset", "RadarMiniMapXOffset"), ref this.Settings.MiniMapXOffset, 0.1f);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.mini_map_x_offset.tooltip", "Adjusts only the mini-map overlay horizontally. Negative moves it left, positive moves it right."));
+            ImGui.DragFloat(this.PluginText.Label("settings.mini_map_zoom", "Mini Map Zoom", "RadarMiniMapZoom"), ref this.Settings.MiniMapZoomMultiplier, 0.001f, 0.01f, 3f, "%.3f");
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.mini_map_zoom.tooltip", "Controls how far mini-map icons sit from your character (the mini-map's effective zoom)."));
 
-            ImGui.Checkbox("Auto-Detect Local Co-op Mode", ref this.Settings.AutoDetectCoopMode);
-            ImGuiHelper.ToolTip("Automatically detects when you are playing local co-op in controller mode and adjusts map centering.");
+            ImGui.Checkbox(this.PluginText.Label("settings.auto_detect_coop", "Auto-Detect Local Co-op Mode", "RadarAutoDetectCoop"), ref this.Settings.AutoDetectCoopMode);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.auto_detect_coop.tooltip", "Automatically detects when you are playing local co-op in controller mode and adjusts map centering."));
             if (!this.Settings.AutoDetectCoopMode)
             {
-                ImGui.Checkbox("Enable Local Co-op Map Hack Centering", ref this.Settings.EnableCoopMode);
-                ImGuiHelper.ToolTip("Centers the map/maphack on the midpoint of P1 and P2 when playing co-op.");
+                ImGui.Checkbox(this.PluginText.Label("settings.enable_coop_centering", "Enable Local Co-op Map Hack Centering", "RadarEnableCoopCentering"), ref this.Settings.EnableCoopMode);
+                ImGuiHelper.ToolTip(this.PluginText.T("settings.enable_coop_centering.tooltip", "Centers the map/maphack on the midpoint of P1 and P2 when playing co-op."));
             }
 
-            ImGui.Checkbox("Hide Radar when in Hideout/Town", ref this.Settings.DrawWhenNotInHideoutOrTown);
-            ImGui.Checkbox("Hide Radar when game is in the background", ref this.Settings.DrawWhenForeground);
-            ImGui.Checkbox("Hide Radar when game is paused", ref this.Settings.DrawWhenNotPaused);
-            if (ImGui.Checkbox("Modify Large Map Culling Window", ref this.Settings.ModifyCullWindow))
+            ImGui.Checkbox(this.PluginText.Label("settings.hide_hideout_town", "Hide Radar when in Hideout/Town", "RadarHideHideoutTown"), ref this.Settings.DrawWhenNotInHideoutOrTown);
+            ImGui.Checkbox(this.PluginText.Label("settings.hide_background", "Hide Radar when game is in the background", "RadarHideBackground"), ref this.Settings.DrawWhenForeground);
+            ImGui.Checkbox(this.PluginText.Label("settings.hide_paused", "Hide Radar when game is paused", "RadarHidePaused"), ref this.Settings.DrawWhenNotPaused);
+            if (ImGui.Checkbox(this.PluginText.Label("settings.modify_culling_window", "Modify Large Map Culling Window", "RadarModifyCullingWindow"), ref this.Settings.ModifyCullWindow))
             {
                 if (this.Settings.ModifyCullWindow)
                 {
@@ -156,7 +156,7 @@ namespace Radar
             }
 
             ImGui.TreePush("radar_culling_window");
-            if (ImGui.Checkbox("Make Culling Window Cover Whole Game", ref this.Settings.MakeCullWindowFullScreen))
+            if (ImGui.Checkbox(this.PluginText.Label("settings.culling_fullscreen", "Make Culling Window Cover Whole Game", "RadarCullingFullscreen"), ref this.Settings.MakeCullWindowFullScreen))
             {
                 this.Settings.ModifyCullWindow = !this.Settings.MakeCullWindowFullScreen;
                 this.Settings.CullWindowPos = Vector2.Zero;
@@ -164,17 +164,17 @@ namespace Radar
                 this.Settings.CullWindowSize.Y = Core.Process.WindowArea.Height;
             }
 
-            if (ImGui.TreeNode("Culling window advance options"))
+            if (ImGui.TreeNode(this.PluginText.Title("section.culling_advanced", "Culling window advance options", "RadarCullingAdvanced")))
             {
-                ImGui.Checkbox("Draw maphack in culling window", ref this.Settings.DrawMapInCull);
-                ImGui.Checkbox("Draw POIs in culling window", ref this.Settings.DrawPOIInCull);
+                ImGui.Checkbox(this.PluginText.Label("settings.draw_maphack_in_culling", "Draw maphack in culling window", "RadarDrawMaphackInCulling"), ref this.Settings.DrawMapInCull);
+                ImGui.Checkbox(this.PluginText.Label("settings.draw_pois_in_culling", "Draw POIs in culling window", "RadarDrawPoisInCulling"), ref this.Settings.DrawPOIInCull);
                 ImGui.TreePop();
             }
 
             ImGui.TreePop();
             ImGui.Separator();
             ImGui.NewLine();
-            if (ImGui.Checkbox("Draw Area/Zone Map (maphack)", ref this.Settings.DrawWalkableMap))
+            if (ImGui.Checkbox(this.PluginText.Label("settings.draw_area_map", "Draw Area/Zone Map (maphack)", "RadarDrawAreaMap"), ref this.Settings.DrawWalkableMap))
             {
                 if (this.Settings.DrawWalkableMap)
                 {
@@ -189,7 +189,7 @@ namespace Radar
                 }
             }
 
-            if (ImGui.ColorEdit4("Drawn Map Color", ref this.Settings.WalkableMapColor))
+            if (ImGui.ColorEdit4(this.PluginText.Label("settings.drawn_map_color", "Drawn Map Color", "RadarDrawnMapColor"), ref this.Settings.WalkableMapColor))
             {
                 if (this.walkableMapTexture != IntPtr.Zero)
                 {
@@ -199,21 +199,21 @@ namespace Radar
 
             ImGui.Separator();
             ImGui.NewLine();
-            ImGui.Checkbox("Show terrain points of interest (A.K.A Terrain POI)", ref this.Settings.ShowImportantPOI);
-            ImGui.ColorEdit4("Terrain POI text color", ref this.Settings.POIColor);
-            ImGui.Checkbox("Add black background to Terrain POI text", ref this.Settings.EnablePOIBackground);
-            ImGui.Checkbox("Show Straight-Line Arrow to POIs", ref this.Settings.ShowStraightLine);
-            ImGuiHelper.ToolTip("Draws a straight line+arrow to each POI. Green = clear, Red = blocked.");
-            ImGui.Checkbox("Show A* Smooth Path to POIs", ref this.Settings.ShowSmoothPath);
-            ImGuiHelper.ToolTip("Computes and draws the actual shortest walkable path (cyan).");
-            ImGui.DragFloat("POI Path Thickness", ref this.Settings.DirectionLineThickness, 0.1f, 0.1f, 10.0f, "%.1f");
-            ImGui.DragInt("Path Recompute Segments", ref this.Settings.PathRecomputeSegments, 0.1f, 0, 20);
-            ImGuiHelper.ToolTip("0 = full recompute every cycle. Set to 3-5 to only recompute the first few segments of a cached path, reusing the tail. Higher values = faster but paths may be slightly stale when the player moves.");
-            ImGui.DragInt("Path Recompute Interval (ms)", ref this.Settings.PathRecomputeIntervalMs, 1f, 5, 1000);
-            ImGuiHelper.ToolTip("How often paths are recomputed. Lower = more responsive, higher = less CPU usage.");
-            ImGui.DragInt("Full Recompute Interval (ms)", ref this.Settings.PathFullRecomputeIntervalMs, 100f, 1000, 10000);
-            ImGuiHelper.ToolTip("How often a full path recompute is forced, ignoring the segment-skip optimization. Ensures paths never get stuck stale.");
-            this.isAddNewPOIHeaderOpened = ImGui.CollapsingHeader("Add or Modify Terrain POI");
+            ImGui.Checkbox(this.PluginText.Label("settings.show_terrain_poi", "Show terrain points of interest (A.K.A Terrain POI)", "RadarShowTerrainPoi"), ref this.Settings.ShowImportantPOI);
+            ImGui.ColorEdit4(this.PluginText.Label("settings.terrain_poi_color", "Terrain POI text color", "RadarTerrainPoiColor"), ref this.Settings.POIColor);
+            ImGui.Checkbox(this.PluginText.Label("settings.poi_background", "Add black background to Terrain POI text", "RadarPoiBackground"), ref this.Settings.EnablePOIBackground);
+            ImGui.Checkbox(this.PluginText.Label("settings.show_straight_line", "Show Straight-Line Arrow to POIs", "RadarShowStraightLine"), ref this.Settings.ShowStraightLine);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.show_straight_line.tooltip", "Draws a straight line+arrow to each POI. Green = clear, Red = blocked."));
+            ImGui.Checkbox(this.PluginText.Label("settings.show_smooth_path", "Show A* Smooth Path to POIs", "RadarShowSmoothPath"), ref this.Settings.ShowSmoothPath);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.show_smooth_path.tooltip", "Computes and draws the actual shortest walkable path (cyan)."));
+            ImGui.DragFloat(this.PluginText.Label("settings.poi_path_thickness", "POI Path Thickness", "RadarPoiPathThickness"), ref this.Settings.DirectionLineThickness, 0.1f, 0.1f, 10.0f, "%.1f");
+            ImGui.DragInt(this.PluginText.Label("settings.path_recompute_segments", "Path Recompute Segments", "RadarPathRecomputeSegments"), ref this.Settings.PathRecomputeSegments, 0.1f, 0, 20);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.path_recompute_segments.tooltip", "0 = full recompute every cycle. Set to 3-5 to only recompute the first few segments of a cached path, reusing the tail. Higher values = faster but paths may be slightly stale when the player moves."));
+            ImGui.DragInt(this.PluginText.Label("settings.path_recompute_interval", "Path Recompute Interval (ms)", "RadarPathRecomputeInterval"), ref this.Settings.PathRecomputeIntervalMs, 1f, 5, 1000);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.path_recompute_interval.tooltip", "How often paths are recomputed. Lower = more responsive, higher = less CPU usage."));
+            ImGui.DragInt(this.PluginText.Label("settings.full_recompute_interval", "Full Recompute Interval (ms)", "RadarFullRecomputeInterval"), ref this.Settings.PathFullRecomputeIntervalMs, 100f, 1000, 10000);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.full_recompute_interval.tooltip", "How often a full path recompute is forced, ignoring the segment-skip optimization. Ensures paths never get stuck stale."));
+            this.isAddNewPOIHeaderOpened = ImGui.CollapsingHeader(this.PluginText.Title("section.add_modify_terrain_poi", "Add or Modify Terrain POI", "RadarAddModifyTerrainPoi"));
             if (this.isAddNewPOIHeaderOpened)
             {
                 this.AddNewPOIWidget();
@@ -222,105 +222,119 @@ namespace Radar
 
             ImGui.Separator();
             ImGui.NewLine();
-            ImGui.Checkbox("Hide Entities outside the network bubble", ref this.Settings.HideOutsideNetworkBubble);
-            ImGui.Checkbox("Show Player Names", ref this.Settings.ShowPlayersNames);
-            ImGuiHelper.ToolTip("This button will not work while Player is in the Scourge.");
-            ImGui.Checkbox("Show Paths to Icons", ref this.Settings.ShowEntityPaths);
-            ImGuiHelper.ToolTip("Global on/off for entity-icon pathing. Does not affect individual icon path settings.");
-            ImGui.DragFloat("Icon Path Thickness", ref this.Settings.IconPathThickness, 0.1f, 0.1f, 10.0f, "%.1f");
-            ImGui.Checkbox("Hide reached paths for current map", ref this.Settings.HideReachedPaths);
-            ImGuiHelper.ToolTip("When you get close to a path target (entity, terrain POI or tile), its path stops being drawn for the rest of the current map. Resets automatically on area change.");
-            ImGui.Checkbox("Hide Runestone socket count when near", ref this.Settings.HideRunestoneSocketsWhenNear);
-            ImGuiHelper.ToolTip("When you get close to a Runestone Encounter, its socket-count label disappears for the rest of the map. Uses the Reached Distance below. Independent of 'Hide reached paths'.");
-            ImGui.DragFloat("Runestone Socket X Offset", ref this.Settings.RunestoneSocketOffsetX, 0.5f);
-            ImGui.DragFloat("Runestone Socket Y Offset", ref this.Settings.RunestoneSocketOffsetY, 0.5f);
-            ImGuiHelper.ToolTip("Screen-pixel offset for the Runestone socket-count number.");
+            ImGui.Checkbox(this.PluginText.Label("settings.hide_network_bubble", "Hide Entities outside the network bubble", "RadarHideNetworkBubble"), ref this.Settings.HideOutsideNetworkBubble);
+            ImGui.Checkbox(this.PluginText.Label("settings.show_player_names", "Show Player Names", "RadarShowPlayerNames"), ref this.Settings.ShowPlayersNames);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.show_player_names.tooltip", "This button will not work while Player is in the Scourge."));
+            ImGui.Checkbox(this.PluginText.Label("settings.show_icon_paths", "Show Paths to Icons", "RadarShowIconPaths"), ref this.Settings.ShowEntityPaths);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.show_icon_paths.tooltip", "Global on/off for entity-icon pathing. Does not affect individual icon path settings."));
+            ImGui.DragFloat(this.PluginText.Label("settings.icon_path_thickness", "Icon Path Thickness", "RadarIconPathThickness"), ref this.Settings.IconPathThickness, 0.1f, 0.1f, 10.0f, "%.1f");
+            ImGui.Checkbox(this.PluginText.Label("settings.hide_reached_paths", "Hide reached paths for current map", "RadarHideReachedPaths"), ref this.Settings.HideReachedPaths);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.hide_reached_paths.tooltip", "When you get close to a path target (entity, terrain POI or tile), its path stops being drawn for the rest of the current map. Resets automatically on area change."));
+            ImGui.Checkbox(this.PluginText.Label("settings.hide_runestone_socket", "Hide Runestone socket count when near", "RadarHideRunestoneSocket"), ref this.Settings.HideRunestoneSocketsWhenNear);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.hide_runestone_socket.tooltip", "When you get close to a Runestone Encounter, its socket-count label disappears for the rest of the map. Uses the Reached Distance below. Independent of 'Hide reached paths'."));
+            ImGui.DragFloat(this.PluginText.Label("settings.runestone_socket_x_offset", "Runestone Socket X Offset", "RadarRunestoneSocketXOffset"), ref this.Settings.RunestoneSocketOffsetX, 0.5f);
+            ImGui.DragFloat(this.PluginText.Label("settings.runestone_socket_y_offset", "Runestone Socket Y Offset", "RadarRunestoneSocketYOffset"), ref this.Settings.RunestoneSocketOffsetY, 0.5f);
+            ImGuiHelper.ToolTip(this.PluginText.T("settings.runestone_socket_offset.tooltip", "Screen-pixel offset for the Runestone socket-count number."));
             if (this.Settings.HideReachedPaths || this.Settings.HideRunestoneSocketsWhenNear)
             {
-                ImGui.DragFloat("Reached Distance", ref this.Settings.ReachedPathDistance, 1f, 1f, 500f, "%.0f");
-                ImGuiHelper.ToolTip("Grid distance at which a path target / runestone counts as reached.");
+                ImGui.DragFloat(this.PluginText.Label("settings.reached_distance", "Reached Distance", "RadarReachedDistance"), ref this.Settings.ReachedPathDistance, 1f, 1f, 500f, "%.0f");
+                ImGuiHelper.ToolTip(this.PluginText.T("settings.reached_distance.tooltip", "Grid distance at which a path target / runestone counts as reached."));
             }
 
-            if (ImGui.Button("Reset Reached Paths"))
+            if (ImGui.Button(this.PluginText.Label("button.reset_reached_paths", "Reset Reached Paths", "RadarResetReachedPaths")))
             {
                 this.reachedPathKeys.Clear();
             }
 
-            ImGuiHelper.ToolTip("Show all paths and runestone socket counts for the current map again.");
-            if (ImGui.CollapsingHeader("Icons Setting"))
+            ImGuiHelper.ToolTip(this.PluginText.T("button.reset_reached_paths.tooltip", "Show all paths and runestone socket counts for the current map again."));
+            if (ImGui.CollapsingHeader(this.PluginText.Title("section.icons_setting", "Icons Setting", "RadarIconsSetting")))
             {
                 this.Settings.DrawIconsSettingToImGui(
-                    "BaseGame Icons",
+                    this.PluginText.T("icons.base_game", "BaseGame Icons"),
                     this.Settings.BaseIcons,
-                    "Blockages icon can be set from Delve Icons category i.e. 'Blockage OR DelveWall'");
+                    this.PluginText.T("icons.base_game.help", "Blockages icon can be set from Delve Icons category i.e. 'Blockage OR DelveWall'"),
+                    this.PluginText);
 
-                this.Settings.DrawPOIMonsterSettingToImGui(this.DllDirectory);
-                this.Settings.OtherImportantObjectsSettingToImGui(this.DllDirectory);
+                this.Settings.DrawPOIMonsterSettingToImGui(this.DllDirectory, this.PluginText);
+                this.Settings.OtherImportantObjectsSettingToImGui(this.DllDirectory, this.PluginText);
                 this.Settings.DrawIconsSettingToImGui(
-                    "Breach Icons",
+                    this.PluginText.T("icons.breach", "Breach Icons"),
                     this.Settings.BreachIcons,
-                    "Breach bosses are same as BaseGame Icons -> Unique Monsters.");
+                    this.PluginText.T("icons.breach.help", "Breach bosses are same as BaseGame Icons -> Unique Monsters."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Delirium Icons",
+                    this.PluginText.T("icons.delirium", "Delirium Icons"),
                     this.Settings.DeliriumIcons,
-                    string.Empty);
+                    string.Empty,
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Expedition Icons",
+                    this.PluginText.T("icons.expedition", "Expedition Icons"),
                     this.Settings.ExpeditionIcons,
-                    string.Empty);
+                    string.Empty,
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Temple Icons",
+                    this.PluginText.T("icons.temple", "Temple Icons"),
                     this.Settings.TempleIcons,
-                    "Icons for Incursion Waygate devices (Vaal Ruins).");
+                    this.PluginText.T("icons.temple.help", "Icons for Incursion Waygate devices (Vaal Ruins)."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Expedition Marker Icons",
+                    this.PluginText.T("icons.expedition_marker", "Expedition Marker Icons"),
                     this.Settings.ExpeditionMarkerIcons,
-                    "Icons for expedition markers, keyed by MinimapIcon name. Set size to 0 to disable.");
+                    this.PluginText.T("icons.expedition_marker.help", "Icons for expedition markers, keyed by MinimapIcon name. Set size to 0 to disable."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Expedition Model Marker Icons",
+                    this.PluginText.T("icons.expedition_model_marker", "Expedition Model Marker Icons"),
                     this.Settings.ExpeditionModelIcons,
-                    "Icons for expedition markers detected by their .ao model (works before detonation). " +
-                    "Set size to 0 to disable.");
+                    this.PluginText.T("icons.expedition_model_marker.help", "Icons for expedition markers detected by their .ao model (works before detonation). " +
+                    "Set size to 0 to disable."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Expedition Remnant Icons",
+                    this.PluginText.T("icons.expedition_remnant", "Expedition Remnant Icons"),
                     this.Settings.ExpeditionRemnantIcons,
-                    "Icons for expedition remnants with specific mods. Set size to 0 to disable.");
+                    this.PluginText.T("icons.expedition_remnant.help", "Icons for expedition remnants with specific mods. Set size to 0 to disable."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Runestone Icons",
+                    this.PluginText.T("icons.runestone", "Runestone Icons"),
                     this.Settings.RunestoneIcons,
-                    "Icons for runestone encounters.");
+                    this.PluginText.T("icons.runestone.help", "Icons for runestone encounters."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Ritual Icons",
+                    this.PluginText.T("icons.ritual", "Ritual Icons"),
                     this.Settings.RitualIcons,
-                    "Icon for Ritual rune objects.");
+                    this.PluginText.T("icons.ritual.help", "Icon for Ritual rune objects."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Abyss Icons",
+                    this.PluginText.T("icons.abyss", "Abyss Icons"),
                     this.Settings.AbyssIcons,
-                    "Icons for Abyss nodes. 'Other' matches any remaining Abyss-path entity.");
+                    this.PluginText.T("icons.abyss.help", "Icons for Abyss nodes. 'Other' matches any remaining Abyss-path entity."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Strongboxes",
+                    this.PluginText.T("icons.strongboxes", "Strongboxes"),
                     this.Settings.StrongboxIcons,
-                    "Icons for specific Strongbox chests, matched by entity path.");
+                    this.PluginText.T("icons.strongboxes.help", "Icons for specific Strongbox chests, matched by entity path."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Sekhemas",
+                    this.PluginText.T("icons.sekhemas", "Sekhemas"),
                     this.Settings.SekhemasIcons,
-                    "Icons for Sanctum (Trial of the Sekhemas) objects.");
+                    this.PluginText.T("icons.sekhemas.help", "Icons for Sanctum (Trial of the Sekhemas) objects."),
+                    this.PluginText);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    "Boss Icons",
+                    this.PluginText.T("icons.boss", "Boss Icons"),
                     this.Settings.BossIcons,
-                    "Icons for map boss arenas.");
+                    this.PluginText.T("icons.boss.help", "Icons for map boss arenas."),
+                    this.PluginText);
             }
         }
 
@@ -334,12 +348,12 @@ namespace Radar
             {
                 ImGui.SetNextWindowPos(largeMap.Center, ImGuiCond.Appearing);
                 ImGui.SetNextWindowSize(new Vector2(400f), ImGuiCond.Appearing);
-                ImGui.Begin("Large Map Culling Window");
-                ImGui.TextWrapped("This is a culling window for the large map icons. " +
+                ImGui.Begin(this.PluginText.Title("window.large_map_culling", "Large Map Culling Window", "RadarLargeMapCullingWindow"));
+                ImGui.TextWrapped(this.PluginText.T("window.large_map_culling.help", "This is a culling window for the large map icons. " +
                                   "Any large map icons outside of this window will be hidden automatically. " +
                                   "Feel free to change the position/size of this window. " +
                                   "Once you are happy with the dimensions, double click this window. " +
-                                  "You can bring this window back from the settings menu.");
+                                  "You can bring this window back from the settings menu."));
                 this.Settings.CullWindowPos = ImGui.GetWindowPos();
                 this.Settings.CullWindowSize = ImGui.GetWindowSize();
                 if (ImGui.IsWindowHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
@@ -429,7 +443,7 @@ namespace Radar
                 ImGui.SetNextWindowSize(this.Settings.CullWindowSize);
                 ImGui.SetNextWindowBgAlpha(0f);
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
-                ImGui.Begin("Large Map Culling Window", ImGuiHelper.TransparentWindowFlags);
+                ImGui.Begin(this.PluginText.Title("window.large_map_culling", "Large Map Culling Window", "RadarLargeMapCullingWindow"), ImGuiHelper.TransparentWindowFlags);
                 ImGui.PopStyleVar();
                 this.DrawLargeMap(largeMapRealCenter, trackingPos, trackingHeight);
                 this.DrawTgtFiles(largeMapRealCenter, trackingPos, trackingHeight);
@@ -2445,28 +2459,28 @@ namespace Radar
         private void AddNewPOIWidget()
         {
             var tgttilesInArea = Core.States.InGameStateObject.CurrentAreaInstance.TgtTilesLocations;
-            ImGui.InputText("Area Name", ref this.currentAreaName, 200, ImGuiInputTextFlags.ReadOnly);
+            ImGui.InputText(this.PluginText.Label("poi.area_name", "Area Name", "RadarPoiAreaName"), ref this.currentAreaName, 200, ImGuiInputTextFlags.ReadOnly);
             ImGui.NewLine();
-            ImGui.InputInt("Filter on Max POI frenquency", ref this.Settings.POIFrequencyFilter);
-            ImGui.InputText("Filter by text", ref this.tmpTileFilter, 200);
-            if (ImGui.InputInt("Select POI via Index###tgtSelectorCounter", ref this.tmpTgtSelectionCounter) &&
+            ImGui.InputInt(this.PluginText.Label("poi.max_frequency_filter", "Filter on Max POI frenquency", "RadarPoiMaxFrequencyFilter"), ref this.Settings.POIFrequencyFilter);
+            ImGui.InputText(this.PluginText.Label("poi.filter_text", "Filter by text", "RadarPoiFilterText"), ref this.tmpTileFilter, 200);
+            if (ImGui.InputInt(this.PluginText.Title("poi.select_by_index", "Select POI via Index", "tgtSelectorCounter"), ref this.tmpTgtSelectionCounter) &&
                 this.tmpTgtSelectionCounter < tgttilesInArea.Keys.Count)
             {
                 this.tmpTileName = tgttilesInArea.Keys.ElementAt(this.tmpTgtSelectionCounter);
             }
 
             ImGui.NewLine();
-            if (ImGuiHelper.IEnumerableComboBox<string>("POI Path",
+            if (ImGuiHelper.IEnumerableComboBox<string>(this.PluginText.Label("poi.path", "POI Path", "RadarPoiPath"),
                 tgttilesInArea.Keys.Where(k => string.IsNullOrEmpty(this.tmpTileFilter) ||
                 k.Contains(this.tmpTileFilter, StringComparison.OrdinalIgnoreCase)),
                 ref this.tmpTileName))
             {
                 Console.WriteLine($"POI Path selected: {this.tmpTileName}");
             }
-            ImGui.InputText("POI Display Name", ref this.tmpDisplayName, 200);
-            ImGui.Checkbox("Add for all Areas", ref this.addTileForAllAreas);
+            ImGui.InputText(this.PluginText.Label("poi.display_name", "POI Display Name", "RadarPoiDisplayName"), ref this.tmpDisplayName, 200);
+            ImGui.Checkbox(this.PluginText.Label("poi.add_all_areas", "Add for all Areas", "RadarPoiAddAllAreas"), ref this.addTileForAllAreas);
             ImGui.SameLine();
-            if (ImGui.Button("Add POI"))
+            if (ImGui.Button(this.PluginText.Label("button.add_poi", "Add POI", "RadarAddPoi")))
             {
                 var key = this.addTileForAllAreas ? "common" : this.currentAreaName;
                 if (!string.IsNullOrEmpty(key) &&
@@ -2489,20 +2503,20 @@ namespace Radar
 
         private void ShowPOIWidget()
         {
-            if (ImGui.TreeNode($"Important Terrain POIs common for all Areas"))
+            if (ImGui.TreeNode(this.PluginText.Title("poi.common_all_areas", "Important Terrain POIs common for all Areas", "RadarPoiCommonAllAreas")))
             {
                 if (this.Settings.ImportantTgts.ContainsKey("common"))
                 {
                     foreach (var tgt in this.Settings.ImportantTgts["common"])
                     {
-                        if (ImGui.SmallButton($"Delete##{tgt.Key}"))
+                        if (ImGui.SmallButton(this.PluginText.Label("button.delete", "Delete", tgt.Key)))
                         {
                             this.Settings.ImportantTgts["common"].Remove(tgt.Key);
                         }
 
                         ImGui.SameLine();
-                        ImGui.Text($"POI Path: {tgt.Key}, Display: {tgt.Value}");
-                        ImGuiHelper.ToolTip("Click me to Modify.");
+                        ImGui.Text(this.PluginText.F("poi.entry", "POI Path: {0}, Display: {1}", tgt.Key, tgt.Value));
+                        ImGuiHelper.ToolTip(this.PluginText.T("poi.modify.tooltip", "Click me to Modify."));
                         if (ImGui.IsItemClicked())
                         {
                             this.tmpTileName = tgt.Key;
@@ -2514,20 +2528,20 @@ namespace Radar
                 ImGui.TreePop();
             }
 
-            if (ImGui.TreeNode($"Important Terrain POIs in Area: {this.currentAreaName}##import_time_in_area"))
+            if (ImGui.TreeNode(this.PluginText.Title("poi.in_area", $"Important Terrain POIs in Area: {this.currentAreaName}", "import_time_in_area")))
             {
                 if (this.Settings.ImportantTgts.ContainsKey(this.currentAreaName))
                 {
                     foreach (var tgt in this.Settings.ImportantTgts[this.currentAreaName])
                     {
-                        if (ImGui.SmallButton($"Delete##{tgt.Key}"))
+                        if (ImGui.SmallButton(this.PluginText.Label("button.delete", "Delete", tgt.Key)))
                         {
                             this.Settings.ImportantTgts[this.currentAreaName].Remove(tgt.Key);
                         }
 
                         ImGui.SameLine();
-                        ImGui.Text($"POI Path: {tgt.Key}, Display: {tgt.Value}");
-                        ImGuiHelper.ToolTip("Click me to Modify.");
+                        ImGui.Text(this.PluginText.F("poi.entry", "POI Path: {0}, Display: {1}", tgt.Key, tgt.Value));
+                        ImGuiHelper.ToolTip(this.PluginText.T("poi.modify.tooltip", "Click me to Modify."));
                         if (ImGui.IsItemClicked())
                         {
                             this.tmpTileName = tgt.Key;
