@@ -1,0 +1,18 @@
+<Project>
+  <Target Name="CopyPluginLocalizationFiles"
+          AfterTargets="Build"
+          Condition="'$(Fork)' != 'Legacy' And Exists('$(MSBuildProjectDirectory)\Localization')">
+    <ItemGroup>
+      <_PluginLocalizationFiles Include="$(MSBuildProjectDirectory)\Localization\*.json" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_PluginLocalizationFiles)"
+          DestinationFolder="$(OutDir)Localization"
+          SkipUnchangedFiles="true"
+          Condition="'@(_PluginLocalizationFiles)' != ''" />
+    <Copy SourceFiles="@(_PluginLocalizationFiles)"
+          DestinationFolder="$(MSBuildProjectDirectory)\..\..\GameHelper\$(OutDir)Plugins\$(ProjectName)\Localization"
+          SkipUnchangedFiles="true"
+          Condition="'@(_PluginLocalizationFiles)' != ''" />
+  </Target>
+</Project>
