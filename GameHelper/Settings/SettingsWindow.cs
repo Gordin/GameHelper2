@@ -312,7 +312,7 @@ namespace GameHelper.Settings
             ImGuiTheme.SectionHeader(L.T("settings.about.title", "About"));
             ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
             ImGui.TextColored(color, L.T("settings.about.scam", "This is free software, if you purchased a copy you have been scammed"));
-            ImGui.TextColored(color, L.T("settings.about.version", "For PoE2 0.5.4"));
+            ImGui.TextColored(color, L.T("settings.about.version", "For PoE2 0.5.4b"));
             ImGui.TextColored(color, L.T("settings.about.zero_day", "Zero Day developer is Kronos"));
             ImGui.TextColored(color, L.T("settings.about.offset", "Offset updater is Arsenic, Nabeora, Lafko"));
             ImGui.TextColored(color, L.T("settings.about.discord", "Official GameHelper2 Discord is https://discord.gg/864GyuM5S"));
