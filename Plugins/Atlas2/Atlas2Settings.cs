@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace Atlas
+namespace Atlas2
 {
-    public sealed class AtlasSettings : IPSettings
+    public sealed class Atlas2Settings : IPSettings
     {
         public Vector4 DefaultBackgroundColor = new(0f, 0f, 0f, 0.85f);
         public Vector4 DefaultFontColor = new(1f, 1f, 1f, 1.0f);
@@ -32,7 +32,7 @@ namespace Atlas
         public Vector4 QuestsPathColor = new(0f, 1f, 1f, 1f); // cyan
         public int QuestsMaxHops = 100;
 
-        // Named-map pathfinding categories (matched by exact display name; see Atlas.*Maps sets).
+        // Named-map pathfinding categories (matched by exact display name; see Atlas2.*Maps sets).
         public bool DrawLinesToAtlasProgression = false;
         public Vector4 AtlasProgressionPathColor = new(0.55f, 0.27f, 0.07f, 1f); // brown
         public int AtlasProgressionMaxHops = 100;
@@ -78,7 +78,7 @@ namespace Atlas
         public Dictionary<string, ContentOverride> ContentOverrides = [];
         public Dictionary<byte, ContentOverride> BiomeOverrides = [];
 
-        public AtlasSettings()
+        public Atlas2Settings()
         {
             var citadels = new MapGroupSettings("Citadels", new Vector4(1f, 1f, 1f, 0.85f), new Vector4(1f, 0f, 0f, 1f));
             citadels.Maps.Add("The Copper Citadel");

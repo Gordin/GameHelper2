@@ -1,4 +1,4 @@
-﻿namespace Atlas
+﻿namespace Atlas2
 {
     using GameHelper;
     using GameHelper.Plugin;
@@ -20,7 +20,7 @@
     using System.Runtime.InteropServices;
     using System.Text;
 
-    public sealed class Atlas : PCore<AtlasSettings>
+    public sealed class Atlas2 : PCore<Atlas2Settings>
     {
         private const uint CompletedNodeDotColor = 0xFF00FF00;
         private const uint DotOutlineColor = 0xFF000000;
@@ -104,7 +104,7 @@
             {
                 var content = File.ReadAllText(SettingPathname);
                 var serializerSettings = new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace };
-                Settings = JsonConvert.DeserializeObject<AtlasSettings>(content, serializerSettings);
+                Settings = JsonConvert.DeserializeObject<Atlas2Settings>(content, serializerSettings);
             }
 
             LoadBiomeMap();

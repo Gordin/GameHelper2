@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using Newtonsoft.Json;
 
-namespace Atlas
+namespace Atlas2
 {
     /// <summary>
     ///     Class ContentInfo.
