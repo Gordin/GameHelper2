@@ -88,7 +88,7 @@ namespace PickupHelper
         /// </summary>
         public HashSet<string> EnabledCategories = new(StringComparer.OrdinalIgnoreCase)
         {
-            "Currency", "Gems", "Tablets", "Waystones",
+            "Currency", "Gems", "Tablets", "Waystones", "SoulCores", "Sanctum", "Jewels",
         };
 
         /// <summary>
