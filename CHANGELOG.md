@@ -6,6 +6,32 @@ Path of Exile 2; "0.5.x" references are the game patch the build targets.
 Sections marked **For plugin devs** describe newly exposed APIs you can read
 from your own plugins via `Core.*`.
 
+## [2.5.1] - 2026-07-04
+
+### Added
+
+- **PickupHelper plugin.** A lightweight hover-to-pickup assistant: when the ground
+  item under your cursor matches your filter, it left-clicks it in place. It never
+  moves the cursor and never interacts with league mechanics (rituals, essences,
+  altars, etc.). An item is picked up when it matches the whitelist **or** an enabled
+  category **or** an enabled rarity:
+  - **Categories** are derived from each item's metadata path and auto-discovered as
+    you play. Currency, Gems, Tablets, and Waystones are enabled by default.
+  - **Explicit whitelist** by base type, with a configurable hotkey to add whatever
+    you are currently hovering.
+  - **Rarity** toggles (Normal / Magic / Rare / Unique).
+  - Optional **hold-a-key-to-pick-up** mode, a **max pickup distance**, a randomized
+    **detection-to-click delay** (configurable min/max), click cooldowns, and a
+    **block while a large panel is open** safety toggle.
+  - A debug window shows the hovered item's name, path, category, rarity, distance,
+    and whether it would be picked up.
+  - Localized in all 11 supported languages. Uses only existing `Core.*` APIs — no
+    core changes required.
+- **`Stack` component now exposes stack caps (for plugin devs).** In addition to
+  `Count`, the `Stack` component on stackable items now reports `MaxStack` (the
+  normal stack cap for the backpack and normal stash tabs) and `MaxStackTab` (the
+  currency stash tab stack cap).
+
 ## [2.5.0] - 2026-07-03
 
 ### Added
@@ -123,6 +149,7 @@ from your own plugins via `Core.*`.
 - Disabled plugins' settings being overwritten on close.
 - Co-op (multiplayer) read fix.
 
+[2.5.1]: https://github.com/Gordin/GameHelper2/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Gordin/GameHelper2/compare/2.4.2...2.5.0
 [2.4.2]: https://github.com/Gordin/GameHelper2/compare/2.4.1...2.4.2
 [2.4.1]: https://github.com/Gordin/GameHelper2/compare/v2.4.0...2.4.1
