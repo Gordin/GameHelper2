@@ -1,4 +1,4 @@
-﻿// <copyright file="ImportantUiElements.cs" company="None">
+// <copyright file="ImportantUiElements.cs" company="None">
 // Copyright (c) None. All rights reserved.
 // </copyright>
 
@@ -41,6 +41,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private static readonly int[] InterludePanelChildPath = { 22, 0, 5 };
         private static readonly int[] AtlasPanelChildPath = { 22, 0, 6 };
         private static readonly int[] AtlasSkillsPanelChildPath = { 25, 0 };
+        private static readonly int[] LeftPanelCoopPath = { 22 };
+        private static readonly int[] RightPanelCoopPath = { 23 };
         private const int AtlasMapCacheRefreshFrames = 20;
         private const int AtlasNodeBiomeIdOffset = 0x2CE;
         private const int AtlasNodeStatusByteOffset = 0x2CF;
@@ -384,8 +386,16 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.LargeMap.Address = data2.LargeMapPtr;
                 this.MiniMap.Address = data2.MiniMapPtr;
                 this.UpdateWorldMapPanelAddresses();
-                this.LeftPanel.Address = IntPtr.Zero;
-                this.RightPanel.Address = IntPtr.Zero;
+                if (this.IsCoopMode())
+                {
+                    this.LeftPanel.Address = ResolveChildAddress(this.Address, LeftPanelCoopPath);
+                    this.RightPanel.Address = ResolveChildAddress(this.Address, RightPanelCoopPath);
+                }
+                else
+                {
+                    this.LeftPanel.Address = IntPtr.Zero;
+                    this.RightPanel.Address = IntPtr.Zero;
+                }
                 this.ChatParent.Address = IntPtr.Zero;
                 this.passiveskilltreenodes.Address = IntPtr.Zero;
                 this.sekhemasTrialMapPanel.Address = IntPtr.Zero;
@@ -723,6 +733,36 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     contentNames.Add(contentName);
                 }
             }
+        }
+
+        private bool IsCoopMode()
+        {
+            if (!Core.GHSettings.EnableControllerMode)
+            {
+                return false;
+            }
+
+            var inGameState = Core.States.InGameStateObject;
+            if (inGameState == null)
+            {
+                return false;
+            }
+
+            var currentArea = inGameState.CurrentAreaInstance;
+            if (currentArea == null || currentArea.Address == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            foreach (var entity in currentArea.AwakeEntities.Values)
+            {
+                if (entity.EntitySubtype == GameHelper.RemoteEnums.Entity.EntitySubtypes.PlayerOther)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static IntPtr ResolveChildAddress(IntPtr rootAddress, int[] childPath)
