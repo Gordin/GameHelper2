@@ -282,6 +282,16 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             return this.componentAddresses.Keys;
         }
 
+        /// <summary>
+        ///     Gets the entity's component name -> component memory address pairs. Used by the
+        ///     OffsetHelper to bind component offset structs to live addresses for verification.
+        /// </summary>
+        /// <returns>a snapshot of the component name/address pairs.</returns>
+        internal IEnumerable<KeyValuePair<string, IntPtr>> GetComponentAddressPairs()
+        {
+            return this.componentAddresses;
+        }
+
         internal void UpdateNearby(Entity player)
         {
             if (this.EntityState != EntityStates.Useless)

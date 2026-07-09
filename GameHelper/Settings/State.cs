@@ -171,6 +171,13 @@ namespace GameHelper.Settings
         public bool ShowMemoryDiagnostics = false;
 
         /// <summary>
+        ///     Gets or sets a value indicating whether to show the OffsetHelper window or not.
+        ///     The OffsetHelper verifies (live, without Ghidra) whether the game's struct field
+        ///     offsets and static-address signature patterns still hold after a patch.
+        /// </summary>
+        public bool ShowOffsetHelper = false;
+
+        /// <summary>
         ///     Gets or sets a value indicating what big nearby means to the user.
         /// </summary>
         public (int Meaning, bool IsVisible, bool FollowMouse) OuterCircle = (Meaning: 70, IsVisible: false, FollowMouse: false);

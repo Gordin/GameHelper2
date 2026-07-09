@@ -22,6 +22,9 @@ namespace PickupHelper
         private static readonly Dictionary<string, string> CategoryAliases = new(StringComparer.OrdinalIgnoreCase)
         {
             ["TowerAugment"] = "Tablets",
+            ["Brequel"] = "Breach",
+            ["Ultimatum"] = "Ultimatum (Chaos Trials)",
+            ["Sanctum"] = "Djinn Barya (Trial of Sekhemas)",
         };
 
         /// <summary>
@@ -31,8 +34,10 @@ namespace PickupHelper
         /// </summary>
         internal static readonly string[] CuratedCategories =
         {
-            "Currency", "Gems", "Waystones", "Tablets", "SoulCores", "Sanctum", "Expedition",
-            "Armours", "Weapons", "Rings", "Amulets", "Belts", "Flasks", "Jewels", "Quivers",
+            "Currency", "Gems", "Waystones", "Tablets", "SoulCores",
+            "Djinn Barya (Trial of Sekhemas)", "Ultimatum (Chaos Trials)", "Breach",
+            "Expedition", "Armours", "Weapons", "Rings", "Amulets", "Belts", "Flasks",
+            "Jewels", "Quivers",
         };
 
         /// <summary>

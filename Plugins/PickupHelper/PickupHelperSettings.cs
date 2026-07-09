@@ -88,7 +88,8 @@ namespace PickupHelper
         /// </summary>
         public HashSet<string> EnabledCategories = new(StringComparer.OrdinalIgnoreCase)
         {
-            "Currency", "Gems", "Tablets", "Waystones", "SoulCores", "Sanctum", "Jewels",
+            "Currency", "Gems", "Tablets", "Waystones", "SoulCores",
+            "Djinn Barya (Trial of Sekhemas)", "Ultimatum (Chaos Trials)", "Breach", "Jewels",
         };
 
         /// <summary>
