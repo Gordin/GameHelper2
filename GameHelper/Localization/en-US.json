@@ -97,6 +97,7 @@
   "settings.tools.data_visualization": "Data Visualization (DV)",
   "settings.tools.performance_profiler": "Performance Profiler",
   "settings.tools.memory_read_diagnostics": "Memory Read Diagnostics",
+  "settings.tools.offset_helper": "OffsetHelper (OH)",
   "settings.tools.krangled_passive_detector": "Krangled Passive Detector",
   "settings.misc.title": "Miscellaneous Config",
   "settings.misc.fix_taskbar": "Fix Taskbar not showing",
