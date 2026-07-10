@@ -255,6 +255,12 @@ namespace Radar
                     this.PluginText.T("icons.base_game.help", "Blockages icon can be set from Delve Icons category i.e. 'Blockage OR DelveWall'"),
                     this.PluginText);
 
+                this.Settings.DrawIconsSettingToImGui(
+                    this.PluginText.T("icons.azmeri_spirits", "Azmeri Spirits"),
+                    this.Settings.AzmeriSpiritIcons,
+                    string.Empty,
+                    this.PluginText);
+
                 this.Settings.DrawPOIMonsterSettingToImGui(this.DllDirectory, this.PluginText);
                 this.Settings.OtherImportantObjectsSettingToImGui(this.DllDirectory, this.PluginText);
                 this.Settings.DrawIconsSettingToImGui(
@@ -1039,6 +1045,7 @@ namespace Radar
             var pPos = trackingPos;
 
             var baseIcons = this.Settings.BaseIcons;
+            var azmeriSpiritIcons = this.Settings.AzmeriSpiritIcons;
             var expeditionIcons = this.Settings.ExpeditionIcons;
             var breachIcons = this.Settings.BreachIcons;
             var deliriumIcons = this.Settings.DeliriumIcons;
@@ -1069,12 +1076,21 @@ namespace Radar
             foreach (var entity in currentAreaInstance.AwakeEntities)
             {
                 var entityValue = entity.Value;
+                var isAzmeriSpiritCandidate = entityValue.Path.StartsWith(
+                    RadarSettings.AzmeriSpiritPathPrefix,
+                    StringComparison.Ordinal);
+                var hasAzmeriMinimapIcon = false;
+                if (isAzmeriSpiritCandidate && entityValue.TryGetComponent<MinimapIcon>(out _))
+                {
+                    hasAzmeriMinimapIcon = true;
+                }
+
                 if (this.Settings.HideOutsideNetworkBubble && !entityValue.IsValid)
                 {
                     continue;
                 }
 
-                if (entityValue.EntityState == EntityStates.Useless)
+                if (entityValue.EntityState == EntityStates.Useless && !hasAzmeriMinimapIcon)
                 {
                     continue;
                 }
@@ -1109,6 +1125,26 @@ namespace Radar
                         screenPos + scaled,
                         icon.UV0,
                         icon.UV1);
+                }
+
+                IconPicker? azmeriSpiritIcon = null;
+                if (isAzmeriSpiritCandidate && hasAzmeriMinimapIcon)
+                {
+                    foreach (var (spiritPath, displayKey) in RadarSettings.AzmeriSpiritPathMap)
+                    {
+                        if (entityValue.Path.StartsWith(spiritPath, StringComparison.Ordinal) &&
+                            azmeriSpiritIcons.TryGetValue(displayKey, out var spiritIcon))
+                        {
+                            azmeriSpiritIcon = spiritIcon;
+                            break;
+                        }
+                    }
+                }
+
+                if (azmeriSpiritIcon != null)
+                {
+                    DrawIcon(azmeriSpiritIcon);
+                    continue;
                 }
 
                 switch (entityValue.EntityType)
@@ -1400,6 +1436,8 @@ namespace Radar
                         break;
                     case EntityTypes.Renderable:
                         fgDraw.AddCircleFilled(screenPos, 3f, 0xFFFFFFFF);
+                        break;
+                    default:
                         break;
                 }
             }

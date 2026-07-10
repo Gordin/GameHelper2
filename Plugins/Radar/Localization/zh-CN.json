@@ -9,6 +9,7 @@
   "icon_picker.window": "图标选择器（双击选择项目）",
   "icons.abyss": "深渊图标",
   "icons.abyss.help": "深渊节点图标。'Other' 会匹配其余任意 Abyss 路径实体。",
+  "icons.azmeri_spirits": "Azmeri Spirits",
   "icons.base_game": "基础游戏图标",
   "icons.base_game.help": "障碍图标可从 Delve Icons 类别设置，例如 'Blockage OR DelveWall'",
   "icons.boss": "Boss 图标",
