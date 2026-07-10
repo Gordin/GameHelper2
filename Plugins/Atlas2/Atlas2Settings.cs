@@ -42,6 +42,9 @@ namespace Atlas2
         public bool DrawLinesToCorruptedNexus = false;
         public Vector4 CorruptedNexusPathColor = new(0.45f, 0f, 0f, 1f); // dark red
         public int CorruptedNexusMaxHops = 100;
+        public bool DrawLinesToGrandMirror = false;
+        public Vector4 GrandMirrorPathColor = new(0.7f, 0.9f, 1f, 1f); // pale blue
+        public int GrandMirrorMaxHops = 100;
         public bool DrawLinesToBreach = false;
         public Vector4 BreachPathColor = new(255f / 255f, 51f / 255f, 189f / 255f, 1f); // 255,51,189
         public int BreachMaxHops = 100;

@@ -139,6 +139,7 @@
             PathRow("Unique Maps", ref Settings.DrawLinesToUniqueMaps, ref Settings.UniquePathColor, ref Settings.UniqueMaxHops);
             PathRow("Lineage Maps", ref Settings.DrawLinesToLineageMaps, ref Settings.LineagePathColor, ref Settings.LineageMaxHops);
             PathRow("Quests", ref Settings.DrawLinesToQuests, ref Settings.QuestsPathColor, ref Settings.QuestsMaxHops);
+            PathRow("Grand Mirror", ref Settings.DrawLinesToGrandMirror, ref Settings.GrandMirrorPathColor, ref Settings.GrandMirrorMaxHops);
             ImGui.NextColumn();
             PathRow("Atlas Progression", ref Settings.DrawLinesToAtlasProgression, ref Settings.AtlasProgressionPathColor, ref Settings.AtlasProgressionMaxHops);
             PathRow("Ritual", ref Settings.DrawLinesToRitual, ref Settings.RitualPathColor, ref Settings.RitualMaxHops);
@@ -484,6 +485,8 @@
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.RitualPathColor); maxHops = Settings.RitualMaxHops; }
                     else if (Settings.DrawLinesToCorruptedNexus && !completed && IsCorruptedNexus(nd))
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.CorruptedNexusPathColor); maxHops = Settings.CorruptedNexusMaxHops; }
+                    else if (Settings.DrawLinesToGrandMirror && !completed && HasAtlasContent(nd, "Grand Mirror"))
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.GrandMirrorPathColor); maxHops = Settings.GrandMirrorMaxHops; }
                     else if (Settings.DrawLinesToBreach && !completed && BreachMaps.Contains(mapName))
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.BreachPathColor); maxHops = Settings.BreachMaxHops; }
                     else if (Settings.DrawLinesToExpedition && !completed && ExpeditionMaps.Contains(mapName))
