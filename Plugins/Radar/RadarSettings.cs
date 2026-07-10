@@ -74,7 +74,7 @@ namespace Radar
         /// <summary>
         /// Base entity path for the Spirit of the Rabbit Sacred.
         /// </summary>
-        public const string TormentedSpiritOfTheRabbitSacredPath = AzmeriSpiritPathPrefix + "RabbitSacred_";
+        public const string TormentedSpiritOfTheRabbitSacredPath = AzmeriSpiritPathPrefix + "RabbitSacred";
 
         /// <summary>
         /// Base entity path for the Spirit of the Fox Sacred.
