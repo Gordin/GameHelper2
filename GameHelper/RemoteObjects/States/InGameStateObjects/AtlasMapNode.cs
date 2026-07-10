@@ -130,10 +130,12 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
         // Content-token / badge model (verified live for PoE2 0.5.x):
         //   * A content TOKEN (see ContentTokens) is one effect line. Its low 16 bits are the effect id
-        //     and its high 16 bits encode the magnitude as (magnitude × 64) — i.e. magnitude = high16/64
-        //     (1 for plain effects, the number in the text for "N additional"/"N% …", 100 for binary
-        //     "always"/"doubles" effects). So the same effect at a different magnitude is a different
-        //     full u32; we key on the low 16 bits and substitute the magnitude into a "{0}" template.
+        //     and its high 16 bits normally encode the magnitude as (magnitude × 64) — i.e. magnitude =
+        //     high16/64 (1 for plain effects, the number in the text for "N additional"/"N% …", 100 for
+        //     binary "always"/"doubles" effects). The Delirious token (0x685A) is an exception: its top
+        //     three high-word bits are a counter, so its magnitude is (high16 & 0x1FFF)/64. So the same
+        //     effect at a different magnitude is a different full u32; we key on the low 16 bits and
+        //     substitute the magnitude into a "{0}" template.
         //   * A BADGE (see BadgeContentIds) is the named content (the bold tooltip title). Its high word
         //     is a constant 0x0002 category tag; the content id is the low 16 bits, which we key on.
         // A node's tooltip = its badge (title) plus one token per effect line.
@@ -281,8 +283,17 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 }
             }
 
+            var deliriousTokens = new List<uint>();
+            var deliriousPercent = 0u;
             foreach (var token in this.ContentTokens)
             {
+                if ((token & 0xFFFFu) == 0x685Au)
+                {
+                    deliriousTokens.Add(token);
+                    deliriousPercent = Math.Max(deliriousPercent, ((token >> 16) & 0x1FFFu) / 64u);
+                    continue;
+                }
+
                 var name = GetContentTokenName(token);
                 if (name == null)
                 {
@@ -297,6 +308,28 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 if (!result.Contains(name))
                 {
                     result.Add(name);
+                }
+            }
+
+            if (deliriousTokens.Count > 0)
+            {
+                if (includeUnmapped)
+                {
+                    foreach (var token in deliriousTokens)
+                    {
+                        var percent = ((token >> 16) & 0x1FFFu) / 64u;
+                        var name = percent > 0 ? $"{percent}% Delirious" : "Delirious";
+                        var encodedHighWord = token >> 16;
+                        var debugName = $"{name} [0x{encodedHighWord:X4}]";
+                        if (!result.Contains(debugName))
+                        {
+                            result.Add(debugName);
+                        }
+                    }
+                }
+                else
+                {
+                    result.Add(deliriousPercent > 0 ? $"{deliriousPercent}% Delirious" : "Delirious");
                 }
             }
 

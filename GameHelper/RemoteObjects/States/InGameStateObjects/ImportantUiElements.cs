@@ -301,8 +301,30 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                         }
 
                         ImGui.Text($"Content Tokens: {map.ContentTokens.Count}");
+                        string? deliriousContent = null;
+                        foreach (var content in map.GetContentDisplayNames(includeUnmapped: true))
+                        {
+                            if (content.EndsWith("Delirious", StringComparison.Ordinal))
+                            {
+                                deliriousContent = content;
+                                break;
+                            }
+                        }
+
+                        var displayedDeliriousContent = false;
                         foreach (var token in map.ContentTokens)
                         {
+                            if ((token & 0xFFFFu) == 0x685Au)
+                            {
+                                if (!displayedDeliriousContent && deliriousContent != null)
+                                {
+                                    ImGui.Text($"- {deliriousContent}");
+                                    displayedDeliriousContent = true;
+                                }
+
+                                continue;
+                            }
+
                             var tokenName = AtlasMapNode.GetContentTokenName(token);
                             ImGui.Text(tokenName != null ? $"- {tokenName} (0x{token:X8})" : $"- 0x{token:X8}");
                         }
