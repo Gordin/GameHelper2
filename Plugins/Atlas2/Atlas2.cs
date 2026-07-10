@@ -24,6 +24,7 @@
     {
         private const uint CompletedNodeDotColor = 0xFF00FF00;
         private const uint DotOutlineColor = 0xFF000000;
+        private static readonly Vector4 VaalBeaconBorderColor = new(1f, 0.84f, 0f, 1f);
 
         private const int ChannelGrid = 0;
         private const int ChannelLines = 1;
@@ -141,6 +142,7 @@
             ImGui.NextColumn();
             PathRow("Atlas Progression", ref Settings.DrawLinesToAtlasProgression, ref Settings.AtlasProgressionPathColor, ref Settings.AtlasProgressionMaxHops);
             PathRow("Ritual", ref Settings.DrawLinesToRitual, ref Settings.RitualPathColor, ref Settings.RitualMaxHops);
+            PathRow("Corrupted Nexus", ref Settings.DrawLinesToCorruptedNexus, ref Settings.CorruptedNexusPathColor, ref Settings.CorruptedNexusMaxHops);
             PathRow("Breach", ref Settings.DrawLinesToBreach, ref Settings.BreachPathColor, ref Settings.BreachMaxHops);
             PathRow("Expedition", ref Settings.DrawLinesToExpedition, ref Settings.ExpeditionPathColor, ref Settings.ExpeditionMaxHops);
             PathRow("Abyss", ref Settings.DrawLinesToAbyss, ref Settings.AbyssPathColor, ref Settings.AbyssMaxHops);
@@ -446,7 +448,8 @@
                         continue;
                     if (!IsPrintableUnicode(mapName))
                         continue;
-                    if (doSearch && !searchList.Any(searchTerm => mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+                    var matchesSearch = !doSearch || searchList.Any(searchTerm => MatchesSearch(nd, mapName, searchTerm));
+                    if (!matchesSearch)
                         continue;
 
                     bool completed = nd.State == AtlasNodeState.CompletedBase;
@@ -462,8 +465,7 @@
                     int maxHops = 0;
                     if (Settings.DrawLinesToTowers && towers.Contains(mapName) && !completed)
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.TowerPathColor); maxHops = Settings.TowerMaxHops; }
-                    else if (Settings.DrawLinesToSearch && doSearch
-                        && searchList.Any(s => mapName.Contains(s, StringComparison.OrdinalIgnoreCase)))
+                    else if (Settings.DrawLinesToSearch && doSearch && matchesSearch)
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.SearchPathColor); maxHops = Settings.SearchMaxHops; }
                     else if (Settings.DrawLinesToUniqueMaps && !completed
                         && string.Equals(nd.Type, "unique", StringComparison.OrdinalIgnoreCase))
@@ -480,6 +482,8 @@
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.AtlasProgressionPathColor); maxHops = Settings.AtlasProgressionMaxHops; }
                     else if (Settings.DrawLinesToRitual && !completed && RitualMaps.Contains(mapName))
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.RitualPathColor); maxHops = Settings.RitualMaxHops; }
+                    else if (Settings.DrawLinesToCorruptedNexus && !completed && IsCorruptedNexus(nd))
+                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.CorruptedNexusPathColor); maxHops = Settings.CorruptedNexusMaxHops; }
                     else if (Settings.DrawLinesToBreach && !completed && BreachMaps.Contains(mapName))
                         { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.BreachPathColor); maxHops = Settings.BreachMaxHops; }
                     else if (Settings.DrawLinesToExpedition && !completed && ExpeditionMaps.Contains(mapName))
@@ -553,9 +557,27 @@
                     drawList.ChannelsSetCurrent(ChannelLabels);
                     float rounding = 3f * uiScale;
 
-                    if (Settings.ShowBiomeBorder && Biomes.TryGetValue(nd.BiomeId, out var biome) && biome.Show)
+                    Vector4? borderColor = null;
+                    if (HasAtlasContent(nd, "Vaal Beacon"))
                     {
-                        var biomeColor = biome.BdColor;
+                        borderColor = VaalBeaconBorderColor;
+                    }
+                    else if (HasAtlasContent(nd, "Corruption"))
+                    {
+                        borderColor = Settings.CorruptedNexusPathColor;
+                    }
+                    else if (HasAtlasContent(nd, "Ritual"))
+                    {
+                        borderColor = Settings.RitualPathColor;
+                    }
+                    else if (Biomes.TryGetValue(nd.BiomeId, out var biome) && biome.Show)
+                    {
+                        borderColor = biome.BdColor;
+                    }
+
+                    if (Settings.ShowBiomeBorder && borderColor.HasValue)
+                    {
+                        var biomeColor = borderColor.Value;
                         if (completed)
                             biomeColor.W *= 0.4f;
 
@@ -1049,6 +1071,25 @@
                 if (info.IsFlag) flags.Add(info);
                 else contents.Add(info);
             }
+        }
+
+        private static bool HasAtlasContent(NodeData node, string text)
+        {
+            return node.ContentDisplay.Any(content => content.Contains(text, StringComparison.OrdinalIgnoreCase)) ||
+                   node.RawContents.Any(content => content.Contains(text, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool MatchesSearch(NodeData node, string mapName, string searchTerm)
+        {
+            return mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   HasAtlasContent(node, searchTerm);
+        }
+
+        private static bool IsCorruptedNexus(NodeData node)
+        {
+            return !node.Tags.Exists(tag => string.Equals(tag, "arbiter", StringComparison.OrdinalIgnoreCase)) &&
+                   HasAtlasContent(node, "Corruption") &&
+                   HasAtlasContent(node, "Powerful Map Boss");
         }
 
         private static ContentInfo MatchContent(string contentName,

@@ -39,6 +39,9 @@ namespace Atlas2
         public bool DrawLinesToRitual = false;
         public Vector4 RitualPathColor = new(64f / 255f, 0f, 244f / 255f, 1f); // 64,0,244
         public int RitualMaxHops = 100;
+        public bool DrawLinesToCorruptedNexus = false;
+        public Vector4 CorruptedNexusPathColor = new(0.45f, 0f, 0f, 1f); // dark red
+        public int CorruptedNexusMaxHops = 100;
         public bool DrawLinesToBreach = false;
         public Vector4 BreachPathColor = new(255f / 255f, 51f / 255f, 189f / 255f, 1f); // 255,51,189
         public int BreachMaxHops = 100;
