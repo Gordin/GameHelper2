@@ -154,7 +154,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             [0x6870] = "Ritual Altars",
             [0x6873] = "Ritual Altars",
             [0x686F] = "Abysses",
-            [0x6872] = "Area contains Breaches",
+            [0x6872] = "Area contains Abysses",
+            [0x6875] = "Area contains Breaches",
             [0x60C1] = "Breach Stronghold",
             [0x3A5D] = "Hive Fortress",
             [0x6760] = "Map Boss drops a Djinn Barya",
@@ -259,8 +260,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     <see cref="ContentTokens" />), mirroring the in-game tooltip; duplicates are removed.
         /// </summary>
         /// <param name="includeUnmapped">
-        ///     when <c>true</c>, values with no known name are included as their raw hex (debug view);
-        ///     when <c>false</c>, only resolved (mapped) names are returned.
+        ///     when <c>true</c>, every raw value is shown alongside its mapped name (and unmapped
+        ///     values are shown as raw hex); when <c>false</c>, only resolved names are returned.
         /// </param>
         /// <returns>the merged display names, badge-titles-then-token-effects, with duplicates removed.</returns>
         public IReadOnlyList<string> GetContentDisplayNames(bool includeUnmapped = true)
@@ -277,6 +278,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     }
 
                     name = $"0x{id:X8}";
+                }
+                else if (includeUnmapped)
+                {
+                    name = $"{name} [0x{id:X8}]";
                 }
 
                 if (!result.Contains(name))
@@ -306,6 +311,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
                     name = $"0x{token:X8}";
                 }
+                else if (includeUnmapped)
+                {
+                    name = $"{name} [0x{token:X8}]";
+                }
 
                 if (!result.Contains(name))
                 {
@@ -321,8 +330,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     {
                         var percent = ((token >> 16) & 0x1FFFu) / 64u;
                         var name = percent > 0 ? $"{percent}% Delirious" : "Delirious";
-                        var encodedHighWord = token >> 16;
-                        var debugName = $"{name} [0x{encodedHighWord:X4}]";
+                        var debugName = $"{name} [0x{token:X8}]";
                         if (!result.Contains(debugName))
                         {
                             result.Add(debugName);

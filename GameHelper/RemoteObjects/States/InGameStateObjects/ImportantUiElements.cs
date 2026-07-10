@@ -304,7 +304,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                         string? deliriousContent = null;
                         foreach (var content in map.GetContentDisplayNames(includeUnmapped: true))
                         {
-                            if (content.EndsWith("Delirious", StringComparison.Ordinal))
+                            if (content.Contains("Delirious", StringComparison.Ordinal))
                             {
                                 deliriousContent = content;
                                 break;
