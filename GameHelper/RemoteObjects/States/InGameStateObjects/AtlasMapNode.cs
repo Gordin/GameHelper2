@@ -133,7 +133,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         //     and its high 16 bits normally encode the magnitude as (magnitude × 64) — i.e. magnitude =
         //     high16/64 (1 for plain effects, the number in the text for "N additional"/"N% …", 100 for
         //     binary "always"/"doubles" effects). The Delirious token (0x685A) is an exception: its top
-        //     three high-word bits are a counter, so its magnitude is (high16 & 0x1FFF)/64. So the same
+        //     two high-word bits are flags, so its magnitude is (high16 & 0x3FFF)/64. So the same
         //     effect at a different magnitude is a different full u32; we key on the low 16 bits and
         //     substitute the magnitude into a "{0}" template.
         //   * A BADGE (see BadgeContentIds) is the named content (the bold tooltip title). Its high word
@@ -183,7 +183,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             [0x61C7] = "Summoning Circles always summon an additional Boss",
             [0x1247] = "Contains {0} additional Essence",
             [0x634D] = "Essences transfer to a random Unique Monster on death",
-            [0x6871] = "Area contains Vaal Beacons",
+            [0x6871] = "Area contains a Mirror of Delirium",
             [0x6874] = "Vaal Beacons",
             [0x6638] = "Elemental Shrines do not appear in area",
             [0x3E16] = "Shrine Duration increased by {0}%",
@@ -247,6 +247,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             return template;
         }
 
+        private static uint GetDeliriousPercent(uint token) => ((token >> 16) & 0x3FFFu) / 64u;
+
         /// <summary>
         ///     Resolves a badge content id to its named-content title, or <c>null</c> when unmapped.
         ///     Keys on the low 16 bits (the high word is the constant 0x0002 category tag).
@@ -300,7 +302,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 if ((token & 0xFFFFu) == 0x685Au)
                 {
                     deliriousTokens.Add(token);
-                    deliriousPercent = Math.Max(deliriousPercent, ((token >> 16) & 0x1FFFu) / 64u);
+                    deliriousPercent = Math.Max(deliriousPercent, GetDeliriousPercent(token));
                     continue;
                 }
 
@@ -331,7 +333,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 {
                     foreach (var token in deliriousTokens)
                     {
-                        var percent = ((token >> 16) & 0x1FFFu) / 64u;
+                        var percent = GetDeliriousPercent(token);
                         var name = percent > 0 ? $"{percent}% Delirious" : "Delirious";
                         var debugName = $"{name} [0x{token:X8}]";
                         if (!result.Contains(debugName))
