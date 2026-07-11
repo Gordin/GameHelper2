@@ -49,7 +49,11 @@
         private static readonly HashSet<string> QuestsMaps = new(StringComparer.OrdinalIgnoreCase) { "The Withered Willow" };
         private static readonly HashSet<string> RitualMaps = new(StringComparer.OrdinalIgnoreCase) { "Caer Tarth", "Crux of Nothingness" };
         private static readonly HashSet<string> BreachMaps = new(StringComparer.OrdinalIgnoreCase) { "Hive Colony" };
-        private static readonly HashSet<string> ExpeditionMaps = new(StringComparer.OrdinalIgnoreCase) { "Ruins of Kingsmarch" };
+        private static readonly HashSet<string> ExpeditionMaps = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Ruins of Kingsmarch", "Moor of Fallen Skies", "Fallen Star", "Obscure Island",
+            "Mournful Cliffside", "Secluded Temple",
+        };
         private static readonly HashSet<string> AbyssMaps = new(StringComparer.OrdinalIgnoreCase) { "The Well of Souls" };
         private static readonly HashSet<string> TempleMaps = new(StringComparer.OrdinalIgnoreCase) { "Vaal Ruins" };
 
