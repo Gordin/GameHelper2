@@ -37,6 +37,7 @@
         private static readonly Dictionary<string, ContentInfo> MapTags = [];
         private static readonly Dictionary<string, ContentInfo> MapPlain = [];
         private static readonly Dictionary<byte, BiomeInfo> Biomes = [];
+        private static readonly Dictionary<string, (IntPtr Ptr, int W, int H)> IconCache = new(StringComparer.OrdinalIgnoreCase);
 
         // Named-map pathfinding categories — matched by exact (normalized, case-insensitive) display
         // name against nd.MapName. Each pairs with a DrawLinesTo*/*PathColor/*MaxHops setting.
@@ -72,6 +73,7 @@
             public List<string> RawContents;
             public List<string> ContentDisplay;    // merged, de-duped MAPPED content names (tokens + badges)
             public List<string> ContentDisplayAll; // same, but also includes raw hex for unmapped values (debug)
+            public List<string> ContentIcons;
             public string Type;             // "normal" or "unique"
             public List<string> Tags;       // e.g. "lineage", "arbiter"
         }
@@ -159,9 +161,14 @@
             ImGuiHelper.ToolTip("Draw connected-node and badge counts under each map label on the Atlas.");
             ImGui.Checkbox("Show Content", ref Settings.ShowContent);
             ImGuiHelper.ToolTip("Draw the node's content under each map label, using the known names.");
+            ImGui.SameLine();
+            ImGui.Checkbox("Show Node Index (debug/RE)", ref Settings.ShowNodeIndex);
             if (Settings.ShowContent)
             {
                 ImGui.Indent();
+                ImGui.Checkbox("Show Content Icons", ref Settings.ShowContentIcons);
+                if (Settings.ShowContentIcons)
+                    ImGui.SliderFloat("Content Icon Size", ref Settings.ContentIconSize, 16f, 64f);
                 ImGui.Checkbox("Debug Content", ref Settings.ShowContentDebug);
                 ImGuiHelper.ToolTip("Also show unmapped content as its raw 0x value (for identifying new content).");
                 ImGui.Unindent();
@@ -597,6 +604,17 @@
                     drawList.AddRectFilled(bgPos, bgPos + bgSize, ImGuiHelper.Color(backgroundColor), rounding);
                     drawList.AddText(drawPosition, ImGuiHelper.Color(fontColor), mapName);
 
+                    if (Settings.ShowNodeIndex)
+                    {
+                        var indexText = nd.Index.ToString(CultureInfo.InvariantCulture);
+                        var indexSize = ImGui.CalcTextSize(indexText);
+                        var indexPos = new Vector2(bgPos.X - indexSize.X - (7f * uiScale), drawPosition.Y);
+                        var indexPad = new Vector2(3f, 1f) * uiScale;
+                        drawList.AddRectFilled(indexPos - indexPad, indexPos + indexSize + indexPad,
+                            ImGuiHelper.Color(new Vector4(0f, 0f, 0f, 0.8f)), rounding);
+                        drawList.AddText(indexPos, ImGuiHelper.Color(fontColor), indexText);
+                    }
+
                     float labelCenterX = drawPosition.X + textSize.X * 0.5f;
                     float nextRowTopY = drawPosition.Y + textSize.Y + (4f * uiScale);
                     float rowGap = 4f * uiScale;
@@ -624,6 +642,8 @@
                         var contentList = Settings.ShowContentDebug ? nd.ContentDisplayAll : nd.ContentDisplay;
                         if (contentList is { Count: > 0 })
                         {
+                            if (Settings.ShowContentIcons)
+                                DrawContentIcons(drawList, nd.ContentIcons, labelCenterX, drawPosition.Y, uiScale);
                             foreach (var content in contentList)
                             {
                                 DrawContentLine(drawList, content, labelCenterX, ref nextRowTopY, rowGap, fontColor);
@@ -661,6 +681,14 @@
                     RawContents = map.ContentNames.ToList(),
                     ContentDisplay = map.GetContentDisplayNames(includeUnmapped: false).ToList(),
                     ContentDisplayAll = map.GetContentDisplayNames(includeUnmapped: true).ToList(),
+                    ContentIcons = map.Badges.Concat<object>(map.Effects)
+                        .Select(content => content switch
+                        {
+                            AtlasMapNodeBadge badge => badge.Icon,
+                            AtlasMapNodeEffect effect => effect.Icon,
+                            _ => null,
+                        })
+                        .Where(icon => !string.IsNullOrWhiteSpace(icon)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                     Type = map.Type ?? "normal",
                     Tags = map.Tags.ToList(),
                 });
@@ -1074,6 +1102,41 @@
                 if (info.IsFlag) flags.Add(info);
                 else contents.Add(info);
             }
+        }
+
+        private void DrawContentIcons(ImDrawListPtr drawList, IReadOnlyList<string> iconsToDraw, float centerX,
+            float labelTopY, float uiScale)
+        {
+            var icons = new List<(IntPtr Ptr, float W)>();
+            float height = MathF.Max(8f, Settings.ContentIconSize * uiScale);
+            foreach (var basename in iconsToDraw)
+            {
+                if (!TryGetIcon(basename, out var ptr, out var w, out var h)) continue;
+                icons.Add((ptr, height * w / Math.Max(1, h)));
+            }
+            if (icons.Count == 0) return;
+            float gap = 4f * uiScale;
+            float width = icons.Sum(icon => icon.W) + gap * (icons.Count - 1);
+            float x = centerX - width * 0.5f;
+            float y = labelTopY - height - (4f * uiScale);
+            foreach (var icon in icons)
+            {
+                drawList.AddImage(icon.Ptr, new Vector2(x, y), new Vector2(x + icon.W, y + height));
+                x += icon.W + gap;
+            }
+        }
+
+        private bool TryGetIcon(string basename, out IntPtr ptr, out int w, out int h)
+        {
+            if (IconCache.TryGetValue(basename, out var cached))
+            { ptr = cached.Ptr; w = cached.W; h = cached.H; return ptr != IntPtr.Zero; }
+            ptr = IntPtr.Zero; w = h = 0;
+            var file = Path.Join(DllDirectory, "icons", basename + ".png");
+            if (!File.Exists(file)) return false;
+            Core.Overlay.AddOrGetImagePointer(file, false, out ptr, out var iw, out var ih);
+            w = (int)iw; h = (int)ih;
+            IconCache[basename] = (ptr, w, h);
+            return ptr != IntPtr.Zero;
         }
 
         private static bool HasAtlasContent(NodeData node, string text)

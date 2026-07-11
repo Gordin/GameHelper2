@@ -67,6 +67,9 @@ namespace Atlas2
         public bool ShowMapBadges = true;
         public bool ShowMapCounts = false;
         public bool ShowContent = true;
+        public bool ShowNodeIndex = false;
+        public bool ShowContentIcons = false;
+        public float ContentIconSize = 48f;
         public bool ShowContentDebug = false;
         public bool ShowBiomeBorder = true;
         public float BiomeBorderThickness = 2.5f;

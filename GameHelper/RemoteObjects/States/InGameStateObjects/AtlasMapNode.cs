@@ -7,6 +7,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     using System;
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
+    using System.Linq;
     using GameHelper.Utils;
     using GameOffsets.Natives;
 
@@ -38,6 +39,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.BadgeAddresses = new ReadOnlyCollection<IntPtr>(new List<IntPtr>(badgeAddresses));
             this.ContentTokens = new ReadOnlyCollection<uint>(new List<uint>(contentTokens));
             this.BadgeContentIds = new ReadOnlyCollection<uint>(new List<uint>(badgeContentIds));
+            this.Badges = new ReadOnlyCollection<AtlasMapNodeBadge>(badgeContentIds
+                .Select(id => KnownBadges.GetValueOrDefault(id & 0xFFFFu)).OfType<AtlasMapNodeBadge>().ToList());
+            this.Effects = new ReadOnlyCollection<AtlasMapNodeEffect>(contentTokens
+                .Select(token => KnownEffects.GetValueOrDefault(token & 0xFFFFu)).OfType<AtlasMapNodeEffect>().ToList());
             this.ConnectedGridPositions = new ReadOnlyCollection<StdTuple2D<int>>(new List<StdTuple2D<int>>(connectedGridPositions));
         }
 
@@ -123,6 +128,12 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         /// </summary>
         public IReadOnlyList<uint> BadgeContentIds { get; }
 
+        /// <summary>Gets the known badges resolved from <see cref="BadgeContentIds" />.</summary>
+        public IReadOnlyList<AtlasMapNodeBadge> Badges { get; }
+
+        /// <summary>Gets the known effects resolved from <see cref="ContentTokens" />.</summary>
+        public IReadOnlyList<AtlasMapNodeEffect> Effects { get; }
+
         /// <summary>
         ///     Gets connected Atlas grid positions read from the Atlas connection data, when available.
         /// </summary>
@@ -145,7 +156,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     template. A "{0}" placeholder is replaced with the token's magnitude (high16 / 64) at
         ///     resolve time. Unmapped ids have no entry (callers fall back to the raw hex value).
         /// </summary>
-        private static readonly Dictionary<uint, string> ContentTokenEffects = new()
+        private static readonly Dictionary<uint, AtlasMapNodeEffect> KnownEffects = AtlasMapNodeEffect.Known.ToDictionary(effect => effect.Id);
+        private static readonly Dictionary<uint, AtlasMapNodeBadge> KnownBadges = AtlasMapNodeBadge.Known.ToDictionary(badge => badge.Id);
+        private static readonly Dictionary<uint, string> ContentTokenEffects = KnownEffects.ToDictionary(pair => pair.Key, pair => pair.Value.Description);
+        private static readonly Dictionary<uint, string> LegacyContentTokenEffects = new()
         {
             [0x65F4] = "{0} Atlas Point",
             [0x686E] = "Delirium",
@@ -194,7 +208,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     Known content id (low 16 bits of a value in <see cref="BadgeContentIds" />) → named-content
         ///     title (the bold tooltip header). Unmapped ids have no entry (callers fall back to hex).
         /// </summary>
-        private static readonly Dictionary<uint, string> BadgeContentNames = new()
+        private static readonly Dictionary<uint, string> BadgeContentNames = KnownBadges.ToDictionary(pair => pair.Key, pair => pair.Value.Name);
+        private static readonly Dictionary<uint, string> LegacyBadgeContentNames = new()
         {
             [0x0064] = "Powerful Map Boss",
             [0x008E] = "Sekhema's Student",
