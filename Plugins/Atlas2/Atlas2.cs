@@ -114,6 +114,17 @@
                 Settings = JsonConvert.DeserializeObject<Atlas2Settings>(content, serializerSettings);
             }
 
+            if (Settings.CategorySettingsVersion != 10 || Settings.MapGroups == null
+                || !Settings.MapGroups.Any(group => !string.IsNullOrEmpty(group.BuiltInKey))
+                || Settings.MapGroups.Any(group => group.BuiltInTargets.ContainsKey("Lineage-tagged maps")
+                    || group.BuiltInTargets.ContainsKey("Arbiter-tagged maps")
+                    || group.BuiltInTargets.ContainsKey("Unique map type")))
+            {
+                var defaults = new Atlas2Settings();
+                Settings.MapGroups = defaults.MapGroups;
+                Settings.CategorySettingsVersion = defaults.CategorySettingsVersion;
+            }
+
             LoadBiomeMap();
             LoadContentMap();
         }
@@ -137,24 +148,7 @@
             if (ImGui.SmallButton("Clear"))
                 Settings.SearchQuery = string.Empty;
             ImGui.SeparatorText("Show shortest path to");
-
-            ImGui.Columns(2, "PathfindingColumns", false);
-            PathRow("Arbiter Maps", ref Settings.DrawLinesToArbiterMaps, ref Settings.ArbiterPathColor, ref Settings.ArbiterMaxHops);
-            PathRow("Towers", ref Settings.DrawLinesToTowers, ref Settings.TowerPathColor, ref Settings.TowerMaxHops);
-            PathRow("Search", ref Settings.DrawLinesToSearch, ref Settings.SearchPathColor, ref Settings.SearchMaxHops);
-            PathRow("Unique Maps", ref Settings.DrawLinesToUniqueMaps, ref Settings.UniquePathColor, ref Settings.UniqueMaxHops);
-            PathRow("Lineage Maps", ref Settings.DrawLinesToLineageMaps, ref Settings.LineagePathColor, ref Settings.LineageMaxHops);
-            PathRow("Quests", ref Settings.DrawLinesToQuests, ref Settings.QuestsPathColor, ref Settings.QuestsMaxHops);
-            PathRow("Grand Mirror", ref Settings.DrawLinesToGrandMirror, ref Settings.GrandMirrorPathColor, ref Settings.GrandMirrorMaxHops);
-            ImGui.NextColumn();
-            PathRow("Atlas Progression", ref Settings.DrawLinesToAtlasProgression, ref Settings.AtlasProgressionPathColor, ref Settings.AtlasProgressionMaxHops);
-            PathRow("Ritual", ref Settings.DrawLinesToRitual, ref Settings.RitualPathColor, ref Settings.RitualMaxHops);
-            PathRow("Corrupted Nexus", ref Settings.DrawLinesToCorruptedNexus, ref Settings.CorruptedNexusPathColor, ref Settings.CorruptedNexusMaxHops);
-            PathRow("Breach", ref Settings.DrawLinesToBreach, ref Settings.BreachPathColor, ref Settings.BreachMaxHops);
-            PathRow("Expedition", ref Settings.DrawLinesToExpedition, ref Settings.ExpeditionPathColor, ref Settings.ExpeditionMaxHops);
-            PathRow("Abyss", ref Settings.DrawLinesToAbyss, ref Settings.AbyssPathColor, ref Settings.AbyssMaxHops);
-            PathRow("Temple", ref Settings.DrawLinesToTemple, ref Settings.TemplePathColor, ref Settings.TempleMaxHops);
-            ImGui.Columns(1);
+            DrawUnifiedCategories();
 
             ImGui.SliderFloat("Path Thickness", ref Settings.PathLineThickness, 1.0f, 8.0f);
 
@@ -239,9 +233,7 @@
                 Settings.AnchorNudge = nudge;
             ImGui.SliderFloat("Scale Multiplier", ref Settings.ScaleMultiplier, 0.5f, 3.0f);
 
-            ImGui.SeparatorText("Map Groups");
-
-            if (ImGui.TreeNode("Settings"))
+            if (false && ImGui.TreeNode("Legacy Map Groups"))
             {
                 ImGui.InputTextWithHint("##MapGroupName", "group name", ref Settings.GroupNameInput, 256);
                 ImGui.SameLine();
@@ -452,6 +444,11 @@
                     }
                 }
 
+                // Destination labels grouped by their actual first edge. Drawing is deferred until
+                // every route is known so each stack can be centered around that edge's midpoint.
+                var routeLabels = new Dictionary<(StdTuple2D<int> Start, StdTuple2D<int> FirstHop),
+                    List<(string Text, uint Color)>>();
+
                 foreach (var nd in nodeCache)
                 {
                     var mapName = nd.MapName;
@@ -475,37 +472,14 @@
                     bool routeTarget = false;
                     uint routeColor = 0;
                     int maxHops = 0;
-                    if (Settings.DrawLinesToTowers && towers.Contains(mapName) && !completed)
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.TowerPathColor); maxHops = Settings.TowerMaxHops; }
-                    else if (Settings.DrawLinesToSearch && doSearch && matchesSearch)
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.SearchPathColor); maxHops = Settings.SearchMaxHops; }
-                    else if (Settings.DrawLinesToUniqueMaps && !completed
-                        && string.Equals(nd.Type, "unique", StringComparison.OrdinalIgnoreCase))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.UniquePathColor); maxHops = Settings.UniqueMaxHops; }
-                    else if (Settings.DrawLinesToLineageMaps && !completed
-                        && nd.Tags.Exists(t => string.Equals(t, "lineage", StringComparison.OrdinalIgnoreCase)))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.LineagePathColor); maxHops = Settings.LineageMaxHops; }
-                    else if (Settings.DrawLinesToQuests && !completed && QuestsMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.QuestsPathColor); maxHops = Settings.QuestsMaxHops; }
-                    else if (Settings.DrawLinesToArbiterMaps && !completed
-                        && nd.Tags.Exists(t => string.Equals(t, "arbiter", StringComparison.OrdinalIgnoreCase)))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.ArbiterPathColor); maxHops = Settings.ArbiterMaxHops; }
-                    else if (Settings.DrawLinesToAtlasProgression && !completed && AtlasProgressionMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.AtlasProgressionPathColor); maxHops = Settings.AtlasProgressionMaxHops; }
-                    else if (Settings.DrawLinesToRitual && !completed && RitualMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.RitualPathColor); maxHops = Settings.RitualMaxHops; }
-                    else if (Settings.DrawLinesToCorruptedNexus && !completed && IsCorruptedNexus(nd))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.CorruptedNexusPathColor); maxHops = Settings.CorruptedNexusMaxHops; }
-                    else if (Settings.DrawLinesToGrandMirror && !completed && HasAtlasContent(nd, "Grand Mirror"))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.GrandMirrorPathColor); maxHops = Settings.GrandMirrorMaxHops; }
-                    else if (Settings.DrawLinesToBreach && !completed && BreachMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.BreachPathColor); maxHops = Settings.BreachMaxHops; }
-                    else if (Settings.DrawLinesToExpedition && !completed && ExpeditionMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.ExpeditionPathColor); maxHops = Settings.ExpeditionMaxHops; }
-                    else if (Settings.DrawLinesToAbyss && !completed && AbyssMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.AbyssPathColor); maxHops = Settings.AbyssMaxHops; }
-                    else if (Settings.DrawLinesToTemple && !completed && TempleMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.TemplePathColor); maxHops = Settings.TempleMaxHops; }
+                    var routeCategory = Settings.MapGroups.FirstOrDefault(category => category.DrawPath && !completed
+                        && MatchesCategory(category, nd, mapName, doSearch, matchesSearch));
+                    if (routeCategory != null)
+                    {
+                        routeTarget = true;
+                        routeColor = ImGuiHelper.Color(MostColorfulColor(routeCategory.FontColor, routeCategory.BackgroundColor));
+                        maxHops = routeCategory.MaxHops;
+                    }
 
                     if (Settings.HideCompletedMaps && completed)
                         continue;
@@ -546,22 +520,26 @@
                                 drawList.AddCircle(entryC, sr, DotOutlineColor, 0, MathF.Max(1f, sr * 0.35f));
                             }
 
-                            // Hop count above the target.
-                            drawList.ChannelsSetCurrent(ChannelLabels);
-                            string ht = hops.ToString();
-                            var hts = ImGui.CalcTextSize(ht);
-                            var hp = new Vector2(nodeCenter.X - hts.X * 0.5f, nodeCenter.Y - (nodeUi.Size.Y * 0.5f) - hts.Y - 2f * uiScale);
-                            var hpad = new Vector2(4, 1) * uiScale;
-                            drawList.AddRectFilled(hp - hpad, hp + hts + hpad, ImGuiHelper.Color(new Vector4(0, 0, 0, 0.75f)), 3f * uiScale);
-                            drawList.AddText(hp, ImGuiHelper.Color(new Vector4(1f, 0.9f, 0.2f, 1f)), ht);
+                            // Destination and path length at the midpoint of the first edge. Routes
+                            // sharing an entry stack on consecutive rows instead of drawing on top
+                            // of one another.
+                            if (path.Count >= 2)
+                            {
+                                var edge = (path[0], path[1]);
+                                if (!routeLabels.TryGetValue(edge, out var labels))
+                                {
+                                    labels = new List<(string Text, uint Color)>();
+                                    routeLabels[edge] = labels;
+                                }
+                                labels.Add(($"{mapName} ({hops})", routeColor));
+                            }
                         }
                         }
 
                     if (!screenBounds.IntersectsWith(new RectangleF(bgPos.X, bgPos.Y, bgSize.X, bgSize.Y)))
                         continue;
 
-                    var group = Settings.MapGroups.Find(g => g.Maps.Exists(
-                        m => NormalizeName(m).Equals(mapName, StringComparison.OrdinalIgnoreCase)));
+                    var group = Settings.MapGroups.FirstOrDefault(g => MatchesCategory(g, nd, mapName, doSearch, matchesSearch));
 
                     var backgroundColor = group?.BackgroundColor ?? Settings.DefaultBackgroundColor;
                     var fontColor = group?.FontColor ?? Settings.DefaultFontColor;
@@ -578,11 +556,11 @@
                     }
                     else if (HasAtlasContent(nd, "Corruption"))
                     {
-                        borderColor = Settings.CorruptedNexusPathColor;
+                        borderColor = CategoryPathColor("corrupted_nexus", Settings.CorruptedNexusPathColor);
                     }
                     else if (HasAtlasContent(nd, "Ritual"))
                     {
-                        borderColor = Settings.RitualPathColor;
+                        borderColor = CategoryPathColor("ritual", Settings.RitualPathColor);
                     }
                     else if (Biomes.TryGetValue(nd.BiomeId, out var biome) && biome.Show)
                     {
@@ -653,6 +631,29 @@
                                 DrawContentLine(drawList, content, labelCenterX, ref nextRowTopY, rowGap, fontColor);
                             }
                         }
+                    }
+                }
+
+                drawList.ChannelsSetCurrent(ChannelLabels);
+                foreach (var group in routeLabels)
+                {
+                    if (!shiftedCenters.TryGetValue(group.Key.Start, out var startCenter)
+                        || !shiftedCenters.TryGetValue(group.Key.FirstHop, out var firstHopCenter))
+                        continue;
+
+                    var midpoint = (startCenter + firstHopCenter) * 0.5f;
+                    float lineHeight = ImGui.GetTextLineHeight() + (4f * uiScale);
+                    float firstRowY = midpoint.Y - ((group.Value.Count - 1) * lineHeight * 0.5f);
+                    for (int row = 0; row < group.Value.Count; row++)
+                    {
+                        var label = group.Value[row];
+                        var labelSize = ImGui.CalcTextSize(label.Text);
+                        var labelPos = new Vector2(midpoint.X - (labelSize.X * 0.5f),
+                            firstRowY + (row * lineHeight) - (labelSize.Y * 0.5f));
+                        var labelPad = new Vector2(4f, 1f) * uiScale;
+                        drawList.AddRectFilled(labelPos - labelPad, labelPos + labelSize + labelPad,
+                            ImGuiHelper.Color(new Vector4(0f, 0f, 0f, 1f)), 3f * uiScale);
+                        drawList.AddText(labelPos, label.Color, label.Text);
                     }
                 }
 
@@ -1149,6 +1150,47 @@
                    node.RawContents.Any(content => content.Contains(text, StringComparison.OrdinalIgnoreCase));
         }
 
+        private static bool MatchesCategory(MapGroupSettings category, NodeData node, string mapName,
+            bool searchActive, bool matchesSearch)
+        {
+            if (category.Maps.Any(map => NormalizeName(map).Equals(mapName, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            bool Enabled(string label) => category.BuiltInTargets.TryGetValue(label, out var enabled) && enabled;
+            bool Named() => category.BuiltInTargets.Any(target => target.Value
+                && NormalizeName(target.Key).Equals(mapName, StringComparison.OrdinalIgnoreCase));
+
+            return category.BuiltInKey switch
+            {
+                "search" => Enabled("Current search query") && searchActive && matchesSearch,
+                "corrupted_nexus" => Enabled("Corrupted Nexus content") && IsCorruptedNexus(node),
+                "grand_mirror" => Enabled("Grand Mirror content") && HasAtlasContent(node, "Grand Mirror"),
+                "" => false,
+                _ => Named(),
+            };
+        }
+
+        private Vector4 CategoryPathColor(string builtInKey, Vector4 fallback)
+        {
+            var category = Settings.MapGroups.FirstOrDefault(group => group.BuiltInKey == builtInKey);
+            return category == null ? fallback : MostColorfulColor(category.FontColor, category.BackgroundColor);
+        }
+
+        private static Vector4 MostColorfulColor(Vector4 foreground, Vector4 background)
+        {
+            static float Chroma(Vector4 color) =>
+                MathF.Max(color.X, MathF.Max(color.Y, color.Z)) - MathF.Min(color.X, MathF.Min(color.Y, color.Z));
+            static float Luminance(Vector4 color) =>
+                (0.2126f * color.X) + (0.7152f * color.Y) + (0.0722f * color.Z);
+
+            var foregroundChroma = Chroma(foreground);
+            var backgroundChroma = Chroma(background);
+            if (MathF.Abs(foregroundChroma - backgroundChroma) > 0.001f)
+                return backgroundChroma > foregroundChroma ? background : foreground;
+
+            return Luminance(background) > Luminance(foreground) ? background : foreground;
+        }
+
         private static bool MatchesSearch(NodeData node, string mapName, string searchTerm)
         {
             return mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
@@ -1259,6 +1301,80 @@
             ImGuiHelper.ToolTip("Maximum path length in maps to clear.");
             ImGui.SameLine();
             ImGui.Text(label);
+        }
+
+        private void DrawUnifiedCategories()
+        {
+            for (int i = 0; i < Settings.MapGroups.Count; i++)
+            {
+                var category = Settings.MapGroups[i];
+                ImGui.PushID(i);
+                ImGui.Checkbox("##route", ref category.DrawPath);
+                ImGui.SameLine();
+                ColorSwatch("##pathText", ref category.FontColor);
+                ImGuiHelper.ToolTip("Node-text color. The path automatically uses the more colorful of the text and background colors.");
+                ImGui.SameLine();
+                ColorSwatch("##background", ref category.BackgroundColor);
+                ImGuiHelper.ToolTip("Node background color. The path automatically uses the more colorful of the text and background colors.");
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(75);
+                ImGui.SliderInt("##hops", ref category.MaxHops, 1, 200);
+                ImGui.SameLine();
+                bool open = ImGui.TreeNode($"{category.Name}##category");
+                if (open)
+                {
+                    ImGui.Indent(16f);
+                    if (ImGui.SmallButton("Up") && i > 0) MoveMapGroup(i, -1);
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton("Down") && i + 1 < Settings.MapGroups.Count) MoveMapGroup(i, 1);
+                    if (string.IsNullOrEmpty(category.BuiltInKey))
+                    {
+                        ImGui.SetNextItemWidth(260);
+                        ImGui.InputText("Category name", ref category.Name, 256);
+                    }
+
+                    var targetNames = category.BuiltInTargets.Keys.ToList();
+                    foreach (var target in targetNames)
+                    {
+                        bool enabled = category.BuiltInTargets[target];
+                        if (ImGui.Checkbox($"{target}##fixed", ref enabled)) category.BuiltInTargets[target] = enabled;
+                    }
+
+                    for (int j = 0; j < category.Maps.Count; j++)
+                    {
+                        var map = category.Maps[j];
+                        ImGui.SetNextItemWidth(260);
+                        if (ImGui.InputTextWithHint($"##map{j}", "map name", ref map, 256)) category.Maps[j] = map;
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton($"Remove##map{j}")) { category.Maps.RemoveAt(j); break; }
+                    }
+                    if (ImGui.SmallButton("Add map")) category.Maps.Add(string.Empty);
+
+                    if (string.IsNullOrEmpty(category.BuiltInKey))
+                    {
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton("Delete category"))
+                        {
+                            Settings.MapGroups.RemoveAt(i);
+                            ImGui.Unindent(16f);
+                            ImGui.TreePop();
+                            ImGui.PopID();
+                            break;
+                        }
+                    }
+                    ImGui.Unindent(16f);
+                    ImGui.TreePop();
+                }
+                ImGui.PopID();
+            }
+
+            ImGui.InputTextWithHint("##newCategory", "new category name", ref Settings.GroupNameInput, 256);
+            ImGui.SameLine();
+            if (ImGui.Button("Add category") && !string.IsNullOrWhiteSpace(Settings.GroupNameInput))
+            {
+                Settings.MapGroups.Add(new MapGroupSettings(Settings.GroupNameInput.Trim(), Settings.DefaultBackgroundColor, Settings.DefaultFontColor));
+                Settings.GroupNameInput = string.Empty;
+            }
         }
 
         [DllImport("user32.dll")]
