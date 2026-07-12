@@ -77,6 +77,15 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         public string Path { get; private set; }
 
         /// <summary>
+        ///     Gets the <see cref="RemoteEnums.MonsterCategory" /> flags for this entity's monster
+        ///     variety (Beast, Humanoid, Undead, …), resolved from its <see cref="Path" /> via the
+        ///     shipped data table. A monster can belong to several categories (a werewolf is
+        ///     <c>Humanoid | Beast</c>); non-monsters / unknown paths return
+        ///     <see cref="RemoteEnums.MonsterCategory.None" />. Test with <c>HasFlag</c>.
+        /// </summary>
+        public MonsterCategory MonsterCategory => MonsterCategories.Get(this.Path);
+
+        /// <summary>
         ///     Gets the Id associated to the entity. This is unique per map/Area.
         /// </summary>
         public uint Id { get; private set; }
