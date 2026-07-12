@@ -66,6 +66,17 @@ namespace Atlas2
         public Vector4 AtlasGraphLineColor = new(1f, 1f, 1f, 0.35f);
         public float AtlasGraphOffsetX = -10f;
         public float AtlasGraphOffsetY = -5f;
+        public bool ShowUnchartedLeylines = false;
+        public Vector4 UnchartedLeylineColor = new(0.2f, 0.85f, 1f, 0.9f);
+        public float UnchartedLeylineThickness = 10f;
+        public bool ShowShipsInFog = false;
+        public float ShipIconSize = 46f;
+        public bool ShowRitualPrediction = false;
+        public bool LogRitualRolls = false;
+        public bool ShowRitualPlanner = true;
+        public string RitualRewardFilter = string.Empty;
+        public float RitualPlannerFontScale = 1f;
+        public Dictionary<string, int> RitualRewardWeights = [];
         public bool ShowMapBadges = true;
         public bool ShowMapCounts = false;
         public bool ShowContent = true;

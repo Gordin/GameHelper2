@@ -58,12 +58,18 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private const uint IsVisibleMask = 0x800;
         private const uint AtlasCurrentNodeMarkerFp = 0x502EF3;
         private const uint AtlasMapNodeFp = 0x542EF3;
+        private const uint AtlasMistNodeFp = 0x442EF3;
+        private const int AtlasRegionButtonRowPtrOffset = 0x320;
+        private const int AtlasRegionButtonGridOffset = 0x330;
+        private const int AtlasRegionButtonRowIndexOffset = 0x338;
+        private const int AtlasOceanRegionButtonRow = 2;
         private const int AtlasNodeMaxContentChildren = 64;
         private const int AtlasNodeMaxContentTokens = 64;
 
         private readonly UiElementParents rootCache;
         private readonly UiElementParents passiveSkillTreeCache;
         private readonly List<AtlasMapNode> atlasMaps = new();
+        private readonly List<AtlasRegionButton> atlasOceanButtons = new();
         private readonly List<PlayerMarker> atlasMarkers = new();
         private int atlasMapCacheFrameCounter = int.MaxValue;
         private int cachedAtlasMapCount = -1;
@@ -198,6 +204,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     Gets the current Atlas map nodes exposed for plugins.
         /// </summary>
         public IReadOnlyList<AtlasMapNode> AtlasMaps => this.atlasMaps;
+
+        /// <summary>Gets the Uncharted Waters region buttons currently materialized by the atlas panel.</summary>
+        public IReadOnlyList<AtlasRegionButton> AtlasOceanButtons => this.atlasOceanButtons;
 
         /// <summary>
         ///     Gets the "you are here" marker children on the Atlas (fp 0x502EF3).
@@ -478,6 +487,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             if (this.Atlas.Address == IntPtr.Zero || !this.Atlas.IsVisible)
             {
                 this.atlasMaps.Clear();
+                this.atlasOceanButtons.Clear();
                 this.atlasMarkers.Clear();
                 this.cachedAtlasMapCount = -1;
                 this.atlasMapCacheFrameCounter = int.MaxValue;
@@ -488,6 +498,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             if (atlasCount <= 0 || atlasCount > 10000)
             {
                 this.atlasMaps.Clear();
+                this.atlasOceanButtons.Clear();
                 this.atlasMarkers.Clear();
                 this.cachedAtlasMapCount = -1;
                 this.atlasMapCacheFrameCounter = int.MaxValue;
@@ -504,6 +515,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             var reader = Core.Process.Handle;
             var connections = ReadAtlasConnections(this.Atlas.Address);
             var maps = new List<AtlasMapNode>(atlasCount);
+            var oceanButtons = new List<AtlasRegionButton>();
             var markers = new List<PlayerMarker>(2);
             var markerFpMasked = AtlasCurrentNodeMarkerFp & ~IsVisibleMask;
             for (var i = 0; i < atlasCount; i++)
@@ -527,8 +539,20 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                     continue;
                 }
 
-                if (fpMasked != (AtlasMapNodeFp & ~IsVisibleMask))
+                if (fpMasked != (AtlasMapNodeFp & ~IsVisibleMask) &&
+                    fpMasked != (AtlasMistNodeFp & ~IsVisibleMask))
                 {
+                    if (reader.TryReadMemory<int>(nodeUi.Address + AtlasRegionButtonRowIndexOffset, out var rowIndex) &&
+                        rowIndex == AtlasOceanRegionButtonRow &&
+                        reader.TryReadMemory<IntPtr>(nodeUi.Address + AtlasRegionButtonRowPtrOffset, out var rowPtr) &&
+                        rowPtr != IntPtr.Zero &&
+                        reader.TryReadMemory<StdTuple2D<int>>(nodeUi.Address + AtlasRegionButtonGridOffset, out var buttonGrid) &&
+                        buttonGrid.X is >= -0x80000 and <= 0x80000 &&
+                        buttonGrid.Y is >= -0x80000 and <= 0x80000)
+                    {
+                        oceanButtons.Add(new AtlasRegionButton(i, nodeUi.Address, buttonGrid, (flags & IsVisibleMask) != 0));
+                    }
+
                     continue;
                 }
 
@@ -541,6 +565,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
             this.atlasMaps.Clear();
             this.atlasMaps.AddRange(maps);
+            this.atlasOceanButtons.Clear();
+            this.atlasOceanButtons.AddRange(oceanButtons);
 
             // Resolve each marker to the map node it sits on. The marker
             // renders above the node, so offset its Y center downward ~100px

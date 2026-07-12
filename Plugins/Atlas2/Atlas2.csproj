@@ -35,13 +35,14 @@
     <None Update="json\content.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="json\ritualmods.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="json\mapcontent.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="icons\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="CopyFiles" AfterTargets="Build">
     <Copy SourceFiles="$(OutDir)$(TargetName)$(TargetExt);$(OutDir)$(TargetName).pdb;" DestinationFolder="..\..\GameHelper\$(OutDir)Plugins\$(ProjectName)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(OutDir)json\biome.json;$(OutDir)json\content.json" DestinationFolder="..\..\GameHelper\$(OutDir)Plugins\$(ProjectName)\json" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(OutDir)json\biome.json;$(OutDir)json\content.json;$(OutDir)json\ritualmods.json" DestinationFolder="..\..\GameHelper\$(OutDir)Plugins\$(ProjectName)\json" SkipUnchangedFiles="true" />
     <ItemGroup><DeployIcons Include="$(OutDir)icons\*.png" /></ItemGroup>
     <Copy SourceFiles="@(DeployIcons)" DestinationFolder="..\..\GameHelper\$(OutDir)Plugins\$(ProjectName)\icons" SkipUnchangedFiles="true" Condition="'@(DeployIcons)' != ''" />
   </Target>

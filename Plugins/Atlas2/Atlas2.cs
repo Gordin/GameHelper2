@@ -20,7 +20,7 @@
     using System.Runtime.InteropServices;
     using System.Text;
 
-    public sealed class Atlas2 : PCore<Atlas2Settings>
+    public sealed partial class Atlas2 : PCore<Atlas2Settings>
     {
         private const uint CompletedNodeDotColor = 0xFF00FF00;
         private const uint DotOutlineColor = 0xFF000000;
@@ -38,6 +38,7 @@
         private static readonly Dictionary<string, ContentInfo> MapPlain = [];
         private static readonly Dictionary<byte, BiomeInfo> Biomes = [];
         private static readonly Dictionary<string, (IntPtr Ptr, int W, int H)> IconCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<((int X, int Y) Chunk, Vector2 Center, float Half)> fogShipIcons = [];
 
         // Named-map pathfinding categories — matched by exact (normalized, case-insensitive) display
         // name against nd.MapName. Each pairs with a DrawLinesTo*/*PathColor/*MaxHops setting.
@@ -80,6 +81,8 @@
             public List<string> ContentIcons;
             public string Type;             // "normal" or "unique"
             public List<string> Tags;       // e.g. "lineage", "arbiter"
+            public bool Drawable;
+            public bool RitualSpecial;
         }
         private readonly List<NodeData> nodeCache = new();
         private int cacheFrameCounter = int.MaxValue;   // force refresh on first frame
@@ -227,6 +230,34 @@
                 ImGui.SliderFloat("Graph Y-Offset", ref Settings.AtlasGraphOffsetY, -200f, 200f);
             }
 
+            if (ImGui.TreeNode("Uncharted Waters"))
+            {
+                ImGui.Checkbox("Highlight hovered ship leylines", ref Settings.ShowUnchartedLeylines);
+                ImGuiHelper.ToolTip("Highlights the atlas nodes and connections revealed by the hovered Uncharted Waters ship.");
+                if (Settings.ShowUnchartedLeylines)
+                {
+                    ImGui.ColorEdit4("Leyline Color", ref Settings.UnchartedLeylineColor);
+                    ImGui.SliderFloat("Leyline Thickness", ref Settings.UnchartedLeylineThickness, 1f, 12f);
+                }
+
+                ImGui.Checkbox("Show ships in fog", ref Settings.ShowShipsInFog);
+                ImGuiHelper.ToolTip("Marks Uncharted Waters ships that the game is not currently rendering.");
+                if (Settings.ShowShipsInFog)
+                    ImGui.SliderFloat("Ship Icon Size", ref Settings.ShipIconSize, 16f, 96f);
+                ImGui.TreePop();
+            }
+
+            if (ImGui.TreeNode("Ritual Atlas Line"))
+            {
+                ImGui.Checkbox("Predict Ritual mods", ref Settings.ShowRitualPrediction);
+                ImGuiHelper.ToolTip("Predicts the deterministic Rite modifiers for eligible Ritual-line routes.");
+                ImGui.Checkbox("Head of the King planner", ref Settings.ShowRitualPlanner);
+                ImGuiHelper.ToolTip("Lists and highlights Ritual routes and their predicted rewards while line mode is active.");
+                if (Settings.ShowRitualPlanner)
+                    DrawRewardWeightsTable();
+                ImGui.TreePop();
+            }
+
             ImGui.SeparatorText("Layout Settings");
             var nudge = Settings.AnchorNudge;
             if (ImGui.SliderFloat2("Layout Nudge (px)", ref nudge, -60f, 60f))
@@ -362,6 +393,20 @@
                 if (nu == null) continue;
                 allCenters[nd.GridPosition] = nu.Position + nu.Size * 0.5f;
             }
+
+            bool ritualLineMode = Read<byte>(atlasUi.Address + 0x637) != 0;
+            ritualHoverGrid = nodeCache.Where(node => node.State == AtlasNodeState.AccessibleNow)
+                .Select(node => (Node: node, Ui: atlasUi[node.Index]))
+                .Where(entry => entry.Ui != null && ImGui.GetMousePos().X >= entry.Ui.Position.X &&
+                    ImGui.GetMousePos().X <= entry.Ui.Position.X + entry.Ui.Size.X &&
+                    ImGui.GetMousePos().Y >= entry.Ui.Position.Y &&
+                    ImGui.GetMousePos().Y <= entry.Ui.Position.Y + entry.Ui.Size.Y)
+                .Select(entry => (StdTuple2D<int>?)entry.Node.GridPosition).FirstOrDefault();
+            ritualPredictions = ritualLineMode && Settings.ShowRitualPrediction
+                ? BuildRitualPredictions(atlasUi.Address)
+                : EmptyRitualPredictions;
+            if (ritualLineMode && Settings.ShowRitualPlanner)
+                BuildPlannerChains(atlasUi.Address);
 
             var towers = new HashSet<string>(
                 Settings.MapGroups
@@ -657,7 +702,33 @@
                     }
                 }
 
+                if (Settings.ShowShipsInFog)
+                    DrawFogShips(drawList, panelRect, uiScale, allCenters);
+                else
+                    fogShipIcons.Clear();
+
+                if (Settings.ShowUnchartedLeylines)
+                    DrawUnchartedLeylines(drawList, atlasUi, panelRect, uiScale, ImGui.GetMousePos(), shiftedCenters);
+
+                if (ritualPredictions.Count > 0)
+                {
+                    drawList.ChannelsSetCurrent(ChannelLabels);
+                    foreach (var prediction in ritualPredictions)
+                    {
+                        if (!allCenters.TryGetValue(prediction.Key, out var center))
+                            continue;
+                        var size = ImGui.CalcTextSize(prediction.Value);
+                        drawList.AddText(center - new Vector2(size.X * 0.5f, size.Y + 18f * uiScale),
+                            ImGuiHelper.Color(new Vector4(0.25f, 1f, 0.35f, 1f)), prediction.Value);
+                    }
+                }
+
+                if (ritualLineMode && Settings.ShowRitualPlanner)
+                    DrawPlannerOverlay(drawList, ImGui.GetIO().DisplaySize * 0.5f, uiScale);
+
                 drawList.ChannelsMerge();
+                if (ritualLineMode && Settings.ShowRitualPlanner)
+                    DrawPlannerWindow();
             }
         }
 
@@ -696,6 +767,8 @@
                         .Where(icon => !string.IsNullOrWhiteSpace(icon)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                     Type = map.Type ?? "normal",
                     Tags = map.Tags.ToList(),
+                    Drawable = !string.IsNullOrWhiteSpace(map.DisplayName),
+                    RitualSpecial = IsRitualSpecialNode(map.Address),
                 });
             }
             cachedAtlasCount = atlasCount;
@@ -829,6 +902,123 @@
         }
 
 #endregion
+
+        private void DrawFogShips(ImDrawListPtr drawList, RectangleF panelRect, float uiScale,
+            IReadOnlyDictionary<StdTuple2D<int>, Vector2> centers)
+        {
+            fogShipIcons.Clear();
+            var buttons = Core.States.InGameStateObject.GameUi.AtlasOceanButtons;
+            var visibleChunks = buttons.Where(button => button.IsVisible)
+                .Select(button => (button.GridPosition.X >> 4, button.GridPosition.Y >> 4)).ToHashSet();
+            var hidden = buttons.Where(button => !button.IsVisible)
+                .GroupBy(button => (button.GridPosition.X >> 4, button.GridPosition.Y >> 4))
+                .Where(group => !visibleChunks.Contains(group.Key));
+
+            drawList.ChannelsSetCurrent(ChannelLabels);
+            float height = MathF.Max(8f, Settings.ShipIconSize * uiScale);
+            bool haveIcon = TryGetIcon("UnchartedShip", out var ptr, out var iw, out var ih);
+            foreach (var group in hidden)
+            {
+                var anchor = group.First().GridPosition;
+                if (!centers.TryGetValue(anchor, out var center))
+                {
+                    var nearest = centers.Where(entry =>
+                            (entry.Key.X >> 4, entry.Key.Y >> 4) == group.Key)
+                        .OrderBy(entry => Math.Abs(entry.Key.X - anchor.X) + Math.Abs(entry.Key.Y - anchor.Y))
+                        .FirstOrDefault();
+                    center = nearest.Value;
+                }
+
+                if (center == Vector2.Zero || !panelRect.Contains(center.X, center.Y))
+                    continue;
+
+                if (haveIcon)
+                {
+                    float width = height * iw / Math.Max(1, ih);
+                    drawList.AddImage(ptr, center - new Vector2(width, height) * 0.5f,
+                        center + new Vector2(width, height) * 0.5f);
+                }
+                else
+                {
+                    float radius = height * 0.35f;
+                    drawList.AddCircleFilled(center, radius, ImGuiHelper.Color(new Vector4(0.04f, 0.08f, 0.12f, 0.9f)));
+                    drawList.AddCircle(center, radius, ImGuiHelper.Color(Settings.UnchartedLeylineColor), 0,
+                        MathF.Max(1.5f, radius * 0.25f));
+                }
+
+                fogShipIcons.Add((group.Key, center, height * 0.5f));
+            }
+        }
+
+        private static bool IsRitualSpecialNode(IntPtr address)
+        {
+            if (address == IntPtr.Zero)
+                return true;
+            var row = Read<IntPtr>(address + 0x300);
+            return row == IntPtr.Zero || Read<int>(row + 0x7C) != 0;
+        }
+
+        private void DrawUnchartedLeylines(ImDrawListPtr drawList, UiElementBase atlasUi, RectangleF panelRect,
+            float uiScale, Vector2 mouse, IReadOnlyDictionary<StdTuple2D<int>, Vector2> centers)
+        {
+            (int X, int Y)? hoveredChunk = null;
+            foreach (var button in Core.States.InGameStateObject.GameUi.AtlasOceanButtons.Where(button => button.IsVisible))
+            {
+                var ui = atlasUi[button.Index];
+                if (ui == null)
+                    continue;
+                var min = ui.Position;
+                var max = min + ui.Size;
+                if (mouse.X >= min.X && mouse.X <= max.X && mouse.Y >= min.Y && mouse.Y <= max.Y)
+                {
+                    hoveredChunk = (button.GridPosition.X >> 4, button.GridPosition.Y >> 4);
+                    break;
+                }
+            }
+
+            if (hoveredChunk == null)
+            {
+                foreach (var icon in fogShipIcons)
+                {
+                    if (mouse.X >= icon.Center.X - icon.Half && mouse.X <= icon.Center.X + icon.Half &&
+                        mouse.Y >= icon.Center.Y - icon.Half && mouse.Y <= icon.Center.Y + icon.Half)
+                    {
+                        hoveredChunk = icon.Chunk;
+                        break;
+                    }
+                }
+            }
+
+            if (hoveredChunk == null)
+                return;
+
+            var chunkCenters = centers.Where(entry =>
+                    (entry.Key.X >> 4, entry.Key.Y >> 4) == hoveredChunk.Value)
+                .ToDictionary(entry => entry.Key, entry => entry.Value);
+            var displaySize = ImGui.GetIO().DisplaySize;
+            var screenBounds = new RectangleF(0f, 0f, displaySize.X, displaySize.Y);
+            drawList.ChannelsSetCurrent(ChannelGrid);
+            uint color = ImGuiHelper.Color(Settings.UnchartedLeylineColor);
+            float thickness = MathF.Max(1f, Settings.UnchartedLeylineThickness * uiScale);
+            foreach (var entry in chunkCenters)
+            {
+                bool sourceOnScreen = screenBounds.Contains(entry.Value.X, entry.Value.Y);
+                if (sourceOnScreen)
+                    drawList.AddCircleFilled(entry.Value, MathF.Max(2f, thickness * 0.9f), color);
+                if (!cachedRouteGraph.TryGetValue(entry.Key, out var connected))
+                    continue;
+                foreach (var target in connected)
+                {
+                    bool canonical = entry.Key.X < target.X || (entry.Key.X == target.X && entry.Key.Y <= target.Y);
+                    if (!canonical || !chunkCenters.TryGetValue(target, out var targetCenter))
+                        continue;
+
+                    bool targetOnScreen = screenBounds.Contains(targetCenter.X, targetCenter.Y);
+                    if (sourceOnScreen || targetOnScreen)
+                        drawList.AddLine(entry.Value, targetCenter, color, thickness);
+                }
+            }
+        }
 
         private void LoadBiomeMap()
         {

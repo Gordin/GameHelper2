@@ -1,0 +1,474 @@
+{
+ "comment": "RitualAtlasLineMods reservoir pool (row order). w=weight, cond=ConditionStat id (0=none), stat=granted Stat1 (2nd-pick dup exclusion; 0=none).",
+ "rows": [
+  {
+   "row": 0,
+   "w": 65000,
+   "cond": 0,
+   "stat": 25997,
+   "text": "Monsters Sacrificed grant 25% increased Tribute"
+  },
+  {
+   "row": 1,
+   "w": 48750,
+   "cond": 0,
+   "stat": 25998,
+   "text": "Rerolling Favours has no Cost the first time"
+  },
+  {
+   "row": 2,
+   "w": 65000,
+   "cond": 0,
+   "stat": 25999,
+   "text": "Rerolling Favours costs 20% reduced Tribute"
+  },
+  {
+   "row": 3,
+   "w": 0,
+   "cond": 0,
+   "stat": 26000,
+   "text": "An additional Favour reroll"
+  },
+  {
+   "row": 4,
+   "w": 65000,
+   "cond": 0,
+   "stat": 26733,
+   "text": "Rituals contain an additional pack of Wildwood Monsters"
+  },
+  {
+   "row": 5,
+   "w": 65000,
+   "cond": 0,
+   "stat": 26734,
+   "text": "20% increased number of Favours"
+  },
+  {
+   "row": 6,
+   "w": 1800,
+   "cond": 0,
+   "stat": 26654,
+   "text": "Contains a very rare Unique"
+  },
+  {
+   "row": 7,
+   "w": 30,
+   "cond": 25951,
+   "stat": 26002,
+   "text": "Contains Mageblood"
+  },
+  {
+   "row": 8,
+   "w": 30,
+   "cond": 25951,
+   "stat": 26645,
+   "text": "Contains Headhunter"
+  },
+  {
+   "row": 9,
+   "w": 30,
+   "cond": 25951,
+   "stat": 26646,
+   "text": "Contains Kalandra's Touch"
+  },
+  {
+   "row": 10,
+   "w": 120,
+   "cond": 25951,
+   "stat": 26647,
+   "text": "Contains Queen of the Forest"
+  },
+  {
+   "row": 11,
+   "w": 120,
+   "cond": 25951,
+   "stat": 26648,
+   "text": "Contains Alpha's Howl"
+  },
+  {
+   "row": 12,
+   "w": 120,
+   "cond": 25951,
+   "stat": 26649,
+   "text": "Contains Defiance of Destiny"
+  },
+  {
+   "row": 13,
+   "w": 120,
+   "cond": 25951,
+   "stat": 26650,
+   "text": "Contains Yoke of Suffering"
+  },
+  {
+   "row": 14,
+   "w": 120,
+   "cond": 25951,
+   "stat": 26651,
+   "text": "Contains Astramentis"
+  },
+  {
+   "row": 15,
+   "w": 120,
+   "cond": 25951,
+   "stat": 26652,
+   "text": "Contains Dream Fragments"
+  },
+  {
+   "row": 16,
+   "w": 120,
+   "cond": 25951,
+   "stat": 26653,
+   "text": "Contains Original Sin"
+  },
+  {
+   "row": 17,
+   "w": 0,
+   "cond": 0,
+   "stat": 26003,
+   "text": "Omen of Greater Annulment"
+  },
+  {
+   "row": 18,
+   "w": 18900,
+   "cond": 0,
+   "stat": 26667,
+   "text": "Omen of Amelioration"
+  },
+  {
+   "row": 19,
+   "w": 3500,
+   "cond": 0,
+   "stat": 26668,
+   "text": "Omen of Whittling"
+  },
+  {
+   "row": 20,
+   "w": 700,
+   "cond": 0,
+   "stat": 26669,
+   "text": "Omen of Sinistral Erasure"
+  },
+  {
+   "row": 21,
+   "w": 700,
+   "cond": 0,
+   "stat": 26670,
+   "text": "Omen of Dextral Erasure"
+  },
+  {
+   "row": 22,
+   "w": 0,
+   "cond": 0,
+   "stat": 26671,
+   "text": "Omen of Corruption"
+  },
+  {
+   "row": 23,
+   "w": 28350,
+   "cond": 0,
+   "stat": 26672,
+   "text": "Omen of Sinistral Exaltation"
+  },
+  {
+   "row": 24,
+   "w": 28350,
+   "cond": 0,
+   "stat": 26673,
+   "text": "Omen of Dextral Exaltation"
+  },
+  {
+   "row": 25,
+   "w": 700,
+   "cond": 0,
+   "stat": 26674,
+   "text": "Omen of Sinistral Annulment"
+  },
+  {
+   "row": 26,
+   "w": 700,
+   "cond": 0,
+   "stat": 26675,
+   "text": "Omen of Dextral Annulment"
+  },
+  {
+   "row": 27,
+   "w": 3500,
+   "cond": 0,
+   "stat": 26686,
+   "text": "Omen of the Blessed"
+  },
+  {
+   "row": 28,
+   "w": 140,
+   "cond": 0,
+   "stat": 26687,
+   "text": "Omen of Chance"
+  },
+  {
+   "row": 29,
+   "w": 700,
+   "cond": 0,
+   "stat": 26688,
+   "text": "Omen of Sanctification"
+  },
+  {
+   "row": 30,
+   "w": 3500,
+   "cond": 0,
+   "stat": 26689,
+   "text": "Omen of Dextral Crystallisation"
+  },
+  {
+   "row": 31,
+   "w": 3500,
+   "cond": 0,
+   "stat": 26690,
+   "text": "Omen of Sinistral Crystallisation"
+  },
+  {
+   "row": 32,
+   "w": 10000,
+   "cond": 0,
+   "stat": 26001,
+   "text": "1 Divine Orb"
+  },
+  {
+   "row": 33,
+   "w": 5000,
+   "cond": 0,
+   "stat": 26001,
+   "text": "2 Divine Orbs"
+  },
+  {
+   "row": 34,
+   "w": 2000,
+   "cond": 0,
+   "stat": 26001,
+   "text": "5 Divine Orbs"
+  },
+  {
+   "row": 35,
+   "w": 20833,
+   "cond": 0,
+   "stat": 26004,
+   "text": "2 Exalted Orbs"
+  },
+  {
+   "row": 36,
+   "w": 10417,
+   "cond": 0,
+   "stat": 26004,
+   "text": "4 Exalted Orbs"
+  },
+  {
+   "row": 37,
+   "w": 5208,
+   "cond": 0,
+   "stat": 26004,
+   "text": "8 Exalted Orbs"
+  },
+  {
+   "row": 38,
+   "w": 100000,
+   "cond": 0,
+   "stat": 26005,
+   "text": "2 Chaos Orbs"
+  },
+  {
+   "row": 39,
+   "w": 50000,
+   "cond": 0,
+   "stat": 26005,
+   "text": "4 Chaos Orbs"
+  },
+  {
+   "row": 40,
+   "w": 25000,
+   "cond": 0,
+   "stat": 26005,
+   "text": "8 Chaos Orbs"
+  },
+  {
+   "row": 41,
+   "w": 2500,
+   "cond": 0,
+   "stat": 26655,
+   "text": "Orbs of Annulment"
+  },
+  {
+   "row": 42,
+   "w": 1250,
+   "cond": 0,
+   "stat": 26655,
+   "text": "Orbs of Annulment"
+  },
+  {
+   "row": 43,
+   "w": 2500,
+   "cond": 0,
+   "stat": 26656,
+   "text": "Orbs of Chance"
+  },
+  {
+   "row": 44,
+   "w": 1250,
+   "cond": 0,
+   "stat": 26656,
+   "text": "Orbs of Chance"
+  },
+  {
+   "row": 45,
+   "w": 20400,
+   "cond": 0,
+   "stat": 26657,
+   "text": "2 Greater Orbs of Augmentation"
+  },
+  {
+   "row": 46,
+   "w": 10200,
+   "cond": 0,
+   "stat": 26657,
+   "text": "4 Greater Orbs of Augmentation"
+  },
+  {
+   "row": 47,
+   "w": 5100,
+   "cond": 0,
+   "stat": 26657,
+   "text": "8 Greater Orbs of Augmentation"
+  },
+  {
+   "row": 48,
+   "w": 11017,
+   "cond": 0,
+   "stat": 26658,
+   "text": "2 Greater Orbs of Transmutation"
+  },
+  {
+   "row": 49,
+   "w": 5508,
+   "cond": 0,
+   "stat": 26658,
+   "text": "4 Greater Orbs of Transmutation"
+  },
+  {
+   "row": 50,
+   "w": 2754,
+   "cond": 0,
+   "stat": 26658,
+   "text": "8 Greater Orbs of Transmutation"
+  },
+  {
+   "row": 51,
+   "w": 1792,
+   "cond": 0,
+   "stat": 26659,
+   "text": "Greater Chaos Orbs"
+  },
+  {
+   "row": 52,
+   "w": 896,
+   "cond": 0,
+   "stat": 26659,
+   "text": "Greater Chaos Orbs"
+  },
+  {
+   "row": 53,
+   "w": 358,
+   "cond": 0,
+   "stat": 26659,
+   "text": "Greater Chaos Orbs"
+  },
+  {
+   "row": 54,
+   "w": 5733,
+   "cond": 0,
+   "stat": 26660,
+   "text": "Greater Regal Orbs"
+  },
+  {
+   "row": 55,
+   "w": 2867,
+   "cond": 0,
+   "stat": 26660,
+   "text": "Greater Regal Orbs"
+  },
+  {
+   "row": 56,
+   "w": 1147,
+   "cond": 0,
+   "stat": 26660,
+   "text": "Greater Regal Orbs"
+  },
+  {
+   "row": 57,
+   "w": 3480,
+   "cond": 0,
+   "stat": 26661,
+   "text": "Greater Exalted Orbs"
+  },
+  {
+   "row": 58,
+   "w": 1740,
+   "cond": 0,
+   "stat": 26661,
+   "text": "Greater Exalted Orbs"
+  },
+  {
+   "row": 59,
+   "w": 696,
+   "cond": 0,
+   "stat": 26661,
+   "text": "Greater Exalted Orbs"
+  },
+  {
+   "row": 60,
+   "w": 6100,
+   "cond": 0,
+   "stat": 26662,
+   "text": "Perfect Orbs of Augmentation"
+  },
+  {
+   "row": 61,
+   "w": 3050,
+   "cond": 0,
+   "stat": 26662,
+   "text": "Perfect Orbs of Augmentation"
+  },
+  {
+   "row": 62,
+   "w": 3300,
+   "cond": 0,
+   "stat": 26663,
+   "text": "Perfect Orbs of Transmutation"
+  },
+  {
+   "row": 63,
+   "w": 1650,
+   "cond": 0,
+   "stat": 26663,
+   "text": "Perfect Orbs of Transmutation"
+  },
+  {
+   "row": 64,
+   "w": 438,
+   "cond": 0,
+   "stat": 26664,
+   "text": "Perfect Chaos Orbs"
+  },
+  {
+   "row": 65,
+   "w": 1400,
+   "cond": 0,
+   "stat": 26665,
+   "text": "Perfect Regal Orbs"
+  },
+  {
+   "row": 66,
+   "w": 420,
+   "cond": 0,
+   "stat": 26666,
+   "text": "Perfect Exalted Orbs"
+  }
+ ]
+}
