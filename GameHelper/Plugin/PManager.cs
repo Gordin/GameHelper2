@@ -51,6 +51,8 @@ namespace GameHelper.Plugin
                 snapshot = Plugins.ToArray();
             }
 
+            ResolveStartupConflicts(snapshot);
+
             foreach (var container in snapshot)
             {
                 EnablePluginIfRequired(container);
@@ -103,8 +105,11 @@ namespace GameHelper.Plugin
                 return false;
             }
 
-            target.Plugin.SaveSettings();
-            target.Plugin.OnDisable();
+            if (target.Metadata.Enable)
+            {
+                DisablePlugin(target);
+                SavePluginMetadata();
+            }
 
             lock (Plugins)
             {
@@ -152,7 +157,21 @@ namespace GameHelper.Plugin
                 if (container.Count > 0)
                 {
                     LoadPluginMetadata(container);
-                    container[0].Plugin.OnEnable(Core.Process.Address != IntPtr.Zero);
+                    PluginContainer? loaded;
+                    lock (Plugins)
+                    {
+                        loaded = Plugins.LastOrDefault(plugin => plugin.Name == container[0].Name);
+                    }
+
+                    if (loaded?.Metadata.Enable == true)
+                    {
+                        // The assembly is newly loaded but its persisted metadata already says true.
+                        // Temporarily clear it so the normal transition performs conflict cleanup
+                        // and invokes OnEnable exactly once.
+                        loaded.Metadata.Enable = false;
+                        SetPluginEnabled(loaded, true);
+                    }
+
                     return true;
                 }
                 else
@@ -280,6 +299,96 @@ namespace GameHelper.Plugin
                 container.Plugin.OnEnable(Core.Process.Address != IntPtr.Zero);
             }
         }
+
+        /// <summary>
+        ///     Changes a plugin's enabled state. Enabling a plugin first disables every active
+        ///     conflicting plugin, ensuring its cleanup completes before the selected plugin loads.
+        /// </summary>
+        internal static void SetPluginEnabled(PluginContainer container, bool enabled)
+        {
+            if (container.Metadata.Enable == enabled)
+            {
+                return;
+            }
+
+            if (enabled)
+            {
+                PluginContainer[] conflicts;
+                lock (Plugins)
+                {
+                    conflicts = Plugins.Where(other =>
+                        other != container &&
+                        other.Metadata.Enable &&
+                        PluginsConflict(container, other)).ToArray();
+                }
+
+                foreach (var conflict in conflicts)
+                {
+                    DisablePlugin(conflict);
+                }
+
+                container.Metadata.Enable = true;
+                try
+                {
+                    container.Plugin.OnEnable(Core.Process.Address != IntPtr.Zero);
+                }
+                catch
+                {
+                    container.Metadata.Enable = false;
+                    SavePluginMetadata();
+                    throw;
+                }
+            }
+            else
+            {
+                DisablePlugin(container);
+            }
+
+            SavePluginMetadata();
+        }
+
+        private static void DisablePlugin(PluginContainer container)
+        {
+            if (!container.Metadata.Enable)
+            {
+                return;
+            }
+
+            // Stop render dispatch immediately. SaveSettings and OnDisable then finish before a
+            // conflicting plugin's OnEnable is called.
+            container.Metadata.Enable = false;
+            container.Plugin.SaveSettings();
+            container.Plugin.OnDisable();
+        }
+
+        private static void ResolveStartupConflicts(IReadOnlyList<PluginContainer> plugins)
+        {
+            var accepted = new List<PluginContainer>();
+            foreach (var candidate in plugins.Where(plugin => plugin.Metadata.Enable)
+                         .OrderByDescending(plugin => plugin.Plugin.ConflictPriority)
+                         .ThenBy(plugin => plugin.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var winner = accepted.FirstOrDefault(active => PluginsConflict(active, candidate));
+                if (winner == null)
+                {
+                    accepted.Add(candidate);
+                    continue;
+                }
+
+                candidate.Metadata.Enable = false;
+                Console.WriteLine(
+                    $"[PManager] Disabled {candidate.Name} because it conflicts with enabled plugin {winner.Name}.");
+            }
+
+            SavePluginMetadata();
+        }
+
+        private static bool PluginsConflict(PluginContainer first, PluginContainer second) =>
+            DeclaresConflict(first.Plugin, second.Name) || DeclaresConflict(second.Plugin, first.Name);
+
+        private static bool DeclaresConflict(IPCore plugin, string otherName) =>
+            plugin.ConflictsWith.Any(name =>
+                string.Equals(name, otherName, StringComparison.OrdinalIgnoreCase));
 
         private static void SavePluginMetadata()
         {

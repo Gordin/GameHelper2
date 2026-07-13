@@ -5,6 +5,8 @@
 namespace GameHelper.Plugin
 {
     using GameHelper.Localization;
+    using System;
+    using System.Collections.Generic;
 
     /// <summary>
     ///     Interface for creating plugins.
@@ -32,6 +34,12 @@ namespace GameHelper.Plugin
 
         /// <inheritdoc />
         public virtual string GetDescription() => this.PluginText.T("plugin.description", string.Empty);
+
+        /// <inheritdoc />
+        public virtual IReadOnlyCollection<string> ConflictsWith => Array.Empty<string>();
+
+        /// <inheritdoc />
+        public virtual int ConflictPriority => 0;
 
         /// <inheritdoc />
         public abstract void OnDisable();

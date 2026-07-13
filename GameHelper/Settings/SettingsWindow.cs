@@ -251,22 +251,7 @@ namespace GameHelper.Settings
 
         private static void SetPluginEnabled(PluginContainer container, bool enabled)
         {
-            if (container.Metadata.Enable == enabled)
-            {
-                return;
-            }
-
-            container.Metadata.Enable = enabled;
-            if (enabled)
-            {
-                container.Plugin.OnEnable(Core.Process.Address != IntPtr.Zero);
-            }
-            else
-            {
-                container.Plugin.SaveSettings();
-                container.Plugin.OnDisable();
-            }
-
+            PManager.SetPluginEnabled(container, enabled);
             CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
         }
 

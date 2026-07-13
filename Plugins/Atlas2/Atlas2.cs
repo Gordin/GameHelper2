@@ -22,6 +22,9 @@
 
     public sealed partial class Atlas2 : PCore<Atlas2Settings>
     {
+        /// <inheritdoc />
+        public override IReadOnlyCollection<string> ConflictsWith => new[] { "Atlas" };
+
         private const uint CompletedNodeDotColor = 0xFF00FF00;
         private const uint DotOutlineColor = 0xFF000000;
         private static readonly Vector4 VaalBeaconBorderColor = new(1f, 0.84f, 0f, 1f);
