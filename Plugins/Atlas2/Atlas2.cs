@@ -34,6 +34,11 @@
         private string SettingPathname => Path.Join(DllDirectory, "config", "settings.txt");
         private string NewGroupName = string.Empty;
 
+        // True when the legacy "Atlas" plugin (yokkenUA/Atlas) is also loaded.
+        // Both plugins call ChannelsSplit on the same background draw list — ImGui asserts
+        // on nested splits (_Current == 0 && _Count <= 1) and crashes the process.
+        private bool atlasPluginConflict;
+
         private static readonly Dictionary<string, ContentInfo> MapTags = [];
         private static readonly Dictionary<string, ContentInfo> MapPlain = [];
         private static readonly Dictionary<byte, BiomeInfo> Biomes = [];
@@ -127,6 +132,9 @@
                 Settings.MapGroups = defaults.MapGroups;
                 Settings.CategorySettingsVersion = defaults.CategorySettingsVersion;
             }
+
+            atlasPluginConflict = AppDomain.CurrentDomain.GetAssemblies()
+                .Any(a => a.GetName().Name == "Atlas");
 
             LoadBiomeMap();
             LoadContentMap();
@@ -432,6 +440,17 @@
                 if (!Settings.ControllerMode)
                     if (inventoryPanel)
                         return;
+
+                // Conflict guard: the legacy "Atlas" plugin also calls ChannelsSplit on the same
+                // background draw list. ImGui does not support nested splits and will assert/crash.
+                // Show a visible warning instead of rendering when both plugins are active.
+                if (atlasPluginConflict)
+                {
+                    ImGui.GetForegroundDrawList().AddText(
+                        new Vector2(10, 50), 0xFF0000FF,
+                        "Atlas2: disable the legacy 'Atlas' plugin — both cannot run simultaneously (ImGui nested split crash).");
+                    return;
+                }
 
                 // Split into draw channels only after every early-return guard above has passed, so
                 // the shared background draw list's splitter is always merged before we return (an
