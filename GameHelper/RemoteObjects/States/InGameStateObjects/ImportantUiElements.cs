@@ -6,6 +6,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Numerics;
     using System.Runtime.InteropServices;
     using System.Threading.Tasks;
@@ -51,6 +52,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private const int AtlasNodeConnectionsVectorOffset = 0x5A8;
         private const int AtlasNodeContentNameOffset = 0x290;
         private const int AtlasNodeContentVecOffset = 0x350;
+        private const int AtlasNodeBadgeVecBeginOffset = 0x368;
+        private const int AtlasNodeBadgeVecEndOffset = 0x370;
+        private const int AtlasNodeBadgeRowToContentId = 100;
         private const int AtlasNodeBadgeContentIdOffset = 0x188;
         private const byte AtlasNodeAccessibleBit = 0x01;
         private const byte AtlasNodeCompletedBit = 0x02;
@@ -657,6 +661,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
             ReadAtlasContentContainer(nodeUi, out var badgeAddresses, out var contentNames, out var badgeContentIds);
             var contentTokens = ReadAtlasContentTokens(nodeAddr);
+            MergePersistentAtlasBadgeContent(nodeAddr, mapId, contentNames, badgeContentIds);
 
             return new AtlasMapNode(
                 index,
@@ -687,6 +692,56 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
             var tokens = reader.ReadStdVector<uint>(tokenVector);
             return tokens.Length > 0 ? new List<uint>(tokens) : new List<uint>();
+        }
+
+        // The badge UI children are culled for fogged/off-screen nodes, but the node widget keeps
+        // a persistent vector<u8> of EndgameMapContent row indices at +0x368. Merge those row ids
+        // into the public badge model so consumers see the same content both on- and off-screen.
+        private static void MergePersistentAtlasBadgeContent(
+            IntPtr nodeAddr,
+            string mapId,
+            List<string> contentNames,
+            List<uint> badgeContentIds)
+        {
+            var tags = WorldAreaTags.GetMeta(mapId)?.Tags;
+            if (tags?.Contains("hideout", StringComparer.OrdinalIgnoreCase) == true)
+                return;
+
+            var reader = Core.Process.Handle;
+            if (reader.TryReadMemory<IntPtr>(nodeAddr + AtlasNodeBadgeVecBeginOffset, out var begin) &&
+                reader.TryReadMemory<IntPtr>(nodeAddr + AtlasNodeBadgeVecEndOffset, out var end) &&
+                begin != IntPtr.Zero)
+            {
+                var count = end.ToInt64() - begin.ToInt64();
+                if (count is > 0 and <= AtlasNodeMaxContentChildren)
+                {
+                    for (var i = 0; i < count; i++)
+                    {
+                        var id = (uint)(reader.ReadMemory<byte>(begin + i) + AtlasNodeBadgeRowToContentId);
+                        AddAtlasBadgeContent(id, contentNames, badgeContentIds);
+                    }
+                }
+            }
+
+            // Some distant sea maps have neither UI badges nor a transmitted content vector. Their
+            // content is intrinsic to the persistent map id and can still be recovered reliably.
+            if (mapId.StartsWith("ExpeditionSubArea", StringComparison.OrdinalIgnoreCase))
+                AddAtlasBadgeContent(100, contentNames, badgeContentIds); // Powerful Map Boss
+            else if (mapId.StartsWith("ExpeditionLogBook", StringComparison.OrdinalIgnoreCase))
+                AddAtlasBadgeContent(166, contentNames, badgeContentIds); // Grand Expedition
+        }
+
+        private static void AddAtlasBadgeContent(
+            uint id,
+            List<string> contentNames,
+            List<uint> badgeContentIds)
+        {
+            if (!badgeContentIds.Any(existing => (existing & 0xFFFFu) == id))
+                badgeContentIds.Add(id);
+
+            var name = AtlasMapNode.GetBadgeContentName(id);
+            if (!string.IsNullOrWhiteSpace(name) && !contentNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+                contentNames.Add(name);
         }
 
         private static Dictionary<StdTuple2D<int>, List<StdTuple2D<int>>> ReadAtlasConnections(IntPtr atlasAddress)
