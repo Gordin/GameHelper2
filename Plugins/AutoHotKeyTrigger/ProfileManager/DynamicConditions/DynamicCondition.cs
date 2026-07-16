@@ -52,7 +52,7 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         [JsonConstructor]
         public DynamicCondition(string conditionSource, IComponent? component)
         {
-            this.conditionSource = conditionSource;
+            this.conditionSource = conditionSource ?? string.Empty;
             this.component = component;
             this.RebuildFunction();
         }
@@ -153,6 +153,13 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
 
         private void RebuildFunction()
         {
+            if (string.IsNullOrWhiteSpace(this.conditionSource))
+            {
+                this.func = null;
+                this.lastException = "Enter an expression.";
+                return;
+            }
+
             try
             {
                 var parsingConfig = new ParsingConfig()
