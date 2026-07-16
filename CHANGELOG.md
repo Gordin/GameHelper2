@@ -6,6 +6,57 @@ Path of Exile 2; "0.5.x" references are the game patch the build targets.
 Sections marked **For plugin devs** describe newly exposed APIs you can read
 from your own plugins via `Core.*`.
 
+## [2.6.0] - 2026-07-17
+
+### Added
+
+- **Atlas2 Ritual-line tools.** Ported the Ritual helpers from the legacy Atlas
+  plugin, including deterministic Rite-mod predictions and a configurable
+  **Head of the King** route planner with reward filtering and weights.
+- **Atlas2 Uncharted Waters visualization.** Atlas2 can mark ships hidden in the
+  fog and highlight the atlas nodes and leylines revealed by the ship under the
+  cursor.
+- **Monster categories (for plugin devs).** Entities now expose
+  `Entity.MonsterCategory`, a flags value covering Humanoid, Beast, Undead,
+  Construct, Demon, and Eldritch classifications. The mapping is loaded from an
+  embedded table generated from the game's monster-variety data.
+- **Plugin conflict declarations (for plugin devs).** Plugins can override
+  `PCore.ConflictsWith` and `ConflictPriority` to declare mutually exclusive
+  plugins and deterministic startup precedence. Enabling one automatically
+  disables active conflicts after saving their settings and running cleanup.
+- **More Atlas state exposed (for plugin devs).**
+  `ImportantUiElements.AtlasOceanButtons` exposes Uncharted Waters region
+  buttons, while persistent badge data keeps Atlas content available for
+  fogged and off-screen nodes.
+- **Atlas reverse-engineering credit.** Thanks to **yokkenUA** for documenting
+  the Atlas offsets and behavior behind Ritual-line prediction, Uncharted
+  Waters ships and leylines, mist nodes, and persistent fog-node content; those
+  findings form the basis of the Atlas2 and core implementations in this release.
+
+### Changed
+
+- **Atlas2 content and routing expanded.** Ported the Expedition/Ritual Atlas
+  helpers and added mappings for the current Atlas contents, including Breach,
+  Expedition, Delirium, Ritual, Irradiated, Abyss, Vaal Beacons, Azmeri Spirits,
+  Shrines, Strongboxes, Rogue Exiles, Grand Expedition, and other special nodes.
+- **Atlas and Atlas2 are mutually exclusive.** The plugin manager now resolves
+  their declared conflict instead of allowing both overlays to run together.
+- **Confirmed compatible with game patch 0.5.4c.** Updated the Area Instance
+  offsets for environments, server data/local player, awake and sleeping
+  entities, and terrain metadata.
+
+### Fixed
+
+- **Atlas content in fog.** Map modifiers remain detectable when the game's
+  badge UI children are culled for fogged or off-screen nodes.
+- **AutoHotKeyTrigger startup exception.** The blank dynamic-condition editor no
+  longer sends an empty expression to the parser; null or whitespace expressions
+  remain uncompiled until the user enters a condition.
+- **LootValue poe2scout refresh.** Accepts the current top-level array returned by
+  poe2scout's leagues endpoint, while remaining compatible with the previous
+  object-wrapped and string-wrapped response shapes. Currency entries with null
+  item metadata are now parsed without aborting the category.
+
 ## [2.5.2] - 2026-07-11
 
 ### Added
@@ -216,6 +267,7 @@ from your own plugins via `Core.*`.
 - Disabled plugins' settings being overwritten on close.
 - Co-op (multiplayer) read fix.
 
+[2.6.0]: https://github.com/Gordin/GameHelper2/compare/v2.5.2...v2.6.0
 [2.5.2]: https://github.com/Gordin/GameHelper2/compare/2.5.1...2.5.2
 [2.5.1]: https://github.com/Gordin/GameHelper2/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Gordin/GameHelper2/compare/2.4.2...2.5.0
