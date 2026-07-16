@@ -909,6 +909,10 @@
         private void DrawFogShips(ImDrawListPtr drawList, RectangleF panelRect, float uiScale,
             IReadOnlyDictionary<StdTuple2D<int>, Vector2> centers)
         {
+            // yokkenUA observed that culled ship buttons retain stale screen coordinates. Their
+            // grid coordinates remain valid, however, and match the chunk node chosen by the
+            // game's minimum-distance snap. Fogged nodes keep live transformed positions, so the
+            // icon is anchored to that node instead of the invisible button widget.
             fogShipIcons.Clear();
             var buttons = Core.States.InGameStateObject.GameUi.AtlasOceanButtons;
             var visibleChunks = buttons.Where(button => button.IsVisible)
@@ -955,6 +959,10 @@
 
         private static bool IsRitualSpecialNode(IntPtr address)
         {
+            // yokkenUA found this by following the game's ritual-line reach check: node+0x300
+            // points to the per-map data row, whose category at +0x7C is zero for normal maps.
+            // The game rejects every nonzero category (unique maps, hideouts, towers, citadels,
+            // and league bosses), making this authoritative compared with guessing from map tags.
             if (address == IntPtr.Zero)
                 return true;
             var row = Read<IntPtr>(address + 0x300);
@@ -964,6 +972,9 @@
         private void DrawUnchartedLeylines(ImDrawListPtr drawList, UiElementBase atlasUi, RectangleF panelRect,
             float uiScale, Vector2 mouse, IReadOnlyDictionary<StdTuple2D<int>, Vector2> centers)
         {
+            // Uncharted Waters reverse-engineering credited to yokkenUA: a ship reveals the 16x16
+            // atlas chunk containing its grid coordinate. Only show the hovered ship's chunk; all
+            // ship chunks at once turn the overlay into an unreadable mesh.
             (int X, int Y)? hoveredChunk = null;
             foreach (var button in Core.States.InGameStateObject.GameUi.AtlasOceanButtons.Where(button => button.IsVisible))
             {

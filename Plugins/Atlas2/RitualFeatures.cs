@@ -20,13 +20,30 @@ namespace Atlas2
 
     public sealed partial class Atlas2
     {
+        // Ritual-line offsets and the prediction model below were reverse-engineered by yokkenUA
+        // for the Atlas plugin (dfb52db and follow-up commits), using live-memory observations and
+        // Ghidra analysis of AtlasPanel_ritualLineToggleNode / ritualLineNextCandidates. The notes
+        // are retained here because the relationships between these fields matter as much as their
+        // current numeric offsets.
         private const uint IsVisibleMask = 0x800;
+
+        // A selected line node has bit 20 set at widget+0x180. The child pointer at +0x3B8
+        // leads to a text element whose std::wstring at +0x4C0 already contains the game's
+        // localized Rite-mod lines.
         private const int RitualModsChildOffset = 0x3B8;
         private const int TextElementTextOffset = 0x4C0;
+
+        // Ritual state lives on the atlas node-list container: line mode is page mode 6, line id
+        // is TinyMT seed word 0, and the two vectors contain clicked-but-pending and committed
+        // atlas grid coordinates respectively.
         private const int PanelLineModeOffset = 0x637;
         private const int PanelLineIdOffset = 0x63C;
         private const int PanelPendingVecOffset = 0x648;
         private const int PanelCommittedVecOffset = 0x660;
+
+        // The game binary-searches this precomputed candidate table. Each 0x44-byte entry is
+        // 17 int32 values: node (x,y), followed by five (x,y,extra) candidate triples. candIdx is
+        // the candidate's lexicographic rank after (0,0) sentinels and committed nodes are removed.
         private const int PanelCandTableBeginOffset = 0x590;
         private const int PanelCandTableEndOffset = 0x598;
         private const int CandTableEntryStride = 0x44;

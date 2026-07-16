@@ -139,7 +139,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         /// </summary>
         public IReadOnlyList<StdTuple2D<int>> ConnectedGridPositions { get; }
 
-        // Content-token / badge model (verified live for PoE2 0.5.x):
+        // Content-token / badge model reverse-engineered and verified live for PoE2 0.5.x by
+        // yokkenUA while developing Atlas; retained here with credit because these two stores are
+        // easy to conflate and their generated row ids can drift after a game patch:
         //   * A content TOKEN (see ContentTokens) is one effect line. Its low 16 bits are the effect id
         //     and its high 16 bits normally encode the magnitude as (magnitude × 64) — i.e. magnitude =
         //     high16/64 (1 for plain effects, the number in the text for "N additional"/"N% …", 100 for
