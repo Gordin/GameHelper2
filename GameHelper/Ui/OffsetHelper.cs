@@ -292,6 +292,8 @@ namespace GameHelper.Ui
                 ImGui.TextWrapped(p.Detail);
             }
 
+            DrawRecoveries(p);
+
             for (var i = 0; i < p.Roots.Count; i++)
             {
                 var root = p.Roots[i];
@@ -315,6 +317,64 @@ namespace GameHelper.Ui
             }
 
             ImGui.TreePop();
+        }
+
+        private static void DrawRecoveries(ProbeResult probe)
+        {
+            if (probe.Recoveries.Count == 0)
+            {
+                if (probe.RecoveryAttempted)
+                {
+                    ImGui.TextDisabled("Auto-recovery scanned the nearby aligned offsets, but found no sufficiently strong candidate.");
+                }
+
+                return;
+            }
+
+            ImGui.TextColored(Blue, "Auto-recovery found offset candidates whose semantic checks pass:");
+            foreach (var group in probe.Recoveries.GroupBy(x => x.Shift).OrderBy(x => x.Key))
+            {
+                ImGui.BulletText($"common shift {FormatShift(group.Key)}");
+                foreach (var recovery in group.OrderBy(x => x.ConfiguredOffset))
+                {
+                    ImGui.Indent();
+                    var ambiguity = recovery.IsAmbiguous
+                        ? $" · ambiguous alternatives: {string.Join(", ", recovery.AlternativeOffsets.Select(x => $"0x{x:X}"))}"
+                        : string.Empty;
+                    ImGui.TextWrapped($"{recovery.FieldName}: 0x{recovery.ConfiguredOffset:X} → 0x{recovery.CandidateOffset:X} " +
+                                      $"({recovery.VerifiedRoots}/{recovery.RootCount} roots, {recovery.EvidencePasses} strong checks){ambiguity}");
+                    ImGui.Unindent();
+                }
+            }
+
+            if (ImGui.SmallButton($"Copy recovery report##odcopyrecovery_{probe.Name}"))
+            {
+                ImGui.SetClipboardText(BuildRecoveryReport(probe));
+            }
+        }
+
+        private static string BuildRecoveryReport(ProbeResult probe)
+        {
+            var lines = new List<string>
+            {
+                $"OffsetHelper auto-recovery candidates for {probe.Name}",
+            };
+            foreach (var recovery in probe.Recoveries.OrderBy(x => x.ConfiguredOffset))
+            {
+                var alternatives = recovery.IsAmbiguous
+                    ? $"; alternatives {string.Join(", ", recovery.AlternativeOffsets.Select(x => $"0x{x:X}"))}"
+                    : string.Empty;
+                lines.Add($"{recovery.FieldName}: [FieldOffset(0x{recovery.ConfiguredOffset:X})] -> " +
+                          $"[FieldOffset(0x{recovery.CandidateOffset:X})] ({FormatShift(recovery.Shift)}; " +
+                          $"{recovery.VerifiedRoots}/{recovery.RootCount} roots; {recovery.EvidencePasses} strong checks{alternatives})");
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string FormatShift(int shift)
+        {
+            return shift >= 0 ? $"+0x{shift:X}" : $"-0x{-shift:X}";
         }
 
         private static void DrawFieldTable(string id, List<FieldRow> fields)

@@ -30,6 +30,8 @@ namespace GameHelper.Ui
     ///     entity's address (the same back-pointer <c>ComponentBase.IsParentValid</c> uses);</item>
     ///     <item>a <see cref="StdVector" /> must satisfy <c>First &lt;= Last &lt;= End</c> with all
     ///     three in valid address range;</item>
+    ///     <item>entity maps must have a valid MSVC sentinel/root shape, and the local-player
+    ///     pointer must resolve to an entity whose path starts with <c>Metadata/</c>;</item>
     ///     <item>a non-null pointer field must be in range and actually readable;</item>
     ///     <item>a <see cref="UiElementBaseOffset.Self" /> pointer must equal its own address.</item>
     ///     </list>
@@ -47,6 +49,8 @@ namespace GameHelper.Ui
         internal const int MaxEntitiesScanned = 256;
 
         private const int MaxRecursionDepth = 4;
+        private const int RecoveryScanRadius = 0x200;
+        private const int MaxMapSize = 1_000_000;
 
         // Main-module address range, resolved lazily once the game is attached (-1 = not yet known).
         // A pointer landing in this range is a real vtable / static, a strong positive signal.
@@ -116,6 +120,12 @@ namespace GameHelper.Ui
 
             /// <summary>A <see cref="StdVector" /> (First/Last/End).</summary>
             Vector,
+
+            /// <summary>An MSVC <see cref="StdMap" /> header and sentinel/root shape.</summary>
+            Map,
+
+            /// <summary>A pointer that must resolve to an entity with a Metadata/ path.</summary>
+            EntityPointer,
 
             /// <summary>An inline std::string / std::wstring blob.</summary>
             String,
@@ -581,6 +591,8 @@ namespace GameHelper.Ui
             {
                 res.Verdict = ProbeVerdict.Degraded;
                 res.Detail = string.Join("; ", failSummaries);
+                res.RecoveryAttempted = true;
+                res.Recoveries.AddRange(FindOffsetRecoveries(probeType, roots, ownerAnchorField));
             }
             else
             {
@@ -591,12 +603,202 @@ namespace GameHelper.Ui
             return res;
         }
 
+        /// <summary>
+        ///     For each top-level field whose decisive anchors failed, slides that field as one
+        ///     block through a bounded, pointer-aligned neighborhood. A candidate is reported only
+        ///     when the shifted field validates on a majority of the sampled roots. Keeping nested
+        ///     fields together is important: game patches commonly insert bytes between logical
+        ///     blocks while leaving each block's internal layout unchanged.
+        /// </summary>
+        private static List<OffsetRecoverySuggestion> FindOffsetRecoveries(
+            Type structType,
+            List<Root> roots,
+            string ownerAnchorField)
+        {
+            var suggestions = new List<OffsetRecoverySuggestion>();
+            var sampledRoots = roots.Take(MaxRootsPerType).ToList();
+            foreach (var (field, configuredOffset) in LayoutFields(structType))
+            {
+                if (field.Name.StartsWith("PAD", StringComparison.OrdinalIgnoreCase) ||
+                    field.Name.StartsWith("Pad", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var fieldSize = SizeOf(field.FieldType);
+                var scanStart = Math.Max(0, configuredOffset - RecoveryScanRadius);
+                var scanEnd = configuredOffset + fieldSize + RecoveryScanRadius;
+                var windows = new List<(Root Root, byte[] Bytes)>();
+                foreach (var root in sampledRoots)
+                {
+                    var bytes = Core.Process.Handle.ReadMemoryArray<byte>(root.Address + scanStart, scanEnd - scanStart);
+                    if (bytes.Length == scanEnd - scanStart)
+                    {
+                        windows.Add((root, bytes));
+                    }
+                }
+
+                if (windows.Count == 0)
+                {
+                    continue;
+                }
+
+                var baseline = EvaluateShiftedField(field, configuredOffset, scanStart, windows, ownerAnchorField);
+                if (baseline.PresentRoots == 0 || baseline.FailedRoots < MajorityThreshold(baseline.PresentRoots))
+                {
+                    continue;
+                }
+
+                var candidates = new List<(int Offset, RecoveryEvaluation Evaluation)>();
+                for (var delta = -RecoveryScanRadius; delta <= RecoveryScanRadius; delta += IntPtr.Size)
+                {
+                    if (delta == 0)
+                    {
+                        continue;
+                    }
+
+                    var candidateOffset = configuredOffset + delta;
+                    if (candidateOffset < scanStart || candidateOffset + fieldSize > scanEnd)
+                    {
+                        continue;
+                    }
+
+                    var evaluation = EvaluateShiftedField(field, candidateOffset, scanStart, windows, ownerAnchorField);
+                    if (evaluation.PresentRoots == 0 ||
+                        evaluation.VerifiedRoots < MajorityThreshold(evaluation.PresentRoots) ||
+                        evaluation.FailedRoots >= MajorityThreshold(evaluation.PresentRoots) ||
+                        evaluation.EvidencePasses == 0)
+                    {
+                        continue;
+                    }
+
+                    candidates.Add((candidateOffset, evaluation));
+                }
+
+                var ranked = candidates
+                    .OrderByDescending(x => x.Evaluation.VerifiedRoots)
+                    .ThenByDescending(x => x.Evaluation.EvidencePasses)
+                    .ThenBy(x => Math.Abs(x.Offset - configuredOffset))
+                    .ToList();
+                if (ranked.Count == 0)
+                {
+                    continue;
+                }
+
+                var best = ranked[0];
+                var tied = ranked.Skip(1)
+                    .Where(x => x.Evaluation.VerifiedRoots == best.Evaluation.VerifiedRoots &&
+                                x.Evaluation.EvidencePasses == best.Evaluation.EvidencePasses)
+                    .Take(3)
+                    .Select(x => x.Offset)
+                    .ToList();
+                suggestions.Add(new OffsetRecoverySuggestion
+                {
+                    FieldName = field.Name,
+                    ConfiguredOffset = configuredOffset,
+                    CandidateOffset = best.Offset,
+                    VerifiedRoots = best.Evaluation.VerifiedRoots,
+                    RootCount = best.Evaluation.PresentRoots,
+                    EvidencePasses = best.Evaluation.EvidencePasses,
+                    AlternativeOffsets = tied,
+                });
+            }
+
+            return suggestions;
+        }
+
+        private static RecoveryEvaluation EvaluateShiftedField(
+            FieldInfo field,
+            int candidateOffset,
+            int scanStart,
+            List<(Root Root, byte[] Bytes)> windows,
+            string ownerAnchorField)
+        {
+            var result = new RecoveryEvaluation();
+            foreach (var (root, bytes) in windows)
+            {
+                var rows = new List<FieldRow>();
+                WalkStruct(field.FieldType, bytes, candidateOffset - scanStart, root.Owner.ToInt64(),
+                    ownerAnchorField, field.Name, 0, rows);
+                var anchors = rows.Where(IsRecoveryAnchor).ToList();
+                if (anchors.Count == 0)
+                {
+                    continue;
+                }
+
+                result.PresentRoots++;
+                if (anchors.Any(x => x.Status == FieldStatus.Fail))
+                {
+                    result.FailedRoots++;
+                    continue;
+                }
+
+                var evidence = anchors.Count(IsRecoveryEvidence);
+                if (evidence > 0)
+                {
+                    result.VerifiedRoots++;
+                    result.EvidencePasses += evidence;
+                }
+            }
+
+            return result;
+        }
+
+        private static bool IsRecoveryAnchor(FieldRow field)
+        {
+            return field.Kind is FieldKind.Vector or FieldKind.Map or FieldKind.OwnerPtr or FieldKind.EntityPointer;
+        }
+
+        private static bool IsRecoveryEvidence(FieldRow field)
+        {
+            return field.Status == FieldStatus.Pass &&
+                   !((field.Kind is FieldKind.Vector or FieldKind.Map) && field.Reason.StartsWith("empty", StringComparison.Ordinal));
+        }
+
+        private static int MajorityThreshold(int count)
+        {
+            return Math.Max(count == 1 ? 1 : 2, (int)Math.Ceiling(count / 2.0));
+        }
+
+        private static IEnumerable<(FieldInfo Field, int Offset)> LayoutFields(Type type)
+        {
+            var explicitLayout = (type.StructLayoutAttribute?.Value ?? LayoutKind.Sequential) == LayoutKind.Explicit;
+            var sequentialOffset = 0;
+            foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            {
+                if (field.IsStatic)
+                {
+                    continue;
+                }
+
+                var offset = explicitLayout
+                    ? field.GetCustomAttribute<FieldOffsetAttribute>()?.Value ?? sequentialOffset
+                    : sequentialOffset;
+                yield return (field, offset);
+                if (!explicitLayout)
+                {
+                    sequentialOffset += SizeOf(field.FieldType);
+                }
+            }
+        }
+
+        private sealed class RecoveryEvaluation
+        {
+            public int PresentRoots { get; set; }
+
+            public int VerifiedRoots { get; set; }
+
+            public int FailedRoots { get; set; }
+
+            public int EvidencePasses { get; set; }
+        }
+
         private static bool IsAnchor(FieldRow f)
         {
             // Vectors and the owner/self back-pointer always carry a hard invariant. A generic
             // pointer only counts once it has positively resolved (readable / in-module); an
             // ambiguous "weak" pointer is not treated as breakage.
-            return f.Kind is FieldKind.Vector or FieldKind.OwnerPtr ||
+            return f.Kind is FieldKind.Vector or FieldKind.Map or FieldKind.OwnerPtr or FieldKind.EntityPointer ||
                    (f.Kind == FieldKind.Pointer && f.Status == FieldStatus.Pass);
         }
 
@@ -650,6 +852,10 @@ namespace GameHelper.Ui
                 {
                     rows.Add(VectorRow(name, buf, abs));
                 }
+                else if (ft == typeof(StdMap))
+                {
+                    rows.Add(MapRow(name, buf, abs));
+                }
                 else if (StringStructNames.Contains(ft.Name))
                 {
                     rows.Add(new FieldRow(abs, name, FieldKind.String, "std::string blob", isPad ? FieldStatus.Skip : FieldStatus.Weak, "not an anchor"));
@@ -658,7 +864,9 @@ namespace GameHelper.Ui
                 {
                     var v = BitConverter.ToInt64(buf, abs);
                     var isOwner = !string.IsNullOrEmpty(ownerAnchorField) && f.Name == ownerAnchorField;
-                    rows.Add(PointerRow(name, v, isOwner, owner, isPad, buf, abs));
+                    rows.Add(f.Name == "LocalPlayerPtr"
+                        ? EntityPointerRow(name, v, isPad, abs)
+                        : PointerRow(name, v, isOwner, owner, isPad, buf, abs));
                 }
                 else if (ft.IsValueType && !ft.IsPrimitive && !ft.IsEnum)
                 {
@@ -692,6 +900,35 @@ namespace GameHelper.Ui
             // A vector's byte offset is a hard invariant, so when it breaks we can point at where
             // a well-formed vector actually sits — the offset probably just shifted this patch.
             return new FieldRow(abs, name, FieldKind.Vector, $"first=0x{first:X} last=0x{last:X} end=0x{end:X}", FieldStatus.Fail, "vector shape violated" + ScanForVector(buf, abs));
+        }
+
+        private static FieldRow MapRow(string name, byte[] buf, int abs)
+        {
+            var head = BitConverter.ToInt64(buf, abs);
+            var size = BitConverter.ToInt32(buf, abs + 8);
+            if (TryValidateMap(head, size, out var detail))
+            {
+                return new FieldRow(abs, name, FieldKind.Map, $"size={size} head=0x{head:X}", FieldStatus.Pass, detail);
+            }
+
+            return new FieldRow(abs, name, FieldKind.Map, $"size={size} head=0x{head:X}", FieldStatus.Fail,
+                detail + ScanForMap(buf, abs));
+        }
+
+        private static FieldRow EntityPointerRow(string name, long value, bool isPad, int abs)
+        {
+            if (isPad)
+            {
+                return new FieldRow(abs, name, FieldKind.EntityPointer, Hex(value), FieldStatus.Skip, "pad");
+            }
+
+            if (LooksLikeEntity(value, out var path))
+            {
+                return new FieldRow(abs, name, FieldKind.EntityPointer, Hex(value), FieldStatus.Pass, path);
+            }
+
+            return new FieldRow(abs, name, FieldKind.EntityPointer, Hex(value), FieldStatus.Fail,
+                value == 0 ? "entity ptr null" : "does not resolve to Metadata/ entity");
         }
 
         private static FieldRow PointerRow(string name, long v, bool isOwner, long owner, bool isPad, byte[] buf, int abs)
@@ -785,6 +1022,70 @@ namespace GameHelper.Ui
             return hits.Count > 0 ? "  → vector-shaped at " + string.Join(", ", hits.Select(h => $"+0x{h:X}")) : string.Empty;
         }
 
+        private static string ScanForMap(byte[] buf, int skip)
+        {
+            var hits = new List<int>();
+            for (var o = 0; o + 16 <= buf.Length && hits.Count < 6; o += IntPtr.Size)
+            {
+                if (o == skip)
+                {
+                    continue;
+                }
+
+                var head = BitConverter.ToInt64(buf, o);
+                var size = BitConverter.ToInt32(buf, o + 8);
+                if (TryValidateMap(head, size, out _))
+                {
+                    hits.Add(o);
+                }
+            }
+
+            return hits.Count > 0 ? "  → map-shaped at " + string.Join(", ", hits.Select(h => $"+0x{h:X}")) : string.Empty;
+        }
+
+        private static bool TryValidateMap(long head, int size, out string detail)
+        {
+            detail = "map shape violated";
+            if (size < 0 || size > MaxMapSize || !IsValidPtr(head) ||
+                !Core.Process.Handle.TryReadMemory<MapNodeHeader>(new IntPtr(head), out var sentinel) ||
+                sentinel.IsNil == 0 || sentinel.Color > 1)
+            {
+                return false;
+            }
+
+            if (size == 0)
+            {
+                detail = "empty map";
+                return true;
+            }
+
+            var root = sentinel.Parent.ToInt64();
+            if (!IsValidPtr(root) ||
+                !Core.Process.Handle.TryReadMemory<MapNodeHeader>(sentinel.Parent, out var rootNode) ||
+                rootNode.IsNil != 0 || rootNode.Color > 1)
+            {
+                return false;
+            }
+
+            detail = "sentinel/root shape ok";
+            return true;
+        }
+
+        private static bool LooksLikeEntity(long value, out string path)
+        {
+            path = string.Empty;
+            if (!IsValidPtr(value) ||
+                !Core.Process.Handle.TryReadMemory<ItemStruct>(new IntPtr(value), out var item) ||
+                !InModule(item.VTablePtr.ToInt64()) ||
+                !Core.Process.Handle.TryReadMemory<EntityDetails>(item.EntityDetailsPtr, out var details))
+            {
+                return false;
+            }
+
+            path = Core.Process.Handle.ReadStdWString(details.name);
+            return path.StartsWith("Metadata/", StringComparison.Ordinal);
+        }
+
         private static bool InModule(long v)
         {
             EnsureModuleRange();
@@ -855,6 +1156,16 @@ namespace GameHelper.Ui
         private static string Hex(long v)
         {
             return "0x" + v.ToString("X");
+        }
+
+        [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 0x20)]
+        private struct MapNodeHeader
+        {
+            [FieldOffset(0x00)] public IntPtr Left;
+            [FieldOffset(0x08)] public IntPtr Parent;
+            [FieldOffset(0x10)] public IntPtr Right;
+            [FieldOffset(0x18)] public byte Color;
+            [FieldOffset(0x19)] public byte IsNil;
         }
 
         /// <summary>
@@ -1020,6 +1331,28 @@ namespace GameHelper.Ui
         public List<FieldRow> Fields { get; set; } = new();
     }
 
+    /// <summary>A patch-ready top-level FieldOffset candidate found by semantic neighborhood scanning.</summary>
+    internal sealed class OffsetRecoverySuggestion
+    {
+        public string FieldName { get; set; } = string.Empty;
+
+        public int ConfiguredOffset { get; set; }
+
+        public int CandidateOffset { get; set; }
+
+        public int Shift => this.CandidateOffset - this.ConfiguredOffset;
+
+        public int VerifiedRoots { get; set; }
+
+        public int RootCount { get; set; }
+
+        public int EvidencePasses { get; set; }
+
+        public List<int> AlternativeOffsets { get; set; } = new();
+
+        public bool IsAmbiguous => this.AlternativeOffsets.Count > 0;
+    }
+
     /// <summary>Aggregated verification result for one struct type.</summary>
     internal sealed class ProbeResult
     {
@@ -1038,6 +1371,10 @@ namespace GameHelper.Ui
         public string Detail { get; set; } = string.Empty;
 
         public List<RootResult> Roots { get; set; } = new();
+
+        public bool RecoveryAttempted { get; set; }
+
+        public List<OffsetRecoverySuggestion> Recoveries { get; } = new();
     }
 
     /// <summary>The result of a full sweep.</summary>
