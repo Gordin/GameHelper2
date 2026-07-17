@@ -752,8 +752,8 @@ namespace LootValue
                             BaseType = item["Type"]?.ToString() ?? metadata?["base_type"]?.ToString() ?? string.Empty,
                             PriceChaos = price,
                             ExplicitMods = CombineModLists(
-                                metadata?["implicit_mods"]?.ToObject<List<string>>(),
-                                metadata?["explicit_mods"]?.ToObject<List<string>>()),
+                                ReadScoutModList(metadata?["implicit_mods"]),
+                                ReadScoutModList(metadata?["explicit_mods"])),
                         };
 
                         AddUniqueListing(uniques, listing);
@@ -765,6 +765,28 @@ namespace LootValue
 
                 page++;
             }
+        }
+
+        private static List<string> ReadScoutModList(JToken? token)
+        {
+            var mods = new List<string>();
+            if (token is not JArray entries)
+                return mods;
+
+            foreach (var entry in entries)
+            {
+                var description = entry switch
+                {
+                    JValue { Type: JTokenType.String } value => value.Value<string>(),
+                    JObject value => value["description"]?.ToString(),
+                    _ => null,
+                };
+
+                if (!string.IsNullOrWhiteSpace(description))
+                    mods.Add(description.Trim());
+            }
+
+            return mods;
         }
 
         private static List<string> CombineModLists(IReadOnlyList<string>? first, IReadOnlyList<string>? second)
