@@ -4,6 +4,7 @@
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("AutoHotKeyTrigger")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("AHKMacro")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("AtlasUtility")]
 
 namespace GameHelper
 {

@@ -6,6 +6,124 @@ Path of Exile 2; "0.5.x" references are the game patch the build targets.
 Sections marked **For plugin devs** describe newly exposed APIs you can read
 from your own plugins via `Core.*`.
 
+## [2.6.0] - 2026-07-17
+
+### Added
+
+- **Atlas2 Ritual-line tools.** Ported the Ritual helpers from the legacy Atlas
+  plugin, including deterministic Rite-mod predictions and a configurable
+  **Head of the King** route planner with reward filtering and weights.
+- **Atlas2 Uncharted Waters visualization.** Atlas2 can mark ships hidden in the
+  fog and highlight the atlas nodes and leylines revealed by the ship under the
+  cursor.
+- **Monster categories (for plugin devs).** Entities now expose
+  `Entity.MonsterCategory`, a flags value covering Humanoid, Beast, Undead,
+  Construct, Demon, and Eldritch classifications. The mapping is loaded from an
+  embedded table generated from the game's monster-variety data.
+- **Plugin conflict declarations (for plugin devs).** Plugins can override
+  `PCore.ConflictsWith` and `ConflictPriority` to declare mutually exclusive
+  plugins and deterministic startup precedence. Enabling one automatically
+  disables active conflicts after saving their settings and running cleanup.
+- **More Atlas state exposed (for plugin devs).**
+  `ImportantUiElements.AtlasOceanButtons` exposes Uncharted Waters region
+  buttons, while persistent badge data keeps Atlas content available for
+  fogged and off-screen nodes.
+- **Atlas reverse-engineering credit.** Thanks to **yokkenUA** for documenting
+  the Atlas offsets and behavior behind Ritual-line prediction, Uncharted
+  Waters ships and leylines, mist nodes, and persistent fog-node content; those
+  findings form the basis of the Atlas2 and core implementations in this release.
+
+### Changed
+
+- **Atlas2 content and routing expanded.** Ported the Expedition/Ritual Atlas
+  helpers and added mappings for the current Atlas contents, including Breach,
+  Expedition, Delirium, Ritual, Irradiated, Abyss, Vaal Beacons, Azmeri Spirits,
+  Shrines, Strongboxes, Rogue Exiles, Grand Expedition, and other special nodes.
+- **Atlas and Atlas2 are mutually exclusive.** The plugin manager now resolves
+  their declared conflict instead of allowing both overlays to run together.
+- **Confirmed compatible with game patch 0.5.4c.** Updated the Area Instance
+  offsets for environments, server data/local player, awake and sleeping
+  entities, and terrain metadata.
+
+### Fixed
+
+- **Atlas content in fog.** Map modifiers remain detectable when the game's
+  badge UI children are culled for fogged or off-screen nodes.
+- **AutoHotKeyTrigger startup exception.** The blank dynamic-condition editor no
+  longer sends an empty expression to the parser; null or whitespace expressions
+  remain uncompiled until the user enters a condition.
+- **LootValue poe2scout refresh.** Accepts the current top-level array returned by
+  poe2scout's leagues endpoint, while remaining compatible with the previous
+  object-wrapped and string-wrapped response shapes. Currency entries with null
+  item metadata are now parsed without aborting the category.
+
+## [2.5.2] - 2026-07-11
+
+### Added
+
+- **Atlas2 content visualization.** Atlas nodes can display their detected content
+  as in-game icons above the map name, while the detailed content text remains
+  below it. Icon size is configurable, unknown values can be shown in a debug
+  view, and a **Show Node Index (debug/RE)** option labels nodes by their Atlas
+  child index. (Icons copied over from yokkenUA's Atlas plugin, thanks!)
+- **Atlas2 unified map categories and pathing.** The old separate pathing and Map
+  Groups editors are now one ordered, expandable category list. Each category
+  controls pathing, maximum hops, node foreground/background colors, individual
+  built-in targets, and additional user-entered map names. Built-in categories
+  cover search, Atlas progression, league/boss targets, Expedition maps, Towers,
+  good layouts, unique maps, and other special maps; custom categories can be
+  added, reordered, renamed, and removed. Route colors are selected from the more
+  colorful of the category's foreground/background colors.
+- **Atlas2 route destination labels.** Paths now identify their destination and
+  hop count on the first edge (for example `Secluded Temple (7)`). Routes sharing
+  a first edge are grouped into a centered, non-overlapping label stack.
+- **OffsetHelper patch-day tool.** Added Settings → Tools → **OffsetHelper (OH)**,
+  which checks live struct-field offsets and static-address signature patterns to
+  help diagnose game-patch breakage without first opening Ghidra.
+- **Panel Finder Tool.** In **OffsetHelper (OH)** → UI Panel finder.
+  Can be used to find the pointer chain to any panel by letting it detect visible
+  panels, than opening tho panel you want, and detect it. Not remotely finished.
+  Created by looking at screenshots from a similar tool in the OriathHub project.
+- **Radar: Azmeri Spirit icons.** Added configurable radar icons for the known
+  Wild, Vivid, Primal, Sacred, and Abyss spirit variants, including spirits whose
+  entities would otherwise be discarded as useless.
+- **PickupHelper: more built-in categories.** Added Soul Cores, Breach, the Trial of
+  Sekhemas (shown as "Djinn Barya (Trial of Sekhemas)"), and the Trial of Chaos (shown
+  as "Ultimatum (Chaos Trials)") as built-in item categories. These, plus Jewels, are
+  now enabled by default (in addition to the existing Currency, Gems, Tablets, and
+  Waystones).
+- **Structured Atlas content APIs (for plugin devs).** `AtlasMapNode.Badges` and
+  `AtlasMapNode.Effects` expose resolved `AtlasMapNodeBadge` /
+  `AtlasMapNodeEffect` metadata alongside the existing raw badge IDs and content
+  tokens. Known entries carry their detection ID, description, and optional icon
+  basename through static `Known` lists.
+- **Temple Console panel detection.** The Temple Console is now exposed as
+  `ImportantUiElements.TempleConsole` and counts as a large panel, so overlays
+  that hide for large UI panels no longer draw over it.
+
+### Changed
+
+- **Atlas content decoding expanded.** Added and corrected known mappings for
+  Breach, Abyss, Ritual, Vaal Beacons, Grand Mirror, Delirium, bosses, and other
+  Atlas badge/effect values. Deliriousness percentages are decoded from their
+  packed token values, including values above 127%.
+- **Atlas2 search and routing improvements.** Search matches map names and detected
+  content, does not route while the query is empty, and content-specific borders
+  and routes use the unified category colors. Expedition, Lineage, Citadel,
+  Breach, unique, tower, and other targets can be enabled individually.
+
+### Fixed
+
+- **Co-op panel detection.** Left/right panel addresses are now resolved correctly
+  in controller co-op mode.
+- Fixed incorrect Atlas mappings where Abyss, Breach, Vaal Beacon, and Mirror of
+  Delirium effects could be mislabeled.
+- Fixed Deliriousness values at 128% and above being truncated (for example 200%
+  being displayed as 72%).
+- Fixed Atlas2 route-label stacks drifting or appearing far away when many routes
+  shared an accessible starting node but took different first edges.
+- Fixed Radar Azmeri Spirit path matching for the known variants.
+
 ## [2.5.1] - 2026-07-04
 
 ### Added
@@ -149,6 +267,8 @@ from your own plugins via `Core.*`.
 - Disabled plugins' settings being overwritten on close.
 - Co-op (multiplayer) read fix.
 
+[2.6.0]: https://github.com/Gordin/GameHelper2/compare/v2.5.2...v2.6.0
+[2.5.2]: https://github.com/Gordin/GameHelper2/compare/2.5.1...2.5.2
 [2.5.1]: https://github.com/Gordin/GameHelper2/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Gordin/GameHelper2/compare/2.4.2...2.5.0
 [2.4.2]: https://github.com/Gordin/GameHelper2/compare/2.4.1...2.4.2

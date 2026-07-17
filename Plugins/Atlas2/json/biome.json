@@ -41,12 +41,12 @@
   },
   "8": {
     "Label": "Vaal City",
-    "BorderColor": [ 1.0, 1.0, 1.0, 0.9 ],
+    "BorderColor": [ 0.87058824, 0.65490196, 0.0, 1.0 ],
     "Show": true
   },
   "9": {
     "Label": "Breach City",
-    "BorderColor": [ 0.6, 0.1, 0.8, 0.9 ],
+    "BorderColor": [ 1.0, 0.2, 0.7411765, 1.0 ],
     "Show": true
   },
   "10": {

@@ -7,6 +7,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     using System;
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
+    using System.Linq;
     using GameHelper.Utils;
     using GameOffsets.Natives;
 
@@ -38,6 +39,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.BadgeAddresses = new ReadOnlyCollection<IntPtr>(new List<IntPtr>(badgeAddresses));
             this.ContentTokens = new ReadOnlyCollection<uint>(new List<uint>(contentTokens));
             this.BadgeContentIds = new ReadOnlyCollection<uint>(new List<uint>(badgeContentIds));
+            this.Badges = new ReadOnlyCollection<AtlasMapNodeBadge>(badgeContentIds
+                .Select(id => KnownBadges.GetValueOrDefault(id & 0xFFFFu)).OfType<AtlasMapNodeBadge>().ToList());
+            this.Effects = new ReadOnlyCollection<AtlasMapNodeEffect>(contentTokens
+                .Select(token => KnownEffects.GetValueOrDefault(token & 0xFFFFu)).OfType<AtlasMapNodeEffect>().ToList());
             this.ConnectedGridPositions = new ReadOnlyCollection<StdTuple2D<int>>(new List<StdTuple2D<int>>(connectedGridPositions));
         }
 
@@ -123,17 +128,27 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         /// </summary>
         public IReadOnlyList<uint> BadgeContentIds { get; }
 
+        /// <summary>Gets the known badges resolved from <see cref="BadgeContentIds" />.</summary>
+        public IReadOnlyList<AtlasMapNodeBadge> Badges { get; }
+
+        /// <summary>Gets the known effects resolved from <see cref="ContentTokens" />.</summary>
+        public IReadOnlyList<AtlasMapNodeEffect> Effects { get; }
+
         /// <summary>
         ///     Gets connected Atlas grid positions read from the Atlas connection data, when available.
         /// </summary>
         public IReadOnlyList<StdTuple2D<int>> ConnectedGridPositions { get; }
 
-        // Content-token / badge model (verified live for PoE2 0.5.x):
+        // Content-token / badge model reverse-engineered and verified live for PoE2 0.5.x by
+        // yokkenUA while developing Atlas; retained here with credit because these two stores are
+        // easy to conflate and their generated row ids can drift after a game patch:
         //   * A content TOKEN (see ContentTokens) is one effect line. Its low 16 bits are the effect id
-        //     and its high 16 bits encode the magnitude as (magnitude × 64) — i.e. magnitude = high16/64
-        //     (1 for plain effects, the number in the text for "N additional"/"N% …", 100 for binary
-        //     "always"/"doubles" effects). So the same effect at a different magnitude is a different
-        //     full u32; we key on the low 16 bits and substitute the magnitude into a "{0}" template.
+        //     and its high 16 bits normally encode the magnitude as (magnitude × 64) — i.e. magnitude =
+        //     high16/64 (1 for plain effects, the number in the text for "N additional"/"N% …", 100 for
+        //     binary "always"/"doubles" effects). The Delirious token (0x685A) is an exception: its top
+        //     two high-word bits are flags, so its magnitude is (high16 & 0x3FFF)/64. So the same
+        //     effect at a different magnitude is a different full u32; we key on the low 16 bits and
+        //     substitute the magnitude into a "{0}" template.
         //   * A BADGE (see BadgeContentIds) is the named content (the bold tooltip title). Its high word
         //     is a constant 0x0002 category tag; the content id is the low 16 bits, which we key on.
         // A node's tooltip = its badge (title) plus one token per effect line.
@@ -143,16 +158,24 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     template. A "{0}" placeholder is replaced with the token's magnitude (high16 / 64) at
         ///     resolve time. Unmapped ids have no entry (callers fall back to the raw hex value).
         /// </summary>
-        private static readonly Dictionary<uint, string> ContentTokenEffects = new()
+        private static readonly Dictionary<uint, AtlasMapNodeEffect> KnownEffects = AtlasMapNodeEffect.Known.ToDictionary(effect => effect.Id);
+        private static readonly Dictionary<uint, AtlasMapNodeBadge> KnownBadges = AtlasMapNodeBadge.Known.ToDictionary(badge => badge.Id);
+        private static readonly Dictionary<uint, string> ContentTokenEffects = KnownEffects.ToDictionary(pair => pair.Key, pair => pair.Value.Description);
+        private static readonly Dictionary<uint, string> LegacyContentTokenEffects = new()
         {
             [0x65F4] = "{0} Atlas Point",
             [0x686E] = "Delirium",
             [0x4C58] = "Powerful Map Boss",
+            [0x4C59] = "Powerful Map Boss",
             [0x6870] = "Ritual Altars",
+            [0x6873] = "Ritual Altars",
             [0x686F] = "Abysses",
-            [0x6872] = "Area contains Breaches",
+            [0x6872] = "Area contains Abysses",
+            [0x6875] = "Area contains Breaches",
             [0x60C1] = "Breach Stronghold",
+            [0x60C4] = "Breach Stronghold",
             [0x3A5D] = "Hive Fortress",
+            [0x3A5E] = "Breach Hive Fortress",
             [0x6760] = "Map Boss drops a Djinn Barya",
             [0x0963] = "Contains {0} additional Shrines",
             [0x3897] = "Map Boss is Possessed",
@@ -160,6 +183,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             [0x0A8C] = "Contains {0} additional Azmeri Spirits",
             [0x6762] = "Currency found is replaced with rarer varieties",
             [0x6157] = "Contains a reflection of the Map Boss",
+            [0x615A] = "Grand Mirror",
             [0x6714] = "Use the Grand Mirror to access",
             [0x6503] = "Also counts as a Grass Area",
             [0x6505] = "Also counts as a Swamp Area",
@@ -175,7 +199,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             [0x61C7] = "Summoning Circles always summon an additional Boss",
             [0x1247] = "Contains {0} additional Essence",
             [0x634D] = "Essences transfer to a random Unique Monster on death",
-            [0x6871] = "Area contains Vaal Beacons",
+            [0x6871] = "Area contains a Mirror of Delirium",
+            [0x6874] = "Vaal Beacons",
             [0x6638] = "Elemental Shrines do not appear in area",
             [0x3E16] = "Shrine Duration increased by {0}%",
             [0x6244] = "Shrines release an Azmeri Spirit when activated",
@@ -185,12 +210,14 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     Known content id (low 16 bits of a value in <see cref="BadgeContentIds" />) → named-content
         ///     title (the bold tooltip header). Unmapped ids have no entry (callers fall back to hex).
         /// </summary>
-        private static readonly Dictionary<uint, string> BadgeContentNames = new()
+        private static readonly Dictionary<uint, string> BadgeContentNames = KnownBadges.ToDictionary(pair => pair.Key, pair => pair.Value.Name);
+        private static readonly Dictionary<uint, string> LegacyBadgeContentNames = new()
         {
             [0x0064] = "Powerful Map Boss",
             [0x008E] = "Sekhema's Student",
             [0x007D] = "Power of Faith",
             [0x008F] = "Azmeri Champion",
+            [0x0088] = "Breach Hive",
             [0x008C] = "Monstrous Treasure",
             [0x0094] = "Swarming Spirits",
             [0x0091] = "Glimmering Mutation",
@@ -237,6 +264,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             return template;
         }
 
+        private static uint GetDeliriousPercent(uint token) => ((token >> 16) & 0x3FFFu) / 64u;
+
         /// <summary>
         ///     Resolves a badge content id to its named-content title, or <c>null</c> when unmapped.
         ///     Keys on the low 16 bits (the high word is the constant 0x0002 category tag).
@@ -253,8 +282,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     <see cref="ContentTokens" />), mirroring the in-game tooltip; duplicates are removed.
         /// </summary>
         /// <param name="includeUnmapped">
-        ///     when <c>true</c>, values with no known name are included as their raw hex (debug view);
-        ///     when <c>false</c>, only resolved (mapped) names are returned.
+        ///     when <c>true</c>, every raw value is shown alongside its mapped name (and unmapped
+        ///     values are shown as raw hex); when <c>false</c>, only resolved names are returned.
         /// </param>
         /// <returns>the merged display names, badge-titles-then-token-effects, with duplicates removed.</returns>
         public IReadOnlyList<string> GetContentDisplayNames(bool includeUnmapped = true)
@@ -272,6 +301,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
                     name = $"0x{id:X8}";
                 }
+                else if (includeUnmapped)
+                {
+                    name = $"{name} [0x{id:X8}]";
+                }
 
                 if (!result.Contains(name))
                 {
@@ -279,8 +312,17 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 }
             }
 
+            var deliriousTokens = new List<uint>();
+            var deliriousPercent = 0u;
             foreach (var token in this.ContentTokens)
             {
+                if ((token & 0xFFFFu) == 0x685Au)
+                {
+                    deliriousTokens.Add(token);
+                    deliriousPercent = Math.Max(deliriousPercent, GetDeliriousPercent(token));
+                    continue;
+                }
+
                 var name = GetContentTokenName(token);
                 if (name == null)
                 {
@@ -291,10 +333,35 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
                     name = $"0x{token:X8}";
                 }
+                else if (includeUnmapped)
+                {
+                    name = $"{name} [0x{token:X8}]";
+                }
 
                 if (!result.Contains(name))
                 {
                     result.Add(name);
+                }
+            }
+
+            if (deliriousTokens.Count > 0)
+            {
+                if (includeUnmapped)
+                {
+                    foreach (var token in deliriousTokens)
+                    {
+                        var percent = GetDeliriousPercent(token);
+                        var name = percent > 0 ? $"{percent}% Delirious" : "Delirious";
+                        var debugName = $"{name} [0x{token:X8}]";
+                        if (!result.Contains(debugName))
+                        {
+                            result.Add(debugName);
+                        }
+                    }
+                }
+                else
+                {
+                    result.Add(deliriousPercent > 0 ? $"{deliriousPercent}% Delirious" : "Delirious");
                 }
             }
 

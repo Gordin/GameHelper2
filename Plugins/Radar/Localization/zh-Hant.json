@@ -9,6 +9,7 @@
   "icon_picker.window": "圖標選擇器（雙擊選擇項目）",
   "icons.abyss": "深淵圖標",
   "icons.abyss.help": "深淵節點圖標。'Other' 會匹配其餘任意 Abyss 路徑實體。",
+  "icons.azmeri_spirits": "Azmeri Spirits",
   "icons.base_game": "基礎遊戲圖標",
   "icons.base_game.help": "障礙圖標可從 Delve Icons 類別設置，例如 'Blockage OR DelveWall'",
   "icons.boss": "Boss 圖標",

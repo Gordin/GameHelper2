@@ -20,10 +20,14 @@
     using System.Runtime.InteropServices;
     using System.Text;
 
-    public sealed class Atlas2 : PCore<Atlas2Settings>
+    public sealed partial class Atlas2 : PCore<Atlas2Settings>
     {
+        /// <inheritdoc />
+        public override IReadOnlyCollection<string> ConflictsWith => new[] { "Atlas" };
+
         private const uint CompletedNodeDotColor = 0xFF00FF00;
         private const uint DotOutlineColor = 0xFF000000;
+        private static readonly Vector4 VaalBeaconBorderColor = new(1f, 0.84f, 0f, 1f);
 
         private const int ChannelGrid = 0;
         private const int ChannelLines = 1;
@@ -36,6 +40,8 @@
         private static readonly Dictionary<string, ContentInfo> MapTags = [];
         private static readonly Dictionary<string, ContentInfo> MapPlain = [];
         private static readonly Dictionary<byte, BiomeInfo> Biomes = [];
+        private static readonly Dictionary<string, (IntPtr Ptr, int W, int H)> IconCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<((int X, int Y) Chunk, Vector2 Center, float Half)> fogShipIcons = [];
 
         // Named-map pathfinding categories — matched by exact (normalized, case-insensitive) display
         // name against nd.MapName. Each pairs with a DrawLinesTo*/*PathColor/*MaxHops setting.
@@ -47,7 +53,11 @@
         private static readonly HashSet<string> QuestsMaps = new(StringComparer.OrdinalIgnoreCase) { "The Withered Willow" };
         private static readonly HashSet<string> RitualMaps = new(StringComparer.OrdinalIgnoreCase) { "Caer Tarth", "Crux of Nothingness" };
         private static readonly HashSet<string> BreachMaps = new(StringComparer.OrdinalIgnoreCase) { "Hive Colony" };
-        private static readonly HashSet<string> ExpeditionMaps = new(StringComparer.OrdinalIgnoreCase) { "Ruins of Kingsmarch" };
+        private static readonly HashSet<string> ExpeditionMaps = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Ruins of Kingsmarch", "Moor of Fallen Skies", "Fallen Star", "Obscure Island",
+            "Mournful Cliffside", "Secluded Temple",
+        };
         private static readonly HashSet<string> AbyssMaps = new(StringComparer.OrdinalIgnoreCase) { "The Well of Souls" };
         private static readonly HashSet<string> TempleMaps = new(StringComparer.OrdinalIgnoreCase) { "Vaal Ruins" };
 
@@ -71,8 +81,11 @@
             public List<string> RawContents;
             public List<string> ContentDisplay;    // merged, de-duped MAPPED content names (tokens + badges)
             public List<string> ContentDisplayAll; // same, but also includes raw hex for unmapped values (debug)
+            public List<string> ContentIcons;
             public string Type;             // "normal" or "unique"
             public List<string> Tags;       // e.g. "lineage", "arbiter"
+            public bool Drawable;
+            public bool RitualSpecial;
         }
         private readonly List<NodeData> nodeCache = new();
         private int cacheFrameCounter = int.MaxValue;   // force refresh on first frame
@@ -107,6 +120,17 @@
                 Settings = JsonConvert.DeserializeObject<Atlas2Settings>(content, serializerSettings);
             }
 
+            if (Settings.CategorySettingsVersion != 10 || Settings.MapGroups == null
+                || !Settings.MapGroups.Any(group => !string.IsNullOrEmpty(group.BuiltInKey))
+                || Settings.MapGroups.Any(group => group.BuiltInTargets.ContainsKey("Lineage-tagged maps")
+                    || group.BuiltInTargets.ContainsKey("Arbiter-tagged maps")
+                    || group.BuiltInTargets.ContainsKey("Unique map type")))
+            {
+                var defaults = new Atlas2Settings();
+                Settings.MapGroups = defaults.MapGroups;
+                Settings.CategorySettingsVersion = defaults.CategorySettingsVersion;
+            }
+
             LoadBiomeMap();
             LoadContentMap();
         }
@@ -130,22 +154,7 @@
             if (ImGui.SmallButton("Clear"))
                 Settings.SearchQuery = string.Empty;
             ImGui.SeparatorText("Show shortest path to");
-
-            ImGui.Columns(2, "PathfindingColumns", false);
-            PathRow("Arbiter Maps", ref Settings.DrawLinesToArbiterMaps, ref Settings.ArbiterPathColor, ref Settings.ArbiterMaxHops);
-            PathRow("Towers", ref Settings.DrawLinesToTowers, ref Settings.TowerPathColor, ref Settings.TowerMaxHops);
-            PathRow("Search", ref Settings.DrawLinesToSearch, ref Settings.SearchPathColor, ref Settings.SearchMaxHops);
-            PathRow("Unique Maps", ref Settings.DrawLinesToUniqueMaps, ref Settings.UniquePathColor, ref Settings.UniqueMaxHops);
-            PathRow("Lineage Maps", ref Settings.DrawLinesToLineageMaps, ref Settings.LineagePathColor, ref Settings.LineageMaxHops);
-            PathRow("Quests", ref Settings.DrawLinesToQuests, ref Settings.QuestsPathColor, ref Settings.QuestsMaxHops);
-            ImGui.NextColumn();
-            PathRow("Atlas Progression", ref Settings.DrawLinesToAtlasProgression, ref Settings.AtlasProgressionPathColor, ref Settings.AtlasProgressionMaxHops);
-            PathRow("Ritual", ref Settings.DrawLinesToRitual, ref Settings.RitualPathColor, ref Settings.RitualMaxHops);
-            PathRow("Breach", ref Settings.DrawLinesToBreach, ref Settings.BreachPathColor, ref Settings.BreachMaxHops);
-            PathRow("Expedition", ref Settings.DrawLinesToExpedition, ref Settings.ExpeditionPathColor, ref Settings.ExpeditionMaxHops);
-            PathRow("Abyss", ref Settings.DrawLinesToAbyss, ref Settings.AbyssPathColor, ref Settings.AbyssMaxHops);
-            PathRow("Temple", ref Settings.DrawLinesToTemple, ref Settings.TemplePathColor, ref Settings.TempleMaxHops);
-            ImGui.Columns(1);
+            DrawUnifiedCategories();
 
             ImGui.SliderFloat("Path Thickness", ref Settings.PathLineThickness, 1.0f, 8.0f);
 
@@ -156,9 +165,14 @@
             ImGuiHelper.ToolTip("Draw connected-node and badge counts under each map label on the Atlas.");
             ImGui.Checkbox("Show Content", ref Settings.ShowContent);
             ImGuiHelper.ToolTip("Draw the node's content under each map label, using the known names.");
+            ImGui.SameLine();
+            ImGui.Checkbox("Show Node Index (debug/RE)", ref Settings.ShowNodeIndex);
             if (Settings.ShowContent)
             {
                 ImGui.Indent();
+                ImGui.Checkbox("Show Content Icons", ref Settings.ShowContentIcons);
+                if (Settings.ShowContentIcons)
+                    ImGui.SliderFloat("Content Icon Size", ref Settings.ContentIconSize, 16f, 64f);
                 ImGui.Checkbox("Debug Content", ref Settings.ShowContentDebug);
                 ImGuiHelper.ToolTip("Also show unmapped content as its raw 0x value (for identifying new content).");
                 ImGui.Unindent();
@@ -219,15 +233,41 @@
                 ImGui.SliderFloat("Graph Y-Offset", ref Settings.AtlasGraphOffsetY, -200f, 200f);
             }
 
+            if (ImGui.TreeNode("Uncharted Waters"))
+            {
+                ImGui.Checkbox("Highlight hovered ship leylines", ref Settings.ShowUnchartedLeylines);
+                ImGuiHelper.ToolTip("Highlights the atlas nodes and connections revealed by the hovered Uncharted Waters ship.");
+                if (Settings.ShowUnchartedLeylines)
+                {
+                    ImGui.ColorEdit4("Leyline Color", ref Settings.UnchartedLeylineColor);
+                    ImGui.SliderFloat("Leyline Thickness", ref Settings.UnchartedLeylineThickness, 1f, 12f);
+                }
+
+                ImGui.Checkbox("Show ships in fog", ref Settings.ShowShipsInFog);
+                ImGuiHelper.ToolTip("Marks Uncharted Waters ships that the game is not currently rendering.");
+                if (Settings.ShowShipsInFog)
+                    ImGui.SliderFloat("Ship Icon Size", ref Settings.ShipIconSize, 16f, 96f);
+                ImGui.TreePop();
+            }
+
+            if (ImGui.TreeNode("Ritual Atlas Line"))
+            {
+                ImGui.Checkbox("Predict Ritual mods", ref Settings.ShowRitualPrediction);
+                ImGuiHelper.ToolTip("Predicts the deterministic Rite modifiers for eligible Ritual-line routes.");
+                ImGui.Checkbox("Head of the King planner", ref Settings.ShowRitualPlanner);
+                ImGuiHelper.ToolTip("Lists and highlights Ritual routes and their predicted rewards while line mode is active.");
+                if (Settings.ShowRitualPlanner)
+                    DrawRewardWeightsTable();
+                ImGui.TreePop();
+            }
+
             ImGui.SeparatorText("Layout Settings");
             var nudge = Settings.AnchorNudge;
             if (ImGui.SliderFloat2("Layout Nudge (px)", ref nudge, -60f, 60f))
                 Settings.AnchorNudge = nudge;
             ImGui.SliderFloat("Scale Multiplier", ref Settings.ScaleMultiplier, 0.5f, 3.0f);
 
-            ImGui.SeparatorText("Map Groups");
-
-            if (ImGui.TreeNode("Settings"))
+            if (false && ImGui.TreeNode("Legacy Map Groups"))
             {
                 ImGui.InputTextWithHint("##MapGroupName", "group name", ref Settings.GroupNameInput, 256);
                 ImGui.SameLine();
@@ -357,6 +397,20 @@
                 allCenters[nd.GridPosition] = nu.Position + nu.Size * 0.5f;
             }
 
+            bool ritualLineMode = Read<byte>(atlasUi.Address + 0x637) != 0;
+            ritualHoverGrid = nodeCache.Where(node => node.State == AtlasNodeState.AccessibleNow)
+                .Select(node => (Node: node, Ui: atlasUi[node.Index]))
+                .Where(entry => entry.Ui != null && ImGui.GetMousePos().X >= entry.Ui.Position.X &&
+                    ImGui.GetMousePos().X <= entry.Ui.Position.X + entry.Ui.Size.X &&
+                    ImGui.GetMousePos().Y >= entry.Ui.Position.Y &&
+                    ImGui.GetMousePos().Y <= entry.Ui.Position.Y + entry.Ui.Size.Y)
+                .Select(entry => (StdTuple2D<int>?)entry.Node.GridPosition).FirstOrDefault();
+            ritualPredictions = ritualLineMode && Settings.ShowRitualPrediction
+                ? BuildRitualPredictions(atlasUi.Address)
+                : EmptyRitualPredictions;
+            if (ritualLineMode && Settings.ShowRitualPlanner)
+                BuildPlannerChains(atlasUi.Address);
+
             var towers = new HashSet<string>(
                 Settings.MapGroups
                     .Where(tower => string.Equals(tower.Name, "Towers", StringComparison.OrdinalIgnoreCase))
@@ -438,6 +492,11 @@
                     }
                 }
 
+                // Destination labels grouped by their actual first edge. Drawing is deferred until
+                // every route is known so each stack can be centered around that edge's midpoint.
+                var routeLabels = new Dictionary<(StdTuple2D<int> Start, StdTuple2D<int> FirstHop),
+                    List<(string Text, uint Color)>>();
+
                 foreach (var nd in nodeCache)
                 {
                     var mapName = nd.MapName;
@@ -446,7 +505,8 @@
                         continue;
                     if (!IsPrintableUnicode(mapName))
                         continue;
-                    if (doSearch && !searchList.Any(searchTerm => mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+                    var matchesSearch = !doSearch || searchList.Any(searchTerm => MatchesSearch(nd, mapName, searchTerm));
+                    if (!matchesSearch)
                         continue;
 
                     bool completed = nd.State == AtlasNodeState.CompletedBase;
@@ -460,34 +520,14 @@
                     bool routeTarget = false;
                     uint routeColor = 0;
                     int maxHops = 0;
-                    if (Settings.DrawLinesToTowers && towers.Contains(mapName) && !completed)
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.TowerPathColor); maxHops = Settings.TowerMaxHops; }
-                    else if (Settings.DrawLinesToSearch && doSearch
-                        && searchList.Any(s => mapName.Contains(s, StringComparison.OrdinalIgnoreCase)))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.SearchPathColor); maxHops = Settings.SearchMaxHops; }
-                    else if (Settings.DrawLinesToUniqueMaps && !completed
-                        && string.Equals(nd.Type, "unique", StringComparison.OrdinalIgnoreCase))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.UniquePathColor); maxHops = Settings.UniqueMaxHops; }
-                    else if (Settings.DrawLinesToLineageMaps && !completed
-                        && nd.Tags.Exists(t => string.Equals(t, "lineage", StringComparison.OrdinalIgnoreCase)))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.LineagePathColor); maxHops = Settings.LineageMaxHops; }
-                    else if (Settings.DrawLinesToQuests && !completed && QuestsMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.QuestsPathColor); maxHops = Settings.QuestsMaxHops; }
-                    else if (Settings.DrawLinesToArbiterMaps && !completed
-                        && nd.Tags.Exists(t => string.Equals(t, "arbiter", StringComparison.OrdinalIgnoreCase)))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.ArbiterPathColor); maxHops = Settings.ArbiterMaxHops; }
-                    else if (Settings.DrawLinesToAtlasProgression && !completed && AtlasProgressionMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.AtlasProgressionPathColor); maxHops = Settings.AtlasProgressionMaxHops; }
-                    else if (Settings.DrawLinesToRitual && !completed && RitualMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.RitualPathColor); maxHops = Settings.RitualMaxHops; }
-                    else if (Settings.DrawLinesToBreach && !completed && BreachMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.BreachPathColor); maxHops = Settings.BreachMaxHops; }
-                    else if (Settings.DrawLinesToExpedition && !completed && ExpeditionMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.ExpeditionPathColor); maxHops = Settings.ExpeditionMaxHops; }
-                    else if (Settings.DrawLinesToAbyss && !completed && AbyssMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.AbyssPathColor); maxHops = Settings.AbyssMaxHops; }
-                    else if (Settings.DrawLinesToTemple && !completed && TempleMaps.Contains(mapName))
-                        { routeTarget = true; routeColor = ImGuiHelper.Color(Settings.TemplePathColor); maxHops = Settings.TempleMaxHops; }
+                    var routeCategory = Settings.MapGroups.FirstOrDefault(category => category.DrawPath && !completed
+                        && MatchesCategory(category, nd, mapName, doSearch, matchesSearch));
+                    if (routeCategory != null)
+                    {
+                        routeTarget = true;
+                        routeColor = ImGuiHelper.Color(MostColorfulColor(routeCategory.FontColor, routeCategory.BackgroundColor));
+                        maxHops = routeCategory.MaxHops;
+                    }
 
                     if (Settings.HideCompletedMaps && completed)
                         continue;
@@ -528,22 +568,26 @@
                                 drawList.AddCircle(entryC, sr, DotOutlineColor, 0, MathF.Max(1f, sr * 0.35f));
                             }
 
-                            // Hop count above the target.
-                            drawList.ChannelsSetCurrent(ChannelLabels);
-                            string ht = hops.ToString();
-                            var hts = ImGui.CalcTextSize(ht);
-                            var hp = new Vector2(nodeCenter.X - hts.X * 0.5f, nodeCenter.Y - (nodeUi.Size.Y * 0.5f) - hts.Y - 2f * uiScale);
-                            var hpad = new Vector2(4, 1) * uiScale;
-                            drawList.AddRectFilled(hp - hpad, hp + hts + hpad, ImGuiHelper.Color(new Vector4(0, 0, 0, 0.75f)), 3f * uiScale);
-                            drawList.AddText(hp, ImGuiHelper.Color(new Vector4(1f, 0.9f, 0.2f, 1f)), ht);
+                            // Destination and path length at the midpoint of the first edge. Routes
+                            // sharing an entry stack on consecutive rows instead of drawing on top
+                            // of one another.
+                            if (path.Count >= 2)
+                            {
+                                var edge = (path[0], path[1]);
+                                if (!routeLabels.TryGetValue(edge, out var labels))
+                                {
+                                    labels = new List<(string Text, uint Color)>();
+                                    routeLabels[edge] = labels;
+                                }
+                                labels.Add(($"{mapName} ({hops})", routeColor));
+                            }
                         }
                         }
 
                     if (!screenBounds.IntersectsWith(new RectangleF(bgPos.X, bgPos.Y, bgSize.X, bgSize.Y)))
                         continue;
 
-                    var group = Settings.MapGroups.Find(g => g.Maps.Exists(
-                        m => NormalizeName(m).Equals(mapName, StringComparison.OrdinalIgnoreCase)));
+                    var group = Settings.MapGroups.FirstOrDefault(g => MatchesCategory(g, nd, mapName, doSearch, matchesSearch));
 
                     var backgroundColor = group?.BackgroundColor ?? Settings.DefaultBackgroundColor;
                     var fontColor = group?.FontColor ?? Settings.DefaultFontColor;
@@ -553,9 +597,27 @@
                     drawList.ChannelsSetCurrent(ChannelLabels);
                     float rounding = 3f * uiScale;
 
-                    if (Settings.ShowBiomeBorder && Biomes.TryGetValue(nd.BiomeId, out var biome) && biome.Show)
+                    Vector4? borderColor = null;
+                    if (HasAtlasContent(nd, "Vaal Beacon"))
                     {
-                        var biomeColor = biome.BdColor;
+                        borderColor = VaalBeaconBorderColor;
+                    }
+                    else if (HasAtlasContent(nd, "Corruption"))
+                    {
+                        borderColor = CategoryPathColor("corrupted_nexus", Settings.CorruptedNexusPathColor);
+                    }
+                    else if (HasAtlasContent(nd, "Ritual"))
+                    {
+                        borderColor = CategoryPathColor("ritual", Settings.RitualPathColor);
+                    }
+                    else if (Biomes.TryGetValue(nd.BiomeId, out var biome) && biome.Show)
+                    {
+                        borderColor = biome.BdColor;
+                    }
+
+                    if (Settings.ShowBiomeBorder && borderColor.HasValue)
+                    {
+                        var biomeColor = borderColor.Value;
                         if (completed)
                             biomeColor.W *= 0.4f;
 
@@ -571,6 +633,17 @@
 
                     drawList.AddRectFilled(bgPos, bgPos + bgSize, ImGuiHelper.Color(backgroundColor), rounding);
                     drawList.AddText(drawPosition, ImGuiHelper.Color(fontColor), mapName);
+
+                    if (Settings.ShowNodeIndex)
+                    {
+                        var indexText = nd.Index.ToString(CultureInfo.InvariantCulture);
+                        var indexSize = ImGui.CalcTextSize(indexText);
+                        var indexPos = new Vector2(bgPos.X - indexSize.X - (7f * uiScale), drawPosition.Y);
+                        var indexPad = new Vector2(3f, 1f) * uiScale;
+                        drawList.AddRectFilled(indexPos - indexPad, indexPos + indexSize + indexPad,
+                            ImGuiHelper.Color(new Vector4(0f, 0f, 0f, 0.8f)), rounding);
+                        drawList.AddText(indexPos, ImGuiHelper.Color(fontColor), indexText);
+                    }
 
                     float labelCenterX = drawPosition.X + textSize.X * 0.5f;
                     float nextRowTopY = drawPosition.Y + textSize.Y + (4f * uiScale);
@@ -599,6 +672,8 @@
                         var contentList = Settings.ShowContentDebug ? nd.ContentDisplayAll : nd.ContentDisplay;
                         if (contentList is { Count: > 0 })
                         {
+                            if (Settings.ShowContentIcons)
+                                DrawContentIcons(drawList, nd.ContentIcons, labelCenterX, drawPosition.Y, uiScale);
                             foreach (var content in contentList)
                             {
                                 DrawContentLine(drawList, content, labelCenterX, ref nextRowTopY, rowGap, fontColor);
@@ -607,7 +682,56 @@
                     }
                 }
 
+                drawList.ChannelsSetCurrent(ChannelLabels);
+                foreach (var group in routeLabels)
+                {
+                    if (!shiftedCenters.TryGetValue(group.Key.Start, out var startCenter)
+                        || !shiftedCenters.TryGetValue(group.Key.FirstHop, out var firstHopCenter))
+                        continue;
+
+                    var midpoint = (startCenter + firstHopCenter) * 0.5f;
+                    float lineHeight = ImGui.GetTextLineHeight() + (4f * uiScale);
+                    float firstRowY = midpoint.Y - ((group.Value.Count - 1) * lineHeight * 0.5f);
+                    for (int row = 0; row < group.Value.Count; row++)
+                    {
+                        var label = group.Value[row];
+                        var labelSize = ImGui.CalcTextSize(label.Text);
+                        var labelPos = new Vector2(midpoint.X - (labelSize.X * 0.5f),
+                            firstRowY + (row * lineHeight) - (labelSize.Y * 0.5f));
+                        var labelPad = new Vector2(4f, 1f) * uiScale;
+                        drawList.AddRectFilled(labelPos - labelPad, labelPos + labelSize + labelPad,
+                            ImGuiHelper.Color(new Vector4(0f, 0f, 0f, 1f)), 3f * uiScale);
+                        drawList.AddText(labelPos, label.Color, label.Text);
+                    }
+                }
+
+                if (Settings.ShowShipsInFog)
+                    DrawFogShips(drawList, panelRect, uiScale, allCenters);
+                else
+                    fogShipIcons.Clear();
+
+                if (Settings.ShowUnchartedLeylines)
+                    DrawUnchartedLeylines(drawList, atlasUi, panelRect, uiScale, ImGui.GetMousePos(), shiftedCenters);
+
+                if (ritualPredictions.Count > 0)
+                {
+                    drawList.ChannelsSetCurrent(ChannelLabels);
+                    foreach (var prediction in ritualPredictions)
+                    {
+                        if (!allCenters.TryGetValue(prediction.Key, out var center))
+                            continue;
+                        var size = ImGui.CalcTextSize(prediction.Value);
+                        drawList.AddText(center - new Vector2(size.X * 0.5f, size.Y + 18f * uiScale),
+                            ImGuiHelper.Color(new Vector4(0.25f, 1f, 0.35f, 1f)), prediction.Value);
+                    }
+                }
+
+                if (ritualLineMode && Settings.ShowRitualPlanner)
+                    DrawPlannerOverlay(drawList, ImGui.GetIO().DisplaySize * 0.5f, uiScale);
+
                 drawList.ChannelsMerge();
+                if (ritualLineMode && Settings.ShowRitualPlanner)
+                    DrawPlannerWindow();
             }
         }
 
@@ -636,8 +760,18 @@
                     RawContents = map.ContentNames.ToList(),
                     ContentDisplay = map.GetContentDisplayNames(includeUnmapped: false).ToList(),
                     ContentDisplayAll = map.GetContentDisplayNames(includeUnmapped: true).ToList(),
+                    ContentIcons = map.Badges.Concat<object>(map.Effects)
+                        .Select(content => content switch
+                        {
+                            AtlasMapNodeBadge badge => badge.Icon,
+                            AtlasMapNodeEffect effect => effect.Icon,
+                            _ => null,
+                        })
+                        .Where(icon => !string.IsNullOrWhiteSpace(icon)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                     Type = map.Type ?? "normal",
                     Tags = map.Tags.ToList(),
+                    Drawable = !string.IsNullOrWhiteSpace(map.DisplayName),
+                    RitualSpecial = IsRitualSpecialNode(map.Address),
                 });
             }
             cachedAtlasCount = atlasCount;
@@ -771,6 +905,134 @@
         }
 
 #endregion
+
+        private void DrawFogShips(ImDrawListPtr drawList, RectangleF panelRect, float uiScale,
+            IReadOnlyDictionary<StdTuple2D<int>, Vector2> centers)
+        {
+            // yokkenUA observed that culled ship buttons retain stale screen coordinates. Their
+            // grid coordinates remain valid, however, and match the chunk node chosen by the
+            // game's minimum-distance snap. Fogged nodes keep live transformed positions, so the
+            // icon is anchored to that node instead of the invisible button widget.
+            fogShipIcons.Clear();
+            var buttons = Core.States.InGameStateObject.GameUi.AtlasOceanButtons;
+            var visibleChunks = buttons.Where(button => button.IsVisible)
+                .Select(button => (button.GridPosition.X >> 4, button.GridPosition.Y >> 4)).ToHashSet();
+            var hidden = buttons.Where(button => !button.IsVisible)
+                .GroupBy(button => (button.GridPosition.X >> 4, button.GridPosition.Y >> 4))
+                .Where(group => !visibleChunks.Contains(group.Key));
+
+            drawList.ChannelsSetCurrent(ChannelLabels);
+            float height = MathF.Max(8f, Settings.ShipIconSize * uiScale);
+            bool haveIcon = TryGetIcon("UnchartedShip", out var ptr, out var iw, out var ih);
+            foreach (var group in hidden)
+            {
+                var anchor = group.First().GridPosition;
+                if (!centers.TryGetValue(anchor, out var center))
+                {
+                    var nearest = centers.Where(entry =>
+                            (entry.Key.X >> 4, entry.Key.Y >> 4) == group.Key)
+                        .OrderBy(entry => Math.Abs(entry.Key.X - anchor.X) + Math.Abs(entry.Key.Y - anchor.Y))
+                        .FirstOrDefault();
+                    center = nearest.Value;
+                }
+
+                if (center == Vector2.Zero || !panelRect.Contains(center.X, center.Y))
+                    continue;
+
+                if (haveIcon)
+                {
+                    float width = height * iw / Math.Max(1, ih);
+                    drawList.AddImage(ptr, center - new Vector2(width, height) * 0.5f,
+                        center + new Vector2(width, height) * 0.5f);
+                }
+                else
+                {
+                    float radius = height * 0.35f;
+                    drawList.AddCircleFilled(center, radius, ImGuiHelper.Color(new Vector4(0.04f, 0.08f, 0.12f, 0.9f)));
+                    drawList.AddCircle(center, radius, ImGuiHelper.Color(Settings.UnchartedLeylineColor), 0,
+                        MathF.Max(1.5f, radius * 0.25f));
+                }
+
+                fogShipIcons.Add((group.Key, center, height * 0.5f));
+            }
+        }
+
+        private static bool IsRitualSpecialNode(IntPtr address)
+        {
+            // yokkenUA found this by following the game's ritual-line reach check: node+0x300
+            // points to the per-map data row, whose category at +0x7C is zero for normal maps.
+            // The game rejects every nonzero category (unique maps, hideouts, towers, citadels,
+            // and league bosses), making this authoritative compared with guessing from map tags.
+            if (address == IntPtr.Zero)
+                return true;
+            var row = Read<IntPtr>(address + 0x300);
+            return row == IntPtr.Zero || Read<int>(row + 0x7C) != 0;
+        }
+
+        private void DrawUnchartedLeylines(ImDrawListPtr drawList, UiElementBase atlasUi, RectangleF panelRect,
+            float uiScale, Vector2 mouse, IReadOnlyDictionary<StdTuple2D<int>, Vector2> centers)
+        {
+            // Uncharted Waters reverse-engineering credited to yokkenUA: a ship reveals the 16x16
+            // atlas chunk containing its grid coordinate. Only show the hovered ship's chunk; all
+            // ship chunks at once turn the overlay into an unreadable mesh.
+            (int X, int Y)? hoveredChunk = null;
+            foreach (var button in Core.States.InGameStateObject.GameUi.AtlasOceanButtons.Where(button => button.IsVisible))
+            {
+                var ui = atlasUi[button.Index];
+                if (ui == null)
+                    continue;
+                var min = ui.Position;
+                var max = min + ui.Size;
+                if (mouse.X >= min.X && mouse.X <= max.X && mouse.Y >= min.Y && mouse.Y <= max.Y)
+                {
+                    hoveredChunk = (button.GridPosition.X >> 4, button.GridPosition.Y >> 4);
+                    break;
+                }
+            }
+
+            if (hoveredChunk == null)
+            {
+                foreach (var icon in fogShipIcons)
+                {
+                    if (mouse.X >= icon.Center.X - icon.Half && mouse.X <= icon.Center.X + icon.Half &&
+                        mouse.Y >= icon.Center.Y - icon.Half && mouse.Y <= icon.Center.Y + icon.Half)
+                    {
+                        hoveredChunk = icon.Chunk;
+                        break;
+                    }
+                }
+            }
+
+            if (hoveredChunk == null)
+                return;
+
+            var chunkCenters = centers.Where(entry =>
+                    (entry.Key.X >> 4, entry.Key.Y >> 4) == hoveredChunk.Value)
+                .ToDictionary(entry => entry.Key, entry => entry.Value);
+            var displaySize = ImGui.GetIO().DisplaySize;
+            var screenBounds = new RectangleF(0f, 0f, displaySize.X, displaySize.Y);
+            drawList.ChannelsSetCurrent(ChannelGrid);
+            uint color = ImGuiHelper.Color(Settings.UnchartedLeylineColor);
+            float thickness = MathF.Max(1f, Settings.UnchartedLeylineThickness * uiScale);
+            foreach (var entry in chunkCenters)
+            {
+                bool sourceOnScreen = screenBounds.Contains(entry.Value.X, entry.Value.Y);
+                if (sourceOnScreen)
+                    drawList.AddCircleFilled(entry.Value, MathF.Max(2f, thickness * 0.9f), color);
+                if (!cachedRouteGraph.TryGetValue(entry.Key, out var connected))
+                    continue;
+                foreach (var target in connected)
+                {
+                    bool canonical = entry.Key.X < target.X || (entry.Key.X == target.X && entry.Key.Y <= target.Y);
+                    if (!canonical || !chunkCenters.TryGetValue(target, out var targetCenter))
+                        continue;
+
+                    bool targetOnScreen = screenBounds.Contains(targetCenter.X, targetCenter.Y);
+                    if (sourceOnScreen || targetOnScreen)
+                        drawList.AddLine(entry.Value, targetCenter, color, thickness);
+                }
+            }
+        }
 
         private void LoadBiomeMap()
         {
@@ -1051,6 +1313,101 @@
             }
         }
 
+        private void DrawContentIcons(ImDrawListPtr drawList, IReadOnlyList<string> iconsToDraw, float centerX,
+            float labelTopY, float uiScale)
+        {
+            var icons = new List<(IntPtr Ptr, float W)>();
+            float height = MathF.Max(8f, Settings.ContentIconSize * uiScale);
+            foreach (var basename in iconsToDraw)
+            {
+                if (!TryGetIcon(basename, out var ptr, out var w, out var h)) continue;
+                icons.Add((ptr, height * w / Math.Max(1, h)));
+            }
+            if (icons.Count == 0) return;
+            float gap = 4f * uiScale;
+            float width = icons.Sum(icon => icon.W) + gap * (icons.Count - 1);
+            float x = centerX - width * 0.5f;
+            float y = labelTopY - height - (4f * uiScale);
+            foreach (var icon in icons)
+            {
+                drawList.AddImage(icon.Ptr, new Vector2(x, y), new Vector2(x + icon.W, y + height));
+                x += icon.W + gap;
+            }
+        }
+
+        private bool TryGetIcon(string basename, out IntPtr ptr, out int w, out int h)
+        {
+            if (IconCache.TryGetValue(basename, out var cached))
+            { ptr = cached.Ptr; w = cached.W; h = cached.H; return ptr != IntPtr.Zero; }
+            ptr = IntPtr.Zero; w = h = 0;
+            var file = Path.Join(DllDirectory, "icons", basename + ".png");
+            if (!File.Exists(file)) return false;
+            Core.Overlay.AddOrGetImagePointer(file, false, out ptr, out var iw, out var ih);
+            w = (int)iw; h = (int)ih;
+            IconCache[basename] = (ptr, w, h);
+            return ptr != IntPtr.Zero;
+        }
+
+        private static bool HasAtlasContent(NodeData node, string text)
+        {
+            return node.ContentDisplay.Any(content => content.Contains(text, StringComparison.OrdinalIgnoreCase)) ||
+                   node.RawContents.Any(content => content.Contains(text, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool MatchesCategory(MapGroupSettings category, NodeData node, string mapName,
+            bool searchActive, bool matchesSearch)
+        {
+            if (category.Maps.Any(map => NormalizeName(map).Equals(mapName, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            bool Enabled(string label) => category.BuiltInTargets.TryGetValue(label, out var enabled) && enabled;
+            bool Named() => category.BuiltInTargets.Any(target => target.Value
+                && NormalizeName(target.Key).Equals(mapName, StringComparison.OrdinalIgnoreCase));
+
+            return category.BuiltInKey switch
+            {
+                "search" => Enabled("Current search query") && searchActive && matchesSearch,
+                "corrupted_nexus" => Enabled("Corrupted Nexus content") && IsCorruptedNexus(node),
+                "grand_mirror" => Enabled("Grand Mirror content") && HasAtlasContent(node, "Grand Mirror"),
+                "" => false,
+                _ => Named(),
+            };
+        }
+
+        private Vector4 CategoryPathColor(string builtInKey, Vector4 fallback)
+        {
+            var category = Settings.MapGroups.FirstOrDefault(group => group.BuiltInKey == builtInKey);
+            return category == null ? fallback : MostColorfulColor(category.FontColor, category.BackgroundColor);
+        }
+
+        private static Vector4 MostColorfulColor(Vector4 foreground, Vector4 background)
+        {
+            static float Chroma(Vector4 color) =>
+                MathF.Max(color.X, MathF.Max(color.Y, color.Z)) - MathF.Min(color.X, MathF.Min(color.Y, color.Z));
+            static float Luminance(Vector4 color) =>
+                (0.2126f * color.X) + (0.7152f * color.Y) + (0.0722f * color.Z);
+
+            var foregroundChroma = Chroma(foreground);
+            var backgroundChroma = Chroma(background);
+            if (MathF.Abs(foregroundChroma - backgroundChroma) > 0.001f)
+                return backgroundChroma > foregroundChroma ? background : foreground;
+
+            return Luminance(background) > Luminance(foreground) ? background : foreground;
+        }
+
+        private static bool MatchesSearch(NodeData node, string mapName, string searchTerm)
+        {
+            return mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   HasAtlasContent(node, searchTerm);
+        }
+
+        private static bool IsCorruptedNexus(NodeData node)
+        {
+            return !node.Tags.Exists(tag => string.Equals(tag, "arbiter", StringComparison.OrdinalIgnoreCase)) &&
+                   HasAtlasContent(node, "Corruption") &&
+                   HasAtlasContent(node, "Powerful Map Boss");
+        }
+
         private static ContentInfo MatchContent(string contentName,
             Dictionary<string, ContentInfo> tagMap,
             Dictionary<string, ContentInfo> plainMap)
@@ -1148,6 +1505,80 @@
             ImGuiHelper.ToolTip("Maximum path length in maps to clear.");
             ImGui.SameLine();
             ImGui.Text(label);
+        }
+
+        private void DrawUnifiedCategories()
+        {
+            for (int i = 0; i < Settings.MapGroups.Count; i++)
+            {
+                var category = Settings.MapGroups[i];
+                ImGui.PushID(i);
+                ImGui.Checkbox("##route", ref category.DrawPath);
+                ImGui.SameLine();
+                ColorSwatch("##pathText", ref category.FontColor);
+                ImGuiHelper.ToolTip("Node-text color. The path automatically uses the more colorful of the text and background colors.");
+                ImGui.SameLine();
+                ColorSwatch("##background", ref category.BackgroundColor);
+                ImGuiHelper.ToolTip("Node background color. The path automatically uses the more colorful of the text and background colors.");
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(75);
+                ImGui.SliderInt("##hops", ref category.MaxHops, 1, 200);
+                ImGui.SameLine();
+                bool open = ImGui.TreeNode($"{category.Name}##category");
+                if (open)
+                {
+                    ImGui.Indent(16f);
+                    if (ImGui.SmallButton("Up") && i > 0) MoveMapGroup(i, -1);
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton("Down") && i + 1 < Settings.MapGroups.Count) MoveMapGroup(i, 1);
+                    if (string.IsNullOrEmpty(category.BuiltInKey))
+                    {
+                        ImGui.SetNextItemWidth(260);
+                        ImGui.InputText("Category name", ref category.Name, 256);
+                    }
+
+                    var targetNames = category.BuiltInTargets.Keys.ToList();
+                    foreach (var target in targetNames)
+                    {
+                        bool enabled = category.BuiltInTargets[target];
+                        if (ImGui.Checkbox($"{target}##fixed", ref enabled)) category.BuiltInTargets[target] = enabled;
+                    }
+
+                    for (int j = 0; j < category.Maps.Count; j++)
+                    {
+                        var map = category.Maps[j];
+                        ImGui.SetNextItemWidth(260);
+                        if (ImGui.InputTextWithHint($"##map{j}", "map name", ref map, 256)) category.Maps[j] = map;
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton($"Remove##map{j}")) { category.Maps.RemoveAt(j); break; }
+                    }
+                    if (ImGui.SmallButton("Add map")) category.Maps.Add(string.Empty);
+
+                    if (string.IsNullOrEmpty(category.BuiltInKey))
+                    {
+                        ImGui.SameLine();
+                        if (ImGui.SmallButton("Delete category"))
+                        {
+                            Settings.MapGroups.RemoveAt(i);
+                            ImGui.Unindent(16f);
+                            ImGui.TreePop();
+                            ImGui.PopID();
+                            break;
+                        }
+                    }
+                    ImGui.Unindent(16f);
+                    ImGui.TreePop();
+                }
+                ImGui.PopID();
+            }
+
+            ImGui.InputTextWithHint("##newCategory", "new category name", ref Settings.GroupNameInput, 256);
+            ImGui.SameLine();
+            if (ImGui.Button("Add category") && !string.IsNullOrWhiteSpace(Settings.GroupNameInput))
+            {
+                Settings.MapGroups.Add(new MapGroupSettings(Settings.GroupNameInput.Trim(), Settings.DefaultBackgroundColor, Settings.DefaultFontColor));
+                Settings.GroupNameInput = string.Empty;
+            }
         }
 
         [DllImport("user32.dll")]

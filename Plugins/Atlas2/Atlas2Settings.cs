@@ -1,5 +1,6 @@
 ﻿using GameHelper.Plugin;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace Atlas2
@@ -12,6 +13,7 @@ namespace Atlas2
         public bool ControllerMode = false;
 
         public string SearchQuery = string.Empty;
+        public int CategorySettingsVersion = 10;
 
         public bool DrawLinesToTowers = false;
         public Vector4 TowerPathColor = new(0.78f, 0.76f, 0.05f, 50f / 255f);
@@ -39,6 +41,12 @@ namespace Atlas2
         public bool DrawLinesToRitual = false;
         public Vector4 RitualPathColor = new(64f / 255f, 0f, 244f / 255f, 1f); // 64,0,244
         public int RitualMaxHops = 100;
+        public bool DrawLinesToCorruptedNexus = false;
+        public Vector4 CorruptedNexusPathColor = new(0.45f, 0f, 0f, 1f); // dark red
+        public int CorruptedNexusMaxHops = 100;
+        public bool DrawLinesToGrandMirror = false;
+        public Vector4 GrandMirrorPathColor = new(0.7f, 0.9f, 1f, 1f); // pale blue
+        public int GrandMirrorMaxHops = 100;
         public bool DrawLinesToBreach = false;
         public Vector4 BreachPathColor = new(255f / 255f, 51f / 255f, 189f / 255f, 1f); // 255,51,189
         public int BreachMaxHops = 100;
@@ -58,9 +66,23 @@ namespace Atlas2
         public Vector4 AtlasGraphLineColor = new(1f, 1f, 1f, 0.35f);
         public float AtlasGraphOffsetX = -10f;
         public float AtlasGraphOffsetY = -5f;
+        public bool ShowUnchartedLeylines = false;
+        public Vector4 UnchartedLeylineColor = new(0.2f, 0.85f, 1f, 0.9f);
+        public float UnchartedLeylineThickness = 10f;
+        public bool ShowShipsInFog = false;
+        public float ShipIconSize = 46f;
+        public bool ShowRitualPrediction = false;
+        public bool LogRitualRolls = false;
+        public bool ShowRitualPlanner = true;
+        public string RitualRewardFilter = string.Empty;
+        public float RitualPlannerFontScale = 1f;
+        public Dictionary<string, int> RitualRewardWeights = [];
         public bool ShowMapBadges = true;
         public bool ShowMapCounts = false;
         public bool ShowContent = true;
+        public bool ShowNodeIndex = false;
+        public bool ShowContentIcons = false;
+        public float ContentIconSize = 48f;
         public bool ShowContentDebug = false;
         public bool ShowBiomeBorder = true;
         public float BiomeBorderThickness = 2.5f;
@@ -80,51 +102,49 @@ namespace Atlas2
 
         public Atlas2Settings()
         {
-            var citadels = new MapGroupSettings("Citadels", new Vector4(1f, 1f, 1f, 0.85f), new Vector4(1f, 0f, 0f, 1f));
-            citadels.Maps.Add("The Copper Citadel");
-            citadels.Maps.Add("The Iron Citadel");
-            citadels.Maps.Add("The Stone Citadel");
-            citadels.Maps.Add("The Matriarch Halls");
-            citadels.Maps.Add("The Patriarch Halls");
+            AddBuiltIn("Search", "search", new(1f, 1f, 1f, 1f), new(0f, 0f, 0f, 0.85f), "Current search query");
+            MapGroups[^1].DrawPath = true;
+            AddNamed("Lineage Maps", "lineage", new(0f, 0f, 0f, 1f), "Derelict Mansion", "Sacred Reservoir", "Sealed Vault", "The Jade Isles");
+            MapGroups[^1].BackgroundColor = new(0f, 181f / 255f, 33f / 255f, 1f);
+            AddBuiltIn("Corrupted Nexus", "corrupted_nexus", new(0.45f, 0f, 0f, 1f), new(0f, 0f, 0f, 0.85f), "Corrupted Nexus content");
+            AddBuiltIn("Grand Mirror", "grand_mirror", new(0f, 170f / 255f, 1f, 1f), new(0f, 0f, 0f, 0.85f), "Grand Mirror content");
+            AddNamed("Atlas Progression", "atlas_progression", new(0.55f, 0.27f, 0.07f, 1f), "Precursor Tower", "Ancient Gateway", "The Burning Monolith", "Western Gateway", "Eastern Gateway", "Western Enigma Chamber", "Eastern Enigma Chamber", "The Origin Tower");
+            AddNamed("Quests", "quests", new(0f, 1f, 1f, 1f), "The Withered Willow");
+            AddNamed("Ritual", "ritual", new(0.25f, 0f, 0.96f, 1f), "Caer Tarth", "Crux of Nothingness");
+            MapGroups[^1].BackgroundColor = new(1f, 1f, 1f, 0.85f);
+            AddNamed("Breach", "breach", new(1f, 0.2f, 0.74f, 1f), "Hive Colony", "Hive Fortress");
+            AddNamed("Expedition", "expedition", new(0.36f, 0.76f, 0.93f, 1f), "Barren Atoll", "Bleached Shoals", "Craggy Peninsula", "Exhumed Ruins", "Frigid Bluffs", "Grazed Prairie", "Lush Isle", "Moor of Fallen Skies", "Mournful Cliffside", "Obscure Island", "Scorched Cay", "Secluded Temple", "Sloughed Gully", "Sprawling Jungle", "Stagnant Basin", "The Chained Beast", "The Fallen Star", "Tomb of the Fallen Knight", "Ruins of Kingsmarch");
+            var defaultExpeditionTargets = new HashSet<string>
+            {
+                "Moor of Fallen Skies", "Mournful Cliffside", "Obscure Island", "Secluded Temple",
+                "The Chained Beast", "The Fallen Star", "Tomb of the Fallen Knight", "Ruins of Kingsmarch",
+            };
+            foreach (var target in MapGroups[^1].BuiltInTargets.Keys.ToList())
+                MapGroups[^1].BuiltInTargets[target] = defaultExpeditionTargets.Contains(target);
+            AddNamed("Abyss", "abyss", new(0.15f, 1f, 0f, 1f), "The Well of Souls");
+            AddNamed("Temple", "temple", new(0.87f, 0.65f, 0f, 1f), "Vaal Ruins");
+            AddNamed("Citadels", "arbiter", new(1f, 0f, 0f, 1f), "The Copper Citadel", "The Iron Citadel", "The Stone Citadel", "The Matriarch Halls", "The Patriarch Halls");
+            MapGroups[^1].BackgroundColor = new(1f, 1f, 1f, 0.85f);
+            AddNamed("Towers", "towers", new(0f, 0f, 0f, 0.85f), "Bluff", "Lost Towers", "Mesa", "Sinking Spire", "Alpine Ridge");
+            MapGroups[^1].BackgroundColor = new(0.86f, 0f, 0.88f, 1f);
+            AddNamed("Good", "good", new(1f, 1f, 0f, 1f), "Burial Bog", "Creek", "Rustbowl", "Sandspit", "Savannah", "Steaming Springs", "Steppe", "Wetlands", "Willow");
+            AddNamed("Unique Maps", "unique", new(0f, 0f, 0f, 0.85f), "Ancient Gateway", "Castaway", "Eastern Gateway", "Freight", "Jado's Campsite", "Merchant's Campsite", "Moment of Zen", "Moor of Fallen Skies", "Precursor Tower", "Site of the Chosen", "The Ezomyte Megaliths", "The Fractured Lake", "The Silent Cave", "The Viridian Wildwood", "The Voyage", "Untainted Paradise", "Vaults of Kamasa", "Western Gateway");
+            MapGroups[^1].BackgroundColor = new(1f, 0.56f, 0f, 1f);
+            AddNamed("Special", "special", new(1f, 1f, 1f, 1f), "Ice Cave");
+        }
 
-            var pinnacleBosses = new MapGroupSettings("Pinnacle Boss", new Vector4(0.471f, 0.196f, 0.471f, 0.85f), new Vector4(1f, 1f, 1f, 1f));
-            pinnacleBosses.Maps.Add("The Burning Monolith");
+        private void AddBuiltIn(string name, string key, Vector4 color, Vector4 background, params string[] targets)
+        {
+            var group = new MapGroupSettings(name, background, color) { BuiltInKey = key };
+            foreach (var target in targets) group.BuiltInTargets[target] = true;
+            MapGroups.Add(group);
+        }
 
-            var special = new MapGroupSettings("Special", new Vector4(0.737f, 0.376f, 0.145f, 0.85f), new Vector4(0f, 0f, 0f, 1f));
-            special.Maps.Add("Untainted Paradise");
-            special.Maps.Add("Vaults of Kamasa");
-            special.Maps.Add("Moment of Zen");
-            special.Maps.Add("The Ezomyte Megaliths");
-            special.Maps.Add("Derelict Mansion");
-            special.Maps.Add("The Viridian Wildwood");
-            special.Maps.Add("The Jade Isles");
-            special.Maps.Add("Castaway");
-            special.Maps.Add("The Fractured Lake");
-            special.Maps.Add("Ice Cave");
-
-            var good = new MapGroupSettings("Good", new Vector4(0.157f, 0.157f, 0f, 0.85f), new Vector4(1f, 1f, 0f, 1f));
-            good.Maps.Add("Burial Bog");
-            good.Maps.Add("Creek");
-            good.Maps.Add("Rustbowl");
-            good.Maps.Add("Sandspit");
-            good.Maps.Add("Savannah");
-            good.Maps.Add("Steaming Springs");
-            good.Maps.Add("Steppe");
-            good.Maps.Add("Wetlands");
-            good.Maps.Add("Willow");
-
-            var towers = new MapGroupSettings("Towers", new Vector4(0.863f, 0f, 0.882f, 0.85f), new Vector4(0f, 0f, 0f, 1f));
-            towers.Maps.Add("Bluff");
-            towers.Maps.Add("Lost Towers");
-            towers.Maps.Add("Mesa");
-            towers.Maps.Add("Sinking Spire");
-            towers.Maps.Add("Alpine Ridge");
-
-            MapGroups.Add(citadels);
-            MapGroups.Add(towers);
-            MapGroups.Add(pinnacleBosses);
-            MapGroups.Add(good);
-            MapGroups.Add(special);
+        private void AddNamed(string name, string key, Vector4 color, params string[] targets)
+        {
+            var group = new MapGroupSettings(name, new(0f, 0f, 0f, 0.85f), color) { BuiltInKey = key };
+            foreach (var target in targets) group.BuiltInTargets[target] = true;
+            MapGroups.Add(group);
         }
     }
 
@@ -133,6 +153,10 @@ namespace Atlas2
         public string Name = name;
         public Vector4 BackgroundColor = backgroundColor;
         public Vector4 FontColor = fontColor;
+        public bool DrawPath = false;
+        public int MaxHops = 100;
+        public string BuiltInKey = string.Empty;
+        public Dictionary<string, bool> BuiltInTargets = [];
         public List<string> Maps = [];
         public string MapNameInput = string.Empty;
     }

@@ -9,6 +9,7 @@
   "icon_picker.window": "Selector de iconos (haga doble clic para seleccionar un elemento)",
   "icons.abyss": "Iconos del abismo",
   "icons.abyss.help": "Íconos para los nodos del Abismo. 'Otro' coincide con cualquier entidad restante del camino del Abismo.",
+  "icons.azmeri_spirits": "Azmeri Spirits",
   "icons.base_game": "Iconos del juego base",
   "icons.base_game.help": "El icono de bloqueos se puede configurar desde la categoría Iconos de Delve, es decir, 'Bloqueo O DelveWall'",
   "icons.boss": "Iconos de jefe",

@@ -9,6 +9,7 @@
   "icon_picker.window": "Sélecteur d'icônes (double-cliquez pour sélectionner un élément)",
   "icons.abyss": "Icônes des abysses",
   "icons.abyss.help": "Icônes pour les nœuds Abyss. « Autre » correspond à toute entité restante du chemin des Abysses.",
+  "icons.azmeri_spirits": "Azmeri Spirits",
   "icons.base_game": "Icônes du jeu de base",
   "icons.base_game.help": "L'icône des blocages peut être définie à partir de la catégorie Icônes Delve, c'est-à-dire « Blocage OU DelveWall »",
   "icons.boss": "Icônes de patron",

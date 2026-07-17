@@ -1,4 +1,4 @@
-﻿// <copyright file="RadarSettings.cs" company="PlaceholderCompany">
+// <copyright file="RadarSettings.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -20,6 +20,71 @@ namespace Radar
     {
         private static readonly Vector2 IconSize = new(64, 64);
         private static int poiMonsterGroupNumber = 0;
+
+        /// <summary>
+        /// Prefix shared by all Azmeri Spirit entity paths.
+        /// </summary>
+        public const string AzmeriSpiritPathPrefix = "Metadata/Monsters/TormentedSpirits/TormentedSpiritofthe";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Ox Wild.
+        /// </summary>
+        public const string TormentedSpiritOfTheOxWildPath = AzmeriSpiritPathPrefix + "OxWild";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Boar Wild.
+        /// </summary>
+        public const string TormentedSpiritOfTheBoarWildPath = AzmeriSpiritPathPrefix + "BoarWild";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Cat Vivid.
+        /// </summary>
+        public const string TormentedSpiritOfTheCatVividPath = AzmeriSpiritPathPrefix + "CatVivid";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Owl Primal.
+        /// </summary>
+        public const string TormentedSpiritOfTheOwlPrimalPath = AzmeriSpiritPathPrefix + "OwlPrimal";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Serpent Primal.
+        /// </summary>
+        public const string TormentedSpiritOfTheSerpentPrimalPath = AzmeriSpiritPathPrefix + "SerpentPrimal";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Primate Primal.
+        /// </summary>
+        public const string TormentedSpiritOfThePrimatePrimalPath = AzmeriSpiritPathPrefix + "PrimatePrimal";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Bear Wild.
+        /// </summary>
+        public const string TormentedSpiritOfTheBearWildPath = AzmeriSpiritPathPrefix + "BearWild";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Wolf Vivid.
+        /// </summary>
+        public const string TormentedSpiritOfTheWolfVividPath = AzmeriSpiritPathPrefix + "WolfVivid";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Stag Vivid.
+        /// </summary>
+        public const string TormentedSpiritOfTheStagVividPath = AzmeriSpiritPathPrefix + "StagVivid";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Rabbit Sacred.
+        /// </summary>
+        public const string TormentedSpiritOfTheRabbitSacredPath = AzmeriSpiritPathPrefix + "RabbitSacred";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Fox Sacred.
+        /// </summary>
+        public const string TormentedSpiritOfTheFoxSacredPath = AzmeriSpiritPathPrefix + "FoxSacred";
+
+        /// <summary>
+        /// Base entity path for the Spirit of the Abyss.
+        /// </summary>
+        public const string TormentedSpiritOfTheAbyssPath = AzmeriSpiritPathPrefix + "Abyss";
 
         /// <summary>
         /// Multipler to apply to the Large Map icons
@@ -234,6 +299,31 @@ namespace Radar
         /// Icons to display on the map. Base game includes normal chests, strongboxes, monsters etc.
         /// </summary>
         public Dictionary<string, IconPicker> BaseIcons = new();
+
+        /// <summary>
+        /// Icons to display on the map for Azmeri Spirits, keyed by display name.
+        /// </summary>
+        public Dictionary<string, IconPicker> AzmeriSpiritIcons = new();
+
+        /// <summary>
+        /// Maps each Azmeri Spirit base entity path to its display key in <see cref="AzmeriSpiritIcons"/>.
+        /// Add a new variant here plus a default in <see cref="AddDefaultAzmeriSpiritIcons"/>.
+        /// </summary>
+        public static readonly Dictionary<string, string> AzmeriSpiritPathMap = new()
+        {
+            { TormentedSpiritOfTheOxWildPath, "Ox (Wild)" },
+            { TormentedSpiritOfTheBoarWildPath, "Boar (Wild)" },
+            { TormentedSpiritOfTheCatVividPath, "Cat (Vivid)" },
+            { TormentedSpiritOfTheOwlPrimalPath, "Owl (Primal)" },
+            { TormentedSpiritOfTheSerpentPrimalPath, "Serpent (Primal)" },
+            { TormentedSpiritOfThePrimatePrimalPath, "Primate (Primal)" },
+            { TormentedSpiritOfTheBearWildPath, "Bear (Wild)" },
+            { TormentedSpiritOfTheWolfVividPath, "Wolf (Vivid)" },
+            { TormentedSpiritOfTheStagVividPath, "Stag (Vivid)" },
+            { TormentedSpiritOfTheRabbitSacredPath, "Rabbit (Sacred)" },
+            { TormentedSpiritOfTheFoxSacredPath, "Fox (Sacred)" },
+            { TormentedSpiritOfTheAbyssPath, "Abyss (Sacred)" },
+        };
 
         /// <summary>
         /// Icons to display on the map. POIMonsters includes icons for monsters that are in custom category created by user
@@ -650,6 +740,7 @@ namespace Radar
         {
             var basicIconPathName = Path.Join(dllDirectory, "icons.png");
             this.AddDefaultBaseGameIcons(basicIconPathName);
+            this.AddDefaultAzmeriSpiritIcons(basicIconPathName);
             this.AddDefaultPOIMonsterIcons(basicIconPathName);
             this.AddDefaultOtherImportantObjectsIcons(basicIconPathName);
             this.AddDefaultBreachIcons(basicIconPathName);
@@ -693,6 +784,74 @@ namespace Radar
             this.BaseIcons.TryAdd("Red Bestiary Monster", new IconPicker(iconPathName, 7, 2, 35, IconSize));
 
             this.BaseIcons.TryAdd("Stairs", new IconPicker(iconPathName, 4, 1, 40, IconSize));
+        }
+
+        private void AddDefaultAzmeriSpiritIcons(string iconPathName)
+        {
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheOxWildPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheOxWildPath],
+                new IconPicker(iconPathName, 2, 33, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheBoarWildPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheBoarWildPath],
+                new IconPicker(iconPathName, 2, 33, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheCatVividPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheCatVividPath],
+                new IconPicker(iconPathName, 1, 32, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheOwlPrimalPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheOwlPrimalPath],
+                new IconPicker(iconPathName, 4, 32, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheSerpentPrimalPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheSerpentPrimalPath],
+                new IconPicker(iconPathName, 4, 32, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfThePrimatePrimalPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfThePrimatePrimalPath],
+                new IconPicker(iconPathName, 4, 32, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheBearWildPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheBearWildPath],
+                new IconPicker(iconPathName, 2, 33, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheWolfVividPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheWolfVividPath],
+                new IconPicker(iconPathName, 1, 32, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheStagVividPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheStagVividPath],
+                new IconPicker(iconPathName, 1, 32, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheRabbitSacredPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheRabbitSacredPath],
+                new IconPicker(iconPathName, 6, 31, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheFoxSacredPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheFoxSacredPath],
+                new IconPicker(iconPathName, 6, 31, 40, IconSize));
+            this.AddDefaultAzmeriSpiritIcon(
+                TormentedSpiritOfTheAbyssPath,
+                AzmeriSpiritPathMap[TormentedSpiritOfTheAbyssPath],
+                new IconPicker(iconPathName, 3, 31, 40, IconSize));
+        }
+
+        private void AddDefaultAzmeriSpiritIcon(
+            string entityPath,
+            string displayKey,
+            IconPicker defaultIcon)
+        {
+            // Migrate settings created before display keys were introduced without replacing a
+            // user's existing icon choice.
+            if (this.AzmeriSpiritIcons.TryGetValue(entityPath, out var legacyIcon))
+            {
+                this.AzmeriSpiritIcons.TryAdd(displayKey, legacyIcon);
+                _ = this.AzmeriSpiritIcons.Remove(entityPath);
+            }
+
+            this.AzmeriSpiritIcons.TryAdd(displayKey, defaultIcon);
         }
 
         private void AddDefaultPOIMonsterIcons(string iconPathName)
