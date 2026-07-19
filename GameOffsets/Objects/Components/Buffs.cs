@@ -21,6 +21,7 @@ namespace GameOffsets.Objects.Components
 
         // [FieldOffset(0x0020)] public float unknown0; // always set to 1.
         [FieldOffset(0x0028)] public uint SourceEntityId;
+        [FieldOffset(0x2C)] public uint RawStage;
 
         //[FieldOffset(0x0030)] public long Unknown1;
         //[FieldOffset(0x0038)] public int unknown2;

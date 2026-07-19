@@ -1,4 +1,4 @@
-﻿// <copyright file="DynamicConditionState.cs" company="PlaceholderCompany">
+// <copyright file="DynamicConditionState.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -21,6 +21,7 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
     [DynamicLinqType]
     public class DynamicConditionState : IDynamicConditionState
     {
+        private readonly InGameState state = null!;
         private readonly Lazy<NearbyMonsterInfo> nearbyMonsterInfo = null!;
 
         /// <summary>
@@ -29,6 +30,7 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         /// <param name="state">State to build the structure from</param>
         public DynamicConditionState(InGameState state)
         {
+            this.state = state;
             if (state != null)
             {
                 var player = state.CurrentAreaInstance.Player;
@@ -265,5 +267,54 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         ///     Capture the key press event
         /// </summary>
         public bool IsKeyPressedForAction(VK vk) => Utils.IsKeyPressed(vk);
+
+        /// <summary>
+        ///     Gets the stage of a skill/buff on a specific client-side effect entity.
+        /// </summary>
+        public int SkillStage(string skillNameOrPath, string buffName)
+        {
+            if (this.state == null)
+            {
+                return 0;
+            }
+
+            var area = this.state.CurrentAreaInstance;
+            if (area == null)
+            {
+                return 0;
+            }
+
+            foreach (var entity in area.AwakeEntities.Values)
+            {
+                if (entity.Path.Contains(skillNameOrPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (entity.TryGetComponent<Buffs>(out var buffsComponent))
+                    {
+                        var buffEntry = buffsComponent.StatusEffects
+                            .FirstOrDefault(x => x.Key.Contains(buffName, StringComparison.OrdinalIgnoreCase));
+
+                        if (buffEntry.Key != null)
+                        {
+                            int raw = (int)buffEntry.Value.RawStage;
+                            if (buffEntry.Key.Contains("spear_sandstorm", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return (raw - 15) / 3;
+                            }
+                            return raw;
+                        }
+                    }
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Gets the stage of a skill/buff on a specific client-side effect entity, defaulting to "spear_sandstorm" buffName.
+        /// </summary>
+        public int SkillStage(string skillNameOrPath)
+        {
+            return this.SkillStage(skillNameOrPath, "spear_sandstorm");
+        }
     }
 }
