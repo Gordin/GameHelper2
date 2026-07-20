@@ -89,6 +89,9 @@ namespace LootValue
         /// this only controls how quickly new drops appear and how much CPU the scan uses.</summary>
         public int RescanIntervalMs = 200;
 
+        /// <summary>How often (ms) open stash and inventory panels are rescanned and repriced.</summary>
+        public int SlotRescanIntervalMs = 750;
+
         /// <summary>Normal label text color (RGBA 0-1).</summary>
         public Vector4 TextColor = new Vector4(1f, 235f / 255f, 140f / 255f, 1f);
 

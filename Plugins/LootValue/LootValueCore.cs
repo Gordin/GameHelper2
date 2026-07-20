@@ -55,6 +55,11 @@ namespace LootValue
         private readonly HashSet<string> groundTagNames = new(StringComparer.OrdinalIgnoreCase);
         private SlotScanReport leftSlotReport = new(IntPtr.Zero);
         private SlotScanReport rightSlotReport = new(IntPtr.Zero);
+        private List<SlotInfo> cachedLeftSlots = new();
+        private List<SlotInfo> cachedRightSlots = new();
+        private IntPtr cachedLeftPanelAddress;
+        private IntPtr cachedRightPanelAddress;
+        private DateTime nextSlotScanUtc = DateTime.MinValue;
 
         private string SettingPathname => Path.Join(this.DllDirectory, "config", "settings.txt");
 
@@ -134,6 +139,11 @@ namespace LootValue
             this.readStdWStringMethod = null;
             this.readIntPtrMethod = null;
             this.groundTagNames.Clear();
+            this.cachedLeftSlots.Clear();
+            this.cachedRightSlots.Clear();
+            this.cachedLeftPanelAddress = IntPtr.Zero;
+            this.cachedRightPanelAddress = IntPtr.Zero;
+            this.nextSlotScanUtc = DateTime.MinValue;
         }
 
         /// <inheritdoc/>
@@ -187,6 +197,8 @@ namespace LootValue
 
             ImGui.SliderInt(this.PluginText.Label("settings.rescan_interval", "Rescan interval (ms)", "LootValueRescanInterval"), ref this.Settings.RescanIntervalMs, 16, 1000);
             ImGui.TextDisabled(this.PluginText.T("settings.rescan_interval.tooltip", "Positions redraw every frame; rescan only re-detects items/prices."));
+            ImGui.SliderInt(this.PluginText.Label("settings.slot_rescan_interval", "Stash/inventory rescan interval (ms)", "LootValueSlotRescanInterval"), ref this.Settings.SlotRescanIntervalMs, 100, 2000);
+            ImGui.TextDisabled(this.PluginText.T("settings.slot_rescan_interval.tooltip", "Cached slot values draw every frame; panel traversal and pricing run at this interval."));
 
             ImGui.ColorEdit4(this.PluginText.Label("settings.text_color", "Text color", "LootValueTextColor"), ref this.Settings.TextColor);
             ImGui.ColorEdit4(this.PluginText.Label("settings.highlight_color", "Highlight color", "LootValueHighlightColor"), ref this.Settings.HighlightColor);
@@ -388,7 +400,10 @@ namespace LootValue
         {
             this.cachedTagChips.Clear();
             this.RefreshGroundTagNames();
-            var root = Core.States.InGameStateObject.GameUi.Address;
+            var gameUi = Core.States.InGameStateObject.GameUi;
+            var root = gameUi.Address;
+            var leftPanel = gameUi.LeftPanel.Address;
+            var rightPanel = gameUi.RightPanel.Address;
             if (root == IntPtr.Zero || this.readUiOffsetMethod == null || this.readStdVectorMethod == null) return;
 
             var queue = new Queue<IntPtr>();
@@ -398,6 +413,9 @@ namespace LootValue
             {
                 var el = queue.Dequeue();
                 if (el == IntPtr.Zero || !visited.Add(el)) continue;
+                // Stash, inventory, vendor, and other large-panel text cannot be a ground loot label.
+                // Do not traverse those potentially enormous subtrees when a panel is open.
+                if (el != root && (el == leftPanel || el == rightPanel)) continue;
                 if (this.readUiOffsetMethod.Invoke(this.handleObj, new object[] { el }) is not UiElementBaseOffset off) continue;
                 if (el != root && !UiElementBaseFuncs.IsVisibleChecker(off.Flags)) continue;
 
@@ -547,42 +565,55 @@ namespace LootValue
             var gameUi = Core.States.InGameStateObject.GameUi;
             if (gameUi.Address == IntPtr.Zero || !this.EnsureReflection()) return;
 
-            var leftSlots = new List<SlotInfo>();
-            var rightSlots = new List<SlotInfo>();
-            var leftHovered = false;
-            var rightHovered = false;
+            var scanLeft = this.Settings.ShowStashOverlay || this.Settings.ShowSlotDebugInfo;
+            var scanRight = this.Settings.ShowInventoryOverlay || this.Settings.ShowSlotDebugInfo;
+            var leftAddress = scanLeft && gameUi.LeftPanel.IsVisible ? gameUi.LeftPanel.Address : IntPtr.Zero;
+            var rightAddress = scanRight && gameUi.RightPanel.IsVisible ? gameUi.RightPanel.Address : IntPtr.Zero;
 
-            if (gameUi.LeftPanel.IsVisible)
+            if (leftAddress != this.cachedLeftPanelAddress || rightAddress != this.cachedRightPanelAddress)
             {
-                leftSlots = this.ScanItemSlots(
-                    gameUi.LeftPanel.Address,
-                    gameUi.LeftPanel.Position,
-                    gameUi.LeftPanel.Size,
-                    out leftHovered,
-                    out this.leftSlotReport);
-            }
-            else
-            {
-                this.leftSlotReport = new SlotScanReport(IntPtr.Zero);
+                this.cachedLeftPanelAddress = leftAddress;
+                this.cachedRightPanelAddress = rightAddress;
+                this.nextSlotScanUtc = DateTime.MinValue;
             }
 
-            if (gameUi.RightPanel.IsVisible)
+            var now = DateTime.UtcNow;
+            if (now >= this.nextSlotScanUtc)
             {
-                rightSlots = this.ScanItemSlots(
-                    gameUi.RightPanel.Address,
-                    gameUi.RightPanel.Position,
-                    gameUi.RightPanel.Size,
-                    out rightHovered,
-                    out this.rightSlotReport);
-            }
-            else
-            {
-                this.rightSlotReport = new SlotScanReport(IntPtr.Zero);
+                this.nextSlotScanUtc = now.AddMilliseconds(Math.Clamp(this.Settings.SlotRescanIntervalMs, 100, 2000));
+                if (leftAddress != IntPtr.Zero)
+                {
+                    this.cachedLeftSlots = this.ScanItemSlots(
+                        leftAddress,
+                        gameUi.LeftPanel.Position,
+                        gameUi.LeftPanel.Size,
+                        out this.leftSlotReport);
+                }
+                else
+                {
+                    this.cachedLeftSlots.Clear();
+                    this.leftSlotReport = new SlotScanReport(IntPtr.Zero);
+                }
+
+                if (rightAddress != IntPtr.Zero)
+                {
+                    this.cachedRightSlots = this.ScanItemSlots(
+                        rightAddress,
+                        gameUi.RightPanel.Position,
+                        gameUi.RightPanel.Size,
+                        out this.rightSlotReport);
+                }
+                else
+                {
+                    this.cachedRightSlots.Clear();
+                    this.rightSlotReport = new SlotScanReport(IntPtr.Zero);
+                }
             }
 
-            var hidePrices = this.Settings.HideSlotPricesOnHover && (leftHovered || rightHovered);
-            this.DrawItemSlots(leftSlots, this.Settings.ShowStashOverlay, hidePrices);
-            this.DrawItemSlots(rightSlots, this.Settings.ShowInventoryOverlay, hidePrices);
+            var hidePrices = this.Settings.HideSlotPricesOnHover &&
+                             (IsAnySlotHovered(this.cachedLeftSlots) || IsAnySlotHovered(this.cachedRightSlots));
+            this.DrawItemSlots(this.cachedLeftSlots, this.Settings.ShowStashOverlay, hidePrices);
+            this.DrawItemSlots(this.cachedRightSlots, this.Settings.ShowInventoryOverlay, hidePrices);
             if (this.Settings.ShowSlotDebugInfo)
             {
                 this.DrawSlotDiagnosticsWindow();
@@ -593,14 +624,12 @@ namespace LootValue
             IntPtr panelAddress,
             Vector2 panelPosition,
             Vector2 panelSize,
-            out bool panelHovered,
             out SlotScanReport report)
         {
-            panelHovered = false;
             report = new SlotScanReport(panelAddress);
-            var candidates = new List<SlotInfo>();
+            var candidatesByItem = new Dictionary<IntPtr, List<SlotElementCandidate>>();
             if (panelAddress == IntPtr.Zero || this.readUiOffsetMethod == null ||
-                this.readStdVectorMethod == null || this.readIntPtrMethod == null) return candidates;
+                this.readStdVectorMethod == null || this.readIntPtrMethod == null) return new List<SlotInfo>();
 
             var queue = new Queue<(IntPtr Address, IntPtr Parent)>();
             var visited = new HashSet<IntPtr>();
@@ -625,9 +654,44 @@ namespace LootValue
                 if (itemAddress == IntPtr.Zero) continue;
                 report.NonZeroPointers++;
 
+                if (!candidatesByItem.TryGetValue(itemAddress, out var itemCandidates))
+                {
+                    itemCandidates = new List<SlotElementCandidate>();
+                    candidatesByItem[itemAddress] = itemCandidates;
+                }
+
+                itemCandidates.Add(new SlotElementCandidate(element, parent));
+            }
+
+            // Premium tabs expose many ghost UI copies. Deduplicate by item pointer before validating,
+            // constructing components, reading mods, or pricing so each real item pays those costs once.
+            report.UniquePointers = candidatesByItem.Count;
+            var panelMax = panelPosition + panelSize;
+            var slots = new List<SlotInfo>();
+            foreach (var (itemAddress, itemCandidates) in candidatesByItem)
+            {
+                var hasVisibleRect = false;
+                var position = Vector2.Zero;
+                var size = Vector2.Zero;
+                var diagnosticElement = itemCandidates[0].ElementAddress;
+                foreach (var candidate in itemCandidates)
+                {
+                    if (!TryGetSlotRect(candidate, out var candidatePosition, out var candidateSize)) continue;
+                    var center = candidatePosition + (candidateSize * 0.5f);
+                    if (center.X < panelPosition.X || center.X > panelMax.X ||
+                        center.Y < panelPosition.Y || center.Y > panelMax.Y) continue;
+
+                    diagnosticElement = candidate.ElementAddress;
+                    position = candidatePosition;
+                    size = candidateSize;
+                    hasVisibleRect = true;
+                    break;
+                }
+
+                if (!hasVisibleRect) continue;
                 if (!PluginUiElementReflection.TryValidateItemAddress(itemAddress, out _, out var failureReason))
                 {
-                    report.AddRejected(element, itemAddress, failureReason);
+                    report.AddRejected(diagnosticElement, itemAddress, failureReason);
                     continue;
                 }
 
@@ -635,58 +699,55 @@ namespace LootValue
                 if (item == null || string.IsNullOrEmpty(item.Path) ||
                     !item.Path.StartsWith(ItemPathPrefix, StringComparison.OrdinalIgnoreCase))
                 {
-                    report.AddRejected(element, itemAddress, "item changed after validation");
+                    report.AddRejected(diagnosticElement, itemAddress, "item changed after validation");
                     continue;
                 }
 
                 report.ValidItems++;
-                if (!PluginUiElementReflection.TryGetAbsoluteRect(element, out var position, out var size)) continue;
-
-                // Premium tabs can keep the item pointer on a small bookkeeping child while its parent
-                // owns the visible cell rectangle.
-                if (parent != IntPtr.Zero &&
-                    PluginUiElementReflection.TryGetAbsoluteRect(parent, out var parentPosition, out var parentSize) &&
-                    parentSize.X >= 20f && parentSize.Y >= 20f &&
-                    ((parentSize.X <= 160f && parentSize.Y <= 256f) ||
-                     (parentSize.X <= 256f && parentSize.Y <= 160f)))
-                {
-                    position = parentPosition;
-                    size = parentSize;
-                }
-
                 if (!this.TryPriceItem(item, out var valueEx, out var valueText, includeUniqueName: false) ||
                     valueEx < this.Settings.MinValueEx) continue;
                 report.PricedCandidates++;
-                candidates.Add(new SlotInfo(itemAddress, position, size, valueText));
-            }
 
-            // Premium tabs expose ghost copies. Prefer the copy physically inside the active panel and
-            // keep one rectangle per item entity.
-            var panelMax = panelPosition + panelSize;
-            var mousePosition = ImGui.GetIO().MousePos;
-            var slots = new List<SlotInfo>();
-            foreach (var group in candidates.GroupBy(x => x.ItemAddress))
-            {
-                var slot = group.FirstOrDefault(x =>
-                {
-                    var center = x.Position + (x.Size * 0.5f);
-                    return center.X >= panelPosition.X && center.X <= panelMax.X &&
-                           center.Y >= panelPosition.Y && center.Y <= panelMax.Y;
-                });
-                if (slot.ItemAddress == IntPtr.Zero) continue;
-
-                if (mousePosition.X >= slot.Position.X && mousePosition.X <= slot.Position.X + slot.Size.X &&
-                    mousePosition.Y >= slot.Position.Y && mousePosition.Y <= slot.Position.Y + slot.Size.Y)
-                {
-                    panelHovered = true;
-                }
-
-                slots.Add(slot);
+                slots.Add(new SlotInfo(itemAddress, position, size, valueText));
             }
 
             report.VisibleSlots = slots.Count;
 
             return slots;
+        }
+
+        private static bool TryGetSlotRect(SlotElementCandidate candidate, out Vector2 position, out Vector2 size)
+        {
+            if (!PluginUiElementReflection.TryGetAbsoluteRect(candidate.ElementAddress, out position, out size)) return false;
+
+            // Premium tabs can keep the item pointer on a small bookkeeping child while its parent
+            // owns the visible cell rectangle.
+            if (candidate.ParentAddress != IntPtr.Zero &&
+                PluginUiElementReflection.TryGetAbsoluteRect(candidate.ParentAddress, out var parentPosition, out var parentSize) &&
+                parentSize.X >= 20f && parentSize.Y >= 20f &&
+                ((parentSize.X <= 160f && parentSize.Y <= 256f) ||
+                 (parentSize.X <= 256f && parentSize.Y <= 160f)))
+            {
+                position = parentPosition;
+                size = parentSize;
+            }
+
+            return true;
+        }
+
+        private static bool IsAnySlotHovered(IReadOnlyList<SlotInfo> slots)
+        {
+            var mousePosition = ImGui.GetIO().MousePos;
+            foreach (var slot in slots)
+            {
+                if (mousePosition.X >= slot.Position.X && mousePosition.X <= slot.Position.X + slot.Size.X &&
+                    mousePosition.Y >= slot.Position.Y && mousePosition.Y <= slot.Position.Y + slot.Size.Y)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void DrawSlotDiagnosticsWindow()
@@ -709,9 +770,10 @@ namespace LootValue
             ImGui.TextUnformatted($"{label}: 0x{report.PanelAddress.ToInt64():X}");
             ImGui.TextUnformatted(this.PluginText.F(
                 "diagnostics.slots.summary",
-                "UI elements={0}  non-zero +0x4F8={1}  valid items={2}  priced={3}  visible={4}",
+                "UI elements={0}  non-zero +0x4F8={1}  unique pointers={2}  valid items={3}  priced={4}  visible={5}",
                 report.VisitedElements,
                 report.NonZeroPointers,
+                report.UniquePointers,
                 report.ValidItems,
                 report.PricedCandidates,
                 report.VisibleSlots));
@@ -999,6 +1061,19 @@ namespace LootValue
             public string ValueText { get; }
         }
 
+        private readonly struct SlotElementCandidate
+        {
+            public SlotElementCandidate(IntPtr elementAddress, IntPtr parentAddress)
+            {
+                this.ElementAddress = elementAddress;
+                this.ParentAddress = parentAddress;
+            }
+
+            public IntPtr ElementAddress { get; }
+
+            public IntPtr ParentAddress { get; }
+        }
+
         private sealed class SlotScanReport
         {
             public const int MaxSamples = 8;
@@ -1014,6 +1089,8 @@ namespace LootValue
             public int VisitedElements { get; set; }
 
             public int NonZeroPointers { get; set; }
+
+            public int UniquePointers { get; set; }
 
             public int ValidItems { get; set; }
 
