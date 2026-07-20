@@ -21,6 +21,9 @@ namespace LootValue
         /// <summary>Draw value labels over items in the open inventory panel.</summary>
         public bool ShowInventoryOverlay = false;
 
+        /// <summary>Draw owned-stack values in the Currency Exchange item list.</summary>
+        public bool ShowCurrencyExchangeOverlay = true;
+
         /// <summary>Hide stash and inventory labels while an item slot is hovered.</summary>
         public bool HideSlotPricesOnHover = true;
 

@@ -36,6 +36,7 @@
   "settings.rescan_interval.tooltip": "Positions redraw every frame; rescan only re-detects items/prices.",
   "settings.reveal_unidentified_uniques": "Reveal unidentified uniques (by art)",
   "settings.show_inventory_overlay": "Show value over inventory items",
+  "settings.show_currency_exchange_overlay": "Show owned-stack values in Currency Exchange",
   "settings.show_overlay": "Show value over ground items",
   "settings.show_stash_overlay": "Show value over stash items",
   "settings.slot_diagnostics": "Stash/inventory slot diagnostics",

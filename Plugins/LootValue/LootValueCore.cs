@@ -31,6 +31,7 @@ namespace LootValue
     {
         private const string ItemPathPrefix = "Metadata/Items";
         private const int UiElementItemAddressOffset = 0x4F8;
+        private static readonly int[] CurrencyExchangeRootPath = { 114, 20, 6 };
 
         private readonly List<LootLabel> cachedLabels = new();
         private readonly Dictionary<uint, Tracked> trackWorld = new();
@@ -60,6 +61,8 @@ namespace LootValue
         private IntPtr cachedLeftPanelAddress;
         private IntPtr cachedRightPanelAddress;
         private DateTime nextSlotScanUtc = DateTime.MinValue;
+        private readonly List<ExchangePriceLabel> cachedExchangeLabels = new();
+        private DateTime nextExchangeScanUtc = DateTime.MinValue;
 
         private string SettingPathname => Path.Join(this.DllDirectory, "config", "settings.txt");
 
@@ -144,6 +147,8 @@ namespace LootValue
             this.cachedLeftPanelAddress = IntPtr.Zero;
             this.cachedRightPanelAddress = IntPtr.Zero;
             this.nextSlotScanUtc = DateTime.MinValue;
+            this.cachedExchangeLabels.Clear();
+            this.nextExchangeScanUtc = DateTime.MinValue;
         }
 
         /// <inheritdoc/>
@@ -167,6 +172,7 @@ namespace LootValue
             ImGui.Checkbox(this.PluginText.Label("settings.anchor_to_loot_tags", "Anchor to loot labels (no overlap when items pile up)", "LootValueAnchorToLootTags"), ref this.Settings.AnchorToLootTags);
             ImGui.Checkbox(this.PluginText.Label("settings.show_stash_overlay", "Show value over stash items", "LootValueShowStashOverlay"), ref this.Settings.ShowStashOverlay);
             ImGui.Checkbox(this.PluginText.Label("settings.show_inventory_overlay", "Show value over inventory items", "LootValueShowInventoryOverlay"), ref this.Settings.ShowInventoryOverlay);
+            ImGui.Checkbox(this.PluginText.Label("settings.show_currency_exchange_overlay", "Show owned-stack values in Currency Exchange", "LootValueShowCurrencyExchangeOverlay"), ref this.Settings.ShowCurrencyExchangeOverlay);
             ImGui.Checkbox(this.PluginText.Label("settings.hide_slot_prices_on_hover", "Hide stash/inventory values while hovering an item", "LootValueHideSlotPricesOnHover"), ref this.Settings.HideSlotPricesOnHover);
             ImGui.Checkbox(this.PluginText.Label("settings.reveal_unidentified_uniques", "Reveal unidentified uniques (by art)", "LootValueRevealUnidentifiedUniques"), ref this.Settings.RevealUnidentifiedUniques);
             ImGui.Checkbox(this.PluginText.Label("settings.diagnostics_window", "Diagnostics window", "LootValueDiagnosticsWindow"), ref this.Settings.DiagnosticsMode);
@@ -273,6 +279,11 @@ namespace LootValue
             if (this.Settings.ShowStashOverlay || this.Settings.ShowInventoryOverlay || this.Settings.ShowSlotDebugInfo)
             {
                 this.DrawItemSlotValues();
+            }
+
+            if (this.Settings.ShowCurrencyExchangeOverlay)
+            {
+                this.DrawCurrencyExchangeValues();
             }
         }
 
@@ -557,6 +568,146 @@ namespace LootValue
                     }
                 }
             }
+        }
+
+        /// <summary>Draws cached owned-stack values in the Currency Exchange item browser.</summary>
+        private void DrawCurrencyExchangeValues()
+        {
+            if (!this.EnsureReflection()) return;
+
+            var now = DateTime.UtcNow;
+            if (now >= this.nextExchangeScanUtc)
+            {
+                this.nextExchangeScanUtc = now.AddMilliseconds(Math.Clamp(this.Settings.SlotRescanIntervalMs, 100, 2000));
+                this.ScanCurrencyExchange();
+            }
+
+            if (this.cachedExchangeLabels.Count == 0) return;
+            var foreground = ImGui.GetForegroundDrawList();
+            var font = ImGui.GetFont();
+            var baseSize = ImGui.GetFontSize();
+            foreach (var label in this.cachedExchangeLabels)
+            {
+                this.DrawValueLabel(
+                    foreground,
+                    font,
+                    baseSize,
+                    label.Position,
+                    label.Text,
+                    label.Color,
+                    label.Highlight);
+            }
+        }
+
+        private void ScanCurrencyExchange()
+        {
+            this.cachedExchangeLabels.Clear();
+            var root = this.ResolveUiPath(Core.States.InGameStateObject.GameUi.Address, CurrencyExchangeRootPath);
+            if (root == IntPtr.Zero || !this.TryGetVisibleChildren(root, out var rootChildren) || rootChildren.Length <= 1) return;
+
+            // [114][20][6][1] is the complete item list. Its visibility is the reliable signal that
+            // Currency Exchange is open; only categories enabled by the selected tab are visible below it.
+            var listAddress = rootChildren[1];
+            if (!this.TryGetVisibleChildren(listAddress, out var categoryAddresses)) return;
+            if (!PluginUiElementReflection.TryGetAbsoluteRect(root, out var viewportPosition, out var viewportSize)) return;
+            var viewportMax = viewportPosition + viewportSize;
+
+            foreach (var categoryAddress in categoryAddresses)
+            {
+                if (!this.TryGetVisibleChildren(categoryAddress, out var groupAddresses)) continue;
+                foreach (var groupAddress in groupAddresses)
+                {
+                    if (!this.TryGetVisibleChildren(groupAddress, out var rowAddresses)) continue;
+
+                    // Child 0 is the group headline. Every following populated child is an item row:
+                    // [0] name, [1] icon container, [1][0] owned amount.
+                    for (var rowIndex = 1; rowIndex < rowAddresses.Length; rowIndex++)
+                    {
+                        var rowAddress = rowAddresses[rowIndex];
+                        if (!this.TryGetVisibleChildren(rowAddress, out var rowChildren) || rowChildren.Length <= 1) continue;
+                        var nameAddress = rowChildren[0];
+                        var iconAddress = rowChildren[1];
+                        if (!this.TryGetVisibleChildren(iconAddress, out var iconChildren) || iconChildren.Length == 0) continue;
+
+                        var name = this.ReadUiElementText(nameAddress).Split('\n')[0].Trim();
+                        var amountText = this.ReadUiElementText(iconChildren[0]);
+                        if (name.Length < 2 || !TryParseOwnedAmount(amountText, out var amount) || amount <= 0) continue;
+                        if (!this.TryPriceNamedStack(name, amount, out var text, out var color, out var highlight)) continue;
+                        if (!PluginUiElementReflection.TryGetAbsoluteRect(iconAddress, out var iconPosition, out var iconSize)) continue;
+
+                        var center = iconPosition + (iconSize * 0.5f);
+                        if (center.X < viewportPosition.X || center.X > viewportMax.X ||
+                            center.Y < viewportPosition.Y || center.Y > viewportMax.Y) continue;
+
+                        var fontSize = highlight ? this.Settings.HighlightFontSize : this.Settings.FontSize;
+                        var labelPosition = new Vector2(
+                            iconPosition.X + this.Settings.SlotOffsetX,
+                            iconPosition.Y + iconSize.Y - fontSize + this.Settings.SlotOffsetY);
+                        this.cachedExchangeLabels.Add(new ExchangePriceLabel(labelPosition, text, color, highlight));
+                    }
+                }
+            }
+        }
+
+        private bool TryGetVisibleChildren(IntPtr address, out IntPtr[] children)
+        {
+            return this.TryGetChildren(address, requireVisible: true, out children);
+        }
+
+        private bool TryGetChildren(IntPtr address, bool requireVisible, out IntPtr[] children)
+        {
+            children = Array.Empty<IntPtr>();
+            if (address == IntPtr.Zero || this.readUiOffsetMethod == null || this.readStdVectorMethod == null ||
+                this.readUiOffsetMethod.Invoke(this.handleObj, new object[] { address }) is not UiElementBaseOffset offset ||
+                (requireVisible && !UiElementBaseFuncs.IsVisibleChecker(offset.Flags))) return false;
+
+            children = this.readStdVectorMethod.Invoke(this.handleObj, new object[] { offset.ChildrensPtr }) as IntPtr[] ?? Array.Empty<IntPtr>();
+            return true;
+        }
+
+        private IntPtr ResolveUiPath(IntPtr root, IReadOnlyList<int> path)
+        {
+            var current = root;
+            foreach (var childIndex in path)
+            {
+                if (!this.TryGetChildren(current, requireVisible: false, out var children) ||
+                    childIndex < 0 || childIndex >= children.Length) return IntPtr.Zero;
+                current = children[childIndex];
+            }
+
+            return current;
+        }
+
+        private static bool TryParseOwnedAmount(string text, out long amount)
+        {
+            amount = 0;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            var digits = Regex.Replace(text, @"[^0-9]", string.Empty);
+            return digits.Length > 0 && long.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out amount);
+        }
+
+        private bool TryPriceNamedStack(
+            string itemName,
+            long amount,
+            out string text,
+            out uint color,
+            out bool highlight)
+        {
+            text = string.Empty;
+            color = 0;
+            highlight = false;
+            var price = PoeNinjaPriceFetcher.GetPrice(itemName);
+            if (price == null) return false;
+
+            var priced = new PoeNinjaPrice { PriceChaos = price.PriceChaos * amount };
+            var (exValue, _) = PoeNinjaPriceFetcher.GetDisplayPrice(priced, 1);
+            if (exValue < this.Settings.MinValueEx) return false;
+
+            var (displayValue, displayCurrency) = PoeNinjaPriceFetcher.GetDisplayPrice(priced, this.Settings.DisplayCurrency);
+            text = FormatValue(displayValue, displayCurrency);
+            highlight = exValue >= this.Settings.HighlightMinEx;
+            color = ImGui.ColorConvertFloat4ToU32(highlight ? this.Settings.HighlightColor : this.Settings.TextColor);
+            return true;
         }
 
         /// <summary>Prices item slots in the open stash and inventory panels.</summary>
@@ -1191,6 +1342,25 @@ namespace LootValue
             public string ValueText { get; }
 
             public ScrollBinding Scroll { get; }
+        }
+
+        private readonly struct ExchangePriceLabel
+        {
+            public ExchangePriceLabel(Vector2 position, string text, uint color, bool highlight)
+            {
+                this.Position = position;
+                this.Text = text;
+                this.Color = color;
+                this.Highlight = highlight;
+            }
+
+            public Vector2 Position { get; }
+
+            public string Text { get; }
+
+            public uint Color { get; }
+
+            public bool Highlight { get; }
         }
 
         private readonly struct SlotElementCandidate
