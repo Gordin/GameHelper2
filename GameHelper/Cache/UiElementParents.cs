@@ -8,6 +8,7 @@ namespace GameHelper.Cache
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using Coroutine;
     using GameHelper.RemoteObjects.UiElement;
     using GameHelper.CoroutineEvents;
@@ -83,28 +84,35 @@ namespace GameHelper.Cache
             }
         }
 
-        public UiElementBase GetParent(IntPtr address)
+        public bool TryGetParent(IntPtr address, [NotNullWhen(true)] out UiElementBase? parent)
         {
             if (address == IntPtr.Zero)
             {
-                throw new ArgumentException("address must not be zero", nameof(address));
+                parent = null;
+                return false;
             }
 
-            if (this.cache != null && this.cache.TryGetValue(address, out var parent))
+            lock (this.cache)
             {
-                return parent;
+                if (this.cache.TryGetValue(address, out parent))
+                {
+                    return true;
+                }
             }
-            else if (this.grandparent != null
-                && this.grandparent.cache != null
-                && this.grandparent.cache.TryGetValue(address, out var gParent))
+
+            if (this.grandparent != null)
             {
-                return gParent;
+                lock (this.grandparent.cache)
+                {
+                    if (this.grandparent.cache.TryGetValue(address, out parent))
+                    {
+                        return true;
+                    }
+                }
             }
-            else
-            {
-                throw new KeyNotFoundException(
-                    $"UiElementBase with address 0x{address.ToInt64():X} not found in caches.");
-            }
+
+            parent = null;
+            return false;
         }
 
         public void UpdateAllParentsParallel()

@@ -1,5 +1,5 @@
 {
-  "plugin.description": "가치 있는 바닥 아이템 위에 시장 가치 라벨을 표시합니다.",
+  "plugin.description": "바닥, 보관함 및 인벤토리 아이템의 시장 가치를 표시합니다.",
   "button.refresh_prices_now": "지금 가격 새로고침",
   "currency.chaos": "혼돈",
   "currency.divine": "신성한",

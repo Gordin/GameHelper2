@@ -1,5 +1,5 @@
 {
-  "plugin.description": "Mostra rótulos de valor de mercado sobre itens valiosos no chão.",
+  "plugin.description": "Mostra o valor de mercado de itens no chão, baú e inventário.",
   "button.refresh_prices_now": "Atualizar preços agora",
   "currency.chaos": "Caos",
   "currency.divine": "Divino",

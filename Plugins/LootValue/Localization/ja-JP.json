@@ -1,5 +1,5 @@
 {
-  "plugin.description": "価値のある地面アイテムに市場価値ラベルを表示します。",
+  "plugin.description": "地面、スタッシュ、インベントリのアイテムに市場価値を表示します。",
   "button.refresh_prices_now": "今すぐ価格を更新してください",
   "currency.chaos": "カオス",
   "currency.divine": "神聖な",

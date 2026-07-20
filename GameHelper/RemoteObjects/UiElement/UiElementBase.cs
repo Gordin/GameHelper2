@@ -127,17 +127,8 @@ namespace GameHelper.RemoteObjects.UiElement
                 return false;
             }
 
-            try
-            {
-                parent = this.parents.GetParent(this.parentAddress);
-                return parent != null;
-            }
-            catch
-            {
-                // Parent not yet cached or cache chain in transition.
-                parent = null;
-                return false;
-            }
+            // Parent caches can be briefly empty while the game changes area/state.
+            return this.parents.TryGetParent(this.parentAddress, out parent);
         }
 
         /// <summary>

@@ -1,5 +1,5 @@
 {
-  "plugin.description": "Zeigt Marktwert-Labels über wertvollen Boden-Gegenständen an.",
+  "plugin.description": "Zeigt Marktwerte für Boden-, Truhen- und Inventargegenstände an.",
   "button.refresh_prices_now": "Jetzt Preise aktualisieren",
   "currency.chaos": "Chaos",
   "currency.divine": "Göttlich",

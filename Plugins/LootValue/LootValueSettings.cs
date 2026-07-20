@@ -15,6 +15,18 @@ namespace LootValue
         /// <summary>Draw value labels over dropped items on the ground.</summary>
         public bool ShowOverlay = true;
 
+        /// <summary>Draw value labels over items in the open stash panel.</summary>
+        public bool ShowStashOverlay = true;
+
+        /// <summary>Draw value labels over items in the open inventory panel.</summary>
+        public bool ShowInventoryOverlay = false;
+
+        /// <summary>Hide stash and inventory labels while an item slot is hovered.</summary>
+        public bool HideSlotPricesOnHover = true;
+
+        /// <summary>Draw item-slot discovery diagnostics.</summary>
+        public bool ShowSlotDebugInfo = false;
+
         /// <summary>Anchor value chips to the game's loot labels (avoids overlap when items pile up)
         /// instead of drawing free-floating world-space labels over each drop. Default mode.</summary>
         public bool AnchorToLootTags = true;
@@ -54,6 +66,15 @@ namespace LootValue
 
         /// <summary>Vertical pixel offset of the label from the item's world anchor.</summary>
         public float OffsetY = -10f;
+
+        /// <summary>Font scale for stash and inventory labels.</summary>
+        public float SlotFontScale = 1f;
+
+        /// <summary>Horizontal pixel offset for stash and inventory labels.</summary>
+        public float SlotOffsetX = 5f;
+
+        /// <summary>Vertical pixel offset for stash and inventory labels.</summary>
+        public float SlotOffsetY = -5f;
 
         /// <summary>Smooth label motion with a velocity-tracking (alpha-beta) filter so labels don't jitter
         /// while moving. Unlike a plain low-pass it has no steady-state lag during constant movement.

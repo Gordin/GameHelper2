@@ -1,5 +1,5 @@
 {
-  "plugin.description": "Muestra etiquetas de valor de mercado sobre objetos valiosos del suelo.",
+  "plugin.description": "Muestra el valor de mercado de objetos del suelo, alijo e inventario.",
   "button.refresh_prices_now": "Actualizar precios ahora",
   "currency.chaos": "Caos",
   "currency.divine": "Divino",
