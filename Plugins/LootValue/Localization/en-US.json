@@ -9,7 +9,7 @@
   "diagnostics.slots.left_panel": "Left panel (stash)",
   "diagnostics.slots.rejected": "Rejected candidates={0} (showing up to {1})",
   "diagnostics.slots.right_panel": "Right panel (inventory)",
-  "diagnostics.slots.summary": "UI elements={0}  non-zero +0x4F8={1}  unique pointers={2}  valid items={3}  priced={4}  visible={5}",
+  "diagnostics.slots.summary": "UI elements={0}  non-zero +0x4F8={1}  unique pointers={2}  valid items={3}  priced={4}  visible={5}  scroll views={6}  scroll Y={7:0.0}",
   "diagnostics.slots.window_title": "LootValue Slot Diagnostics",
   "diagnostics.summary.awake_entities": "AwakeEntities={0}",
   "diagnostics.summary.components": "WorldItem component (inner!=0)={0}    inner item read OK={1}",

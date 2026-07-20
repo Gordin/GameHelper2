@@ -610,10 +610,13 @@ namespace LootValue
                 }
             }
 
+            var leftScroll = GetScrollFrameState(this.cachedLeftSlots);
+            var rightScroll = GetScrollFrameState(this.cachedRightSlots);
             var hidePrices = this.Settings.HideSlotPricesOnHover &&
-                             (IsAnySlotHovered(this.cachedLeftSlots) || IsAnySlotHovered(this.cachedRightSlots));
-            this.DrawItemSlots(this.cachedLeftSlots, this.Settings.ShowStashOverlay, hidePrices);
-            this.DrawItemSlots(this.cachedRightSlots, this.Settings.ShowInventoryOverlay, hidePrices);
+                             (IsAnySlotHovered(this.cachedLeftSlots, leftScroll) ||
+                              IsAnySlotHovered(this.cachedRightSlots, rightScroll));
+            this.DrawItemSlots(this.cachedLeftSlots, this.Settings.ShowStashOverlay, hidePrices, leftScroll);
+            this.DrawItemSlots(this.cachedRightSlots, this.Settings.ShowInventoryOverlay, hidePrices, rightScroll);
             if (this.Settings.ShowSlotDebugInfo)
             {
                 this.DrawSlotDiagnosticsWindow();
@@ -631,13 +634,13 @@ namespace LootValue
             if (panelAddress == IntPtr.Zero || this.readUiOffsetMethod == null ||
                 this.readStdVectorMethod == null || this.readIntPtrMethod == null) return new List<SlotInfo>();
 
-            var queue = new Queue<(IntPtr Address, IntPtr Parent)>();
+            var queue = new Queue<(IntPtr Address, IntPtr Parent, ScrollBinding Scroll)>();
             var visited = new HashSet<IntPtr>();
-            queue.Enqueue((panelAddress, IntPtr.Zero));
+            queue.Enqueue((panelAddress, IntPtr.Zero, default));
 
             while (queue.Count > 0 && visited.Count < 5000)
             {
-                var (element, parent) = queue.Dequeue();
+                var (element, parent, scroll) = queue.Dequeue();
                 if (element == IntPtr.Zero || !visited.Add(element)) continue;
                 report.VisitedElements++;
                 if (this.readUiOffsetMethod.Invoke(this.handleObj, new object[] { element }) is not UiElementBaseOffset offset) continue;
@@ -645,7 +648,27 @@ namespace LootValue
 
                 if (this.readStdVectorMethod.Invoke(this.handleObj, new object[] { offset.ChildrensPtr }) is IntPtr[] children)
                 {
-                    foreach (var child in children) queue.Enqueue((child, element));
+                    var hasScrollContainer = this.TryGetScrollContainer(
+                        children,
+                        out var scrollItemsAddress,
+                        out var localScroll);
+                    if (hasScrollContainer)
+                    {
+                        report.ScrollContainers++;
+                        report.ScrollOffsetY = localScroll.ScanOffsetY;
+                    }
+
+                    foreach (var child in children)
+                    {
+                        if (hasScrollContainer && child == scrollItemsAddress)
+                        {
+                            queue.Enqueue((child, element, localScroll));
+                        }
+                        else
+                        {
+                            queue.Enqueue((child, element, scroll));
+                        }
+                    }
                 }
 
                 // Slot discovery/rendering adapted from StashValueByZx0 by zx0CF1.
@@ -660,7 +683,7 @@ namespace LootValue
                     candidatesByItem[itemAddress] = itemCandidates;
                 }
 
-                itemCandidates.Add(new SlotElementCandidate(element, parent));
+                itemCandidates.Add(new SlotElementCandidate(element, parent, scroll));
             }
 
             // Premium tabs expose many ghost UI copies. Deduplicate by item pointer before validating,
@@ -673,17 +696,20 @@ namespace LootValue
                 var hasVisibleRect = false;
                 var position = Vector2.Zero;
                 var size = Vector2.Zero;
+                var selectedScroll = default(ScrollBinding);
                 var diagnosticElement = itemCandidates[0].ElementAddress;
                 foreach (var candidate in itemCandidates)
                 {
                     if (!TryGetSlotRect(candidate, out var candidatePosition, out var candidateSize)) continue;
                     var center = candidatePosition + (candidateSize * 0.5f);
-                    if (center.X < panelPosition.X || center.X > panelMax.X ||
-                        center.Y < panelPosition.Y || center.Y > panelMax.Y) continue;
+                    if (center.X < panelPosition.X || center.X > panelMax.X) continue;
+                    if (!candidate.Scroll.IsActive &&
+                        (center.Y < panelPosition.Y || center.Y > panelMax.Y)) continue;
 
                     diagnosticElement = candidate.ElementAddress;
                     position = candidatePosition;
                     size = candidateSize;
+                    selectedScroll = candidate.Scroll;
                     hasVisibleRect = true;
                     break;
                 }
@@ -708,12 +734,58 @@ namespace LootValue
                     valueEx < this.Settings.MinValueEx) continue;
                 report.PricedCandidates++;
 
-                slots.Add(new SlotInfo(itemAddress, position, size, valueText));
+                slots.Add(new SlotInfo(itemAddress, position, size, valueText, selectedScroll));
             }
 
             report.VisibleSlots = slots.Count;
 
             return slots;
+        }
+
+        private bool TryGetScrollContainer(
+            IntPtr[] children,
+            out IntPtr itemsAddress,
+            out ScrollBinding scroll)
+        {
+            itemsAddress = IntPtr.Zero;
+            scroll = default;
+            if (children.Length <= 2 || children[1] == IntPtr.Zero || children[2] == IntPtr.Zero ||
+                this.readUiOffsetMethod == null || this.readStdVectorMethod == null) return false;
+
+            var contentAddress = children[1];
+            var holderAddress = children[2];
+            if (this.readUiOffsetMethod.Invoke(this.handleObj, new object[] { holderAddress }) is not UiElementBaseOffset holderOffset ||
+                !UiElementBaseFuncs.IsVisibleChecker(holderOffset.Flags) ||
+                this.readStdVectorMethod.Invoke(this.handleObj, new object[] { holderOffset.ChildrensPtr }) is not IntPtr[] holderChildren ||
+                holderChildren.Length == 0 || holderChildren[0] == IntPtr.Zero) return false;
+
+            var thumbAddress = holderChildren[0];
+            if (!PluginUiElementReflection.TryGetAbsoluteRect(contentAddress, out var contentPosition, out var contentSize) ||
+                !PluginUiElementReflection.TryGetAbsoluteRect(holderAddress, out var holderPosition, out var holderSize) ||
+                !PluginUiElementReflection.TryGetAbsoluteRect(thumbAddress, out var thumbPosition, out var thumbSize)) return false;
+
+            // Shape checks keep ordinary [1]/[2] child layouts from being mistaken for scroll views.
+            if (holderSize.X < 4f || holderSize.X > 64f || holderSize.Y < 40f ||
+                thumbSize.X < 2f || thumbSize.X > holderSize.X * 1.5f ||
+                thumbSize.Y < 8f || thumbSize.Y >= holderSize.Y ||
+                contentSize.Y <= holderSize.Y + 1f || holderPosition.X < contentPosition.X ||
+                thumbPosition.Y < holderPosition.Y - 2f ||
+                thumbPosition.Y + thumbSize.Y > holderPosition.Y + holderSize.Y + 2f) return false;
+
+            var thumbTravel = holderSize.Y - thumbSize.Y;
+            var contentOverflow = contentSize.Y - holderSize.Y;
+            if (thumbTravel <= 0f || contentOverflow <= 0f) return false;
+
+            var progress = Math.Clamp((thumbPosition.Y - holderPosition.Y) / thumbTravel, 0f, 1f);
+            itemsAddress = contentAddress;
+            scroll = new ScrollBinding(
+                holderAddress,
+                thumbAddress,
+                contentSize.Y,
+                progress * contentOverflow,
+                holderPosition.Y,
+                holderPosition.Y + holderSize.Y);
+            return float.IsFinite(scroll.ScanOffsetY) && scroll.ClipBottom > scroll.ClipTop;
         }
 
         private static bool TryGetSlotRect(SlotElementCandidate candidate, out Vector2 position, out Vector2 size)
@@ -732,22 +804,64 @@ namespace LootValue
                 size = parentSize;
             }
 
+            position.Y -= candidate.Scroll.ScanOffsetY;
+
             return true;
         }
 
-        private static bool IsAnySlotHovered(IReadOnlyList<SlotInfo> slots)
+        private static bool IsAnySlotHovered(IReadOnlyList<SlotInfo> slots, ScrollFrameState scroll)
         {
             var mousePosition = ImGui.GetIO().MousePos;
             foreach (var slot in slots)
             {
-                if (mousePosition.X >= slot.Position.X && mousePosition.X <= slot.Position.X + slot.Size.X &&
-                    mousePosition.Y >= slot.Position.Y && mousePosition.Y <= slot.Position.Y + slot.Size.Y)
+                var position = GetLiveSlotPosition(slot, scroll);
+                var centerY = position.Y + (slot.Size.Y * 0.5f);
+                if (centerY < scroll.ClipTop || centerY > scroll.ClipBottom) continue;
+                if (mousePosition.X >= position.X && mousePosition.X <= position.X + slot.Size.X &&
+                    mousePosition.Y >= position.Y && mousePosition.Y <= position.Y + slot.Size.Y)
                 {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private static ScrollFrameState GetScrollFrameState(IReadOnlyList<SlotInfo> slots)
+        {
+            foreach (var slot in slots)
+            {
+                var binding = slot.Scroll;
+                if (!binding.IsActive) continue;
+                if (!PluginUiElementReflection.TryGetAbsoluteRect(binding.HolderAddress, out var holderPosition, out var holderSize) ||
+                    !PluginUiElementReflection.TryGetAbsoluteRect(binding.ThumbAddress, out var thumbPosition, out var thumbSize))
+                {
+                    return new ScrollFrameState(binding.HolderAddress, 0f, binding.ClipTop, binding.ClipBottom);
+                }
+
+                var thumbTravel = holderSize.Y - thumbSize.Y;
+                var contentOverflow = binding.ContentHeight - holderSize.Y;
+                if (thumbTravel <= 0f || contentOverflow <= 0f)
+                {
+                    return new ScrollFrameState(binding.HolderAddress, 0f, holderPosition.Y, holderPosition.Y + holderSize.Y);
+                }
+
+                var progress = Math.Clamp((thumbPosition.Y - holderPosition.Y) / thumbTravel, 0f, 1f);
+                var currentOffset = progress * contentOverflow;
+                return new ScrollFrameState(
+                    binding.HolderAddress,
+                    currentOffset - binding.ScanOffsetY,
+                    holderPosition.Y,
+                    holderPosition.Y + holderSize.Y);
+            }
+
+            return ScrollFrameState.None;
+        }
+
+        private static Vector2 GetLiveSlotPosition(SlotInfo slot, ScrollFrameState scroll)
+        {
+            if (!slot.Scroll.IsActive || slot.Scroll.HolderAddress != scroll.HolderAddress) return slot.Position;
+            return slot.Position - new Vector2(0f, scroll.OffsetDeltaY);
         }
 
         private void DrawSlotDiagnosticsWindow()
@@ -770,13 +884,15 @@ namespace LootValue
             ImGui.TextUnformatted($"{label}: 0x{report.PanelAddress.ToInt64():X}");
             ImGui.TextUnformatted(this.PluginText.F(
                 "diagnostics.slots.summary",
-                "UI elements={0}  non-zero +0x4F8={1}  unique pointers={2}  valid items={3}  priced={4}  visible={5}",
+                "UI elements={0}  non-zero +0x4F8={1}  unique pointers={2}  valid items={3}  priced={4}  visible={5}  scroll views={6}  scroll Y={7:0.0}",
                 report.VisitedElements,
                 report.NonZeroPointers,
                 report.UniquePointers,
                 report.ValidItems,
                 report.PricedCandidates,
-                report.VisibleSlots));
+                report.VisibleSlots,
+                report.ScrollContainers,
+                report.ScrollOffsetY));
             ImGui.TextUnformatted(this.PluginText.F(
                 "diagnostics.slots.rejected",
                 "Rejected candidates={0} (showing up to {1})",
@@ -788,7 +904,11 @@ namespace LootValue
             }
         }
 
-        private void DrawItemSlots(IReadOnlyList<SlotInfo> slots, bool drawPrices, bool hidePrices)
+        private void DrawItemSlots(
+            IReadOnlyList<SlotInfo> slots,
+            bool drawPrices,
+            bool hidePrices,
+            ScrollFrameState scroll)
         {
             var foreground = ImGui.GetForegroundDrawList();
             var font = ImGui.GetFont();
@@ -797,17 +917,21 @@ namespace LootValue
 
             foreach (var slot in slots)
             {
+                var position = GetLiveSlotPosition(slot, scroll);
+                var centerY = position.Y + (slot.Size.Y * 0.5f);
+                if (centerY < scroll.ClipTop || centerY > scroll.ClipBottom) continue;
+
                 if (this.Settings.ShowSlotDebugInfo)
                 {
-                    foreground.AddRect(slot.Position, slot.Position + slot.Size, 0xFFFF00FFu, 0f, ImDrawFlags.None, 2f);
-                    foreground.AddText(font, fontSize, slot.Position, 0xFFFFFFFFu, $"E: {slot.ItemAddress.ToInt64():X}");
+                    foreground.AddRect(position, position + slot.Size, 0xFFFF00FFu, 0f, ImDrawFlags.None, 2f);
+                    foreground.AddText(font, fontSize, position, 0xFFFFFFFFu, $"E: {slot.ItemAddress.ToInt64():X}");
                 }
 
                 if (!drawPrices || hidePrices) continue;
                 var textWidth = ImGui.CalcTextSize(slot.ValueText).X * this.Settings.SlotFontScale;
                 var drawPosition = new Vector2(
-                    slot.Position.X + this.Settings.SlotOffsetX,
-                    slot.Position.Y + slot.Size.Y - fontSize + this.Settings.SlotOffsetY);
+                    position.X + this.Settings.SlotOffsetX,
+                    position.Y + slot.Size.Y - fontSize + this.Settings.SlotOffsetY);
                 foreground.AddRectFilled(
                     drawPosition - new Vector2(3f, 1f),
                     drawPosition + new Vector2(textWidth + 3f, fontSize + 1f),
@@ -1044,12 +1168,18 @@ namespace LootValue
 
         private readonly struct SlotInfo
         {
-            public SlotInfo(IntPtr itemAddress, Vector2 position, Vector2 size, string valueText)
+            public SlotInfo(
+                IntPtr itemAddress,
+                Vector2 position,
+                Vector2 size,
+                string valueText,
+                ScrollBinding scroll)
             {
                 this.ItemAddress = itemAddress;
                 this.Position = position;
                 this.Size = size;
                 this.ValueText = valueText;
+                this.Scroll = scroll;
             }
 
             public IntPtr ItemAddress { get; }
@@ -1059,19 +1189,85 @@ namespace LootValue
             public Vector2 Size { get; }
 
             public string ValueText { get; }
+
+            public ScrollBinding Scroll { get; }
         }
 
         private readonly struct SlotElementCandidate
         {
-            public SlotElementCandidate(IntPtr elementAddress, IntPtr parentAddress)
+            public SlotElementCandidate(
+                IntPtr elementAddress,
+                IntPtr parentAddress,
+                ScrollBinding scroll)
             {
                 this.ElementAddress = elementAddress;
                 this.ParentAddress = parentAddress;
+                this.Scroll = scroll;
             }
 
             public IntPtr ElementAddress { get; }
 
             public IntPtr ParentAddress { get; }
+
+            public ScrollBinding Scroll { get; }
+        }
+
+        private readonly struct ScrollBinding
+        {
+            public ScrollBinding(
+                IntPtr holderAddress,
+                IntPtr thumbAddress,
+                float contentHeight,
+                float scanOffsetY,
+                float clipTop,
+                float clipBottom)
+            {
+                this.HolderAddress = holderAddress;
+                this.ThumbAddress = thumbAddress;
+                this.ContentHeight = contentHeight;
+                this.ScanOffsetY = scanOffsetY;
+                this.ClipTop = clipTop;
+                this.ClipBottom = clipBottom;
+            }
+
+            public bool IsActive => this.HolderAddress != IntPtr.Zero && this.ThumbAddress != IntPtr.Zero;
+
+            public IntPtr HolderAddress { get; }
+
+            public IntPtr ThumbAddress { get; }
+
+            public float ContentHeight { get; }
+
+            public float ScanOffsetY { get; }
+
+            public float ClipTop { get; }
+
+            public float ClipBottom { get; }
+        }
+
+        private readonly struct ScrollFrameState
+        {
+            public static ScrollFrameState None { get; } = new(
+                IntPtr.Zero,
+                0f,
+                float.NegativeInfinity,
+                float.PositiveInfinity);
+
+            public ScrollFrameState(IntPtr holderAddress, float offsetDeltaY, float clipTop, float clipBottom)
+            {
+                this.HolderAddress = holderAddress;
+                this.OffsetDeltaY = offsetDeltaY;
+                this.ClipTop = clipTop;
+                this.ClipBottom = clipBottom;
+            }
+
+            public IntPtr HolderAddress { get; }
+
+            public float OffsetDeltaY { get; }
+
+            public float ClipTop { get; }
+
+            public float ClipBottom { get; }
         }
 
         private sealed class SlotScanReport
@@ -1091,6 +1287,10 @@ namespace LootValue
             public int NonZeroPointers { get; set; }
 
             public int UniquePointers { get; set; }
+
+            public int ScrollContainers { get; set; }
+
+            public float ScrollOffsetY { get; set; }
 
             public int ValidItems { get; set; }
 
