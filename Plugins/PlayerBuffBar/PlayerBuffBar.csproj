@@ -1,0 +1,287 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+
+
+  <PropertyGroup>
+
+    
+    <Version>1.0.3</Version>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
+    <FileVersion>1.0.3.0</FileVersion>
+<OutputType>Library</OutputType>
+
+    <TargetFramework>net10.0-windows</TargetFramework>
+
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <Nullable>enable</Nullable>
+
+    <LangVersion>latest</LangVersion>
+
+    <PlatformTarget>x64</PlatformTarget>
+
+    <NoWarn>1701;1702;1591</NoWarn>
+
+  </PropertyGroup>
+
+
+
+  <ItemGroup>
+
+    <None Update="config\settings.txt">
+
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+
+    </None>
+
+    <None Update="config\icon_map.json">
+
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+
+    </None>
+
+    <None Update="icons\*.png">
+
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+
+    </None>
+
+    <None Update="icons\*.webp">
+
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+
+    </None>
+
+  </ItemGroup>
+
+
+
+  <ItemGroup>
+
+    <ProjectReference Include="..\..\GameHelper\GameHelper.csproj">
+
+      <Private>false</Private>
+
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+
+    </ProjectReference>
+
+  </ItemGroup>
+
+
+
+  <Target Name="CopyFiles" AfterTargets="Build">
+
+    <PropertyGroup>
+      
+    <Version>1.0.3</Version>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
+    <FileVersion>1.0.3.0</FileVersion>
+<PluginDest>..\..\GameHelper\$(OutDir)Plugins\$(ProjectName)</PluginDest>
+    </PropertyGroup>
+
+    <Copy SourceFiles="$(OutDir)$(TargetName)$(TargetExt);$(OutDir)$(TargetName).pdb"
+          DestinationFolder="$(PluginDest)"
+          SkipUnchangedFiles="true" />
+
+    <ItemGroup>
+      <_PluginConfigFiles Include="$(OutDir)config\**\*" />
+      <_PluginIconFiles Include="$(OutDir)icons\**\*" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_PluginConfigFiles)"
+          DestinationFiles="@(_PluginConfigFiles->'$(PluginDest)\config\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="@(_PluginIconFiles)"
+          DestinationFiles="@(_PluginIconFiles->'$(PluginDest)\icons\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+
+  </Target>
+
+
+
+</Project>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

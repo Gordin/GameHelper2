@@ -21,6 +21,7 @@ namespace GameOffsets.Objects.Components
 
         // [FieldOffset(0x0020)] public float unknown0; // always set to 1.
         [FieldOffset(0x0028)] public uint SourceEntityId;
+        [FieldOffset(0x002C)] public uint RawStage;
 
         //[FieldOffset(0x0030)] public long Unknown1;
         //[FieldOffset(0x0038)] public int unknown2;
@@ -33,7 +34,7 @@ namespace GameOffsets.Objects.Components
         public override string ToString()
         {
             return $"BuffDefinationPtr: {this.BuffDefinationPtr.ToInt64():X} Total Time: {this.TotalTime} Time Left: {this.TimeLeft} " +
-                $"Entity Id: {this.SourceEntityId} Charges: {this.Charges} Flask Slot: {this.FlaskSlot} " +
+                $"Entity Id: {this.SourceEntityId} Raw Stage: {this.RawStage} Charges: {this.Charges} Flask Slot: {this.FlaskSlot} " +
                 $"Effectiveness: {100 + this.Effectiveness} (raw: {this.Effectiveness}) UnknownIdAndEquipmentInfo: {this.UnknownIdAndEquipmentInfo:X}";
         }
     }
