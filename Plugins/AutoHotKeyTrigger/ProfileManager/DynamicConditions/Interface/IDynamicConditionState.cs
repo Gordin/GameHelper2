@@ -1,4 +1,4 @@
-﻿// <copyright file="IDynamicConditionState.cs" company="PlaceholderCompany">
+// <copyright file="IDynamicConditionState.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -181,5 +181,16 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
         ///     Gets the value indicating if player is shapeshifted or not.
         /// </summary>
         bool PlayerIsShapeShifted { get; }
+
+        /// <summary>
+        ///     Gets the stage of a skill/buff on a specific client-side effect entity.
+        ///     Finds an entity whose Path contains skillNameOrPath, and extracts the stage counter of the specified buffName.
+        /// </summary>
+        int SkillStage(string skillNameOrPath, string buffName);
+
+        /// <summary>
+        ///     Gets the stage of a skill/buff on a specific client-side effect entity, defaulting to "spear_sandstorm" buffName.
+        /// </summary>
+        int SkillStage(string skillNameOrPath);
     }
 }

@@ -1,4 +1,4 @@
-﻿// <copyright file="Buffs.cs" company="None">
+// <copyright file="Buffs.cs" company="None">
 // Copyright (c) None. All rights reserved.
 // </copyright>
 
@@ -30,6 +30,8 @@ namespace GameHelper.RemoteObjects.Components
         /// </summary>
         public ConcurrentDictionary<string, StatusEffectStruct> StatusEffects { get; } = new();
 
+        private readonly ConcurrentDictionary<string, IntPtr> statusEffectAddresses = new();
+
         public bool[] FlaskActive { get; private set; } = new bool[5];
 
         /// <inheritdoc />
@@ -47,10 +49,32 @@ namespace GameHelper.RemoteObjects.Components
                         ImGuiHelper.DisplayFloatWithInfinitySupport("Total Time:", kv.Value.TotalTime);
                         ImGuiHelper.DisplayFloatWithInfinitySupport("Time Left:", kv.Value.TimeLeft);
                         ImGui.Text($"Source Entity Id: {kv.Value.SourceEntityId}");
+                        ImGui.Text($"Raw Stage: {kv.Value.RawStage}");
                         ImGui.Text($"Charges: {kv.Value.Charges}");
                         ImGui.Text($"Source FlaskSlot: {kv.Value.FlaskSlot}");
                         ImGui.Text($"Source Effectiveness: {100 + kv.Value.Effectiveness} (raw value: {kv.Value.Effectiveness})");
                         ImGui.Text($"Source UnknownIdAndEquipmentInfo: {kv.Value.UnknownIdAndEquipmentInfo:X}");
+                        if (this.statusEffectAddresses.TryGetValue(kv.Key, out var effectAddr))
+                        {
+                            ImGuiHelper.IntPtrToImGui("Effect Address", effectAddr);
+                            if (ImGui.TreeNode("Raw Bytes Hex Dump"))
+                            {
+                                var rawBytes = Core.Process.Handle.ReadMemoryArray<byte>(effectAddr, 80);
+                                if (rawBytes != null && rawBytes.Length > 0)
+                                {
+                                    for (int offset = 0; offset < rawBytes.Length; offset += 16)
+                                    {
+                                        var hexPart = new System.Text.StringBuilder();
+                                        for (int j = 0; j < 16 && offset + j < rawBytes.Length; j++)
+                                        {
+                                            hexPart.Append($"{rawBytes[offset + j]:X2} ");
+                                        }
+                                        ImGui.Text($"+0x{offset:X2}: {hexPart}");
+                                    }
+                                }
+                                ImGui.TreePop();
+                            }
+                        }
                         ImGui.TreePop();
                     }
                 }
@@ -66,6 +90,7 @@ namespace GameHelper.RemoteObjects.Components
             var data = reader.ReadMemory<BuffsOffsets>(this.Address);
             this.OwnerEntityAddress = data.Header.EntityPtr;
             this.StatusEffects.Clear();
+            this.statusEffectAddresses.Clear();
             var statusEffects = reader.ReadStdVector<IntPtr>(data.StatusEffectPtr);
             Array.Fill(this.FlaskActive, false);
 
@@ -126,6 +151,7 @@ namespace GameHelper.RemoteObjects.Components
                     effectName += $"_{skillGemUnknownId:X}";
                 }
 
+                this.statusEffectAddresses[effectName] = statusEffects[i];
                 this.StatusEffects.AddOrUpdate(effectName, statusEffectData, (key, oldValue) =>
                 {
                     var incomingStacks = statusEffectData.Charges > 0 ? statusEffectData.Charges : (short)1;

@@ -1,4 +1,4 @@
-﻿// <copyright file="AutoHotKeyTriggerCore.cs" company="PlaceholderCompany">
+// <copyright file="AutoHotKeyTriggerCore.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -405,7 +405,8 @@ namespace AutoHotKeyTrigger
                     content,
                     new JsonSerializerSettings
                     {
-                        TypeNameHandling = TypeNameHandling.Auto
+                        TypeNameHandling = TypeNameHandling.Auto,
+                        SerializationBinder = new CollectibleAssemblyBinder()
                     }) ?? new AutoHotKeyTriggerSettings();
             }
             else
@@ -424,7 +425,8 @@ namespace AutoHotKeyTrigger
                 Formatting.Indented,
                 new JsonSerializerSettings
                 {
-                    TypeNameHandling = TypeNameHandling.Auto
+                    TypeNameHandling = TypeNameHandling.Auto,
+                    SerializationBinder = new CollectibleAssemblyBinder()
                 });
             File.WriteAllText(this.SettingPathname, settingsData);
         }
@@ -546,6 +548,24 @@ namespace AutoHotKeyTrigger
                 yield return new Wait(RemoteEvents.AreaChanged);
                 this.stopShowingAutoQuitWarning = false;
             }
+        }
+    }
+
+    internal class CollectibleAssemblyBinder : Newtonsoft.Json.Serialization.ISerializationBinder
+    {
+        public Type BindToType(string? assemblyName, string typeName)
+        {
+            if (assemblyName != null && assemblyName.Contains("AutoHotKeyTrigger"))
+            {
+                return typeof(AutoHotKeyTriggerCore).Assembly.GetType(typeName)!;
+            }
+            return Type.GetType($"{typeName}, {assemblyName}")!;
+        }
+
+        public void BindToName(Type serializedType, out string? assemblyName, out string? typeName)
+        {
+            assemblyName = serializedType.Assembly.FullName;
+            typeName = serializedType.FullName;
         }
     }
 }
