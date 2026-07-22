@@ -27,7 +27,14 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             var reader = Core.Process.Handle;
 
             // NOTE: ItemStruct is defined in EntityOffsets.cs file.
-            var itemData = reader.ReadMemory<ItemStruct>(this.Address);
+            // Inventory UI trees are live and specialized stash tabs can briefly expose stale or
+            // non-item pointers. Treat those speculative reads as an invalid item for this frame
+            // instead of flooding the console from a recoverable UI race.
+            if (!reader.TryReadMemory<ItemStruct>(this.Address, out var itemData))
+            {
+                this.IsValid = false;
+                return;
+            }
 
             // this.Id will always be 0x00 because Items don't have
             // Id associated with them.

@@ -1,5 +1,5 @@
 {
-  "plugin.description": "在高價值地面物品上顯示市場價值標籤。",
+  "plugin.description": "顯示地面、倉庫和背包物品的市場價值。",
   "button.refresh_prices_now": "立即刷新價格",
   "currency.chaos": "混沌",
   "currency.divine": "神聖",

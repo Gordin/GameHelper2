@@ -21,6 +21,7 @@ namespace GameHelper.RemoteObjects
     {
         private readonly bool forceUpdate;
         private readonly object updateLock = new();
+        private readonly object updateExecutionLock = new();
         private IntPtr address;
 
         /// <summary>
@@ -71,37 +72,43 @@ namespace GameHelper.RemoteObjects
 
             set
             {
-                bool hasAddressChanged;
-                lock (this.updateLock)
+                // Entity-map traversal invokes callbacks in parallel and can occasionally yield the
+                // same remote object to two workers. Serialize the complete mutation for this object
+                // so derived UpdateData implementations never update their Dictionary/HashSet state
+                // concurrently. Address.get remains independent and is only held for the pointer copy.
+                lock (this.updateExecutionLock)
                 {
-                    hasAddressChanged = this.address != value;
-                    if (!(hasAddressChanged || this.forceUpdate))
+                    bool hasAddressChanged;
+                    lock (this.updateLock)
                     {
-                        return;
+                        hasAddressChanged = this.address != value;
+                        if (!(hasAddressChanged || this.forceUpdate))
+                        {
+                            return;
+                        }
+
+                        this.address = value;
                     }
 
-                    this.address = value;
-                }
-
-                // F-095: UpdateData/CleanUpData run OUTSIDE the lock. Holding updateLock
-                // for the duration of an arbitrary memory-read sequence would block every
-                // reader of Address.get. The try/catch wraps the post-lock work so derived
-                // class throws still get logged + swallowed (Phase 1 C1a behavior preserved).
-                try
-                {
-                    if (value == IntPtr.Zero)
+                    // F-095: UpdateData/CleanUpData run outside updateLock, so a potentially long
+                    // memory-read sequence does not block Address.get. updateExecutionLock only
+                    // serializes writers for this instance. Derived exceptions remain contained.
+                    try
                     {
-                        this.CleanUpData();
+                        if (value == IntPtr.Zero)
+                        {
+                            this.CleanUpData();
+                        }
+                        else
+                        {
+                            using var _ = PerformanceProfiler.Profile(GetType().FullName ?? string.Empty, "UpdateData");
+                            this.UpdateData(hasAddressChanged);
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        using var _ = PerformanceProfiler.Profile(GetType().FullName ?? string.Empty, "UpdateData");
-                        this.UpdateData(hasAddressChanged);
+                        Console.WriteLine($"[{this.GetType().Name}.Address.set] {ex}");
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[{this.GetType().Name}.Address.set] {ex}");
                 }
             }
         }

@@ -30,6 +30,14 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     /// </summary>
     public class AreaInstance : RemoteObjectBase
     {
+        private static readonly EntityBackedBuffDefinition[] EntityBackedPlayerBuffs =
+        {
+            new(
+                "Metadata/Effects/Spells/sandstorm_swipe/sandstorm_swipe_storm",
+                "spear_sandstorm",
+                rawStage => Math.Max(0, ((int)rawStage - 15) / 3)),
+        };
+
         private int uselesssEntities;
         private int totalEntityRemoved;
         private string entityIdFilter;
@@ -257,6 +265,52 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.ServerDataObject.Address = data.PlayerInfo.ServerDataPtr;
             this.Player.Address = data.PlayerInfo.LocalPlayerPtr;
             this.UpdateEntities(data.Entities.AwakeEntities, this.AwakeEntities, true);
+            this.AddEntityBackedPlayerBuffs();
+        }
+
+        private void AddEntityBackedPlayerBuffs()
+        {
+            if (!this.Player.TryGetComponent<Buffs>(out var playerBuffs))
+            {
+                return;
+            }
+
+            foreach (var entity in this.AwakeEntities.Values)
+            {
+                if (!entity.IsValid)
+                {
+                    continue;
+                }
+
+                foreach (var definition in EntityBackedPlayerBuffs)
+                {
+                    if (!entity.Path.Contains(definition.EntityPathFragment, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    // Effect entities can be classified as useless and therefore stop refreshing
+                    // cached components. Read a fresh component so changing stages remain live.
+                    if (!entity.TryGetComponent<Buffs>(out var entityBuffs, false))
+                    {
+                        break;
+                    }
+
+                    foreach (var statusEffect in entityBuffs.StatusEffects)
+                    {
+                        if (!statusEffect.Key.Contains(definition.BuffNameFragment, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        var syntheticEffect = statusEffect.Value;
+                        syntheticEffect.Charges = (short)Math.Min(
+                            short.MaxValue,
+                            definition.StageToStacks(syntheticEffect.RawStage));
+                        playerBuffs.AddSyntheticStatusEffect(statusEffect.Key, syntheticEffect);
+                    }
+                }
+            }
         }
 
         private void UpdateEnvironmentAndCaches(StdVector environments)
@@ -1048,5 +1102,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 }
             }
         }
+
+        private readonly record struct EntityBackedBuffDefinition(
+            string EntityPathFragment,
+            string BuffNameFragment,
+            Func<uint, int> StageToStacks);
     }
 }

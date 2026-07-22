@@ -94,7 +94,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             new(0x00A4, "Prosperous Populous", "100% increased Rarity of items found in area", "ItemQuantity"),
             new(0x00A5, "Echoes of Power", "5 Rare Monsters are Duplicated", "GenericMinionNotable"),
             new(0x00A6, "Grand Expedition", "Area contains a Grand Expedition", "ExpeditionNode1"),
-            new(0x03E9, "Grand Expedition", "Area contains a Grand Expedition", "AtlasIconContentExpedition"),
+            // Do not map 0x03E9: the full UI value 0x000203E9 is a shared special-border badge
+            // marker, observed on both Grand Expeditions and Simulacrums. Grand Expedition is
+            // identified by its persistent EndgameMapContent id 0x00A6 instead.
             // ATLAS_CONTENT_PORT_INSERT
         };
     }
@@ -141,6 +143,9 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             new(0x6638, "Elemental Shrines do not appear in area", "BossNotableSpawnAdditionalShrine"),
             new(0x3E16, "Shrine Duration increased by {0}%", "BossNotableSpawnAdditionalShrine"),
             new(0x6244, "Shrines release an Azmeri Spirit when activated", "HybridShrineAzmeriSpirit"),
+            // Observed as full token 0x1F916290 on Simulacrum nodes. The low word selects the
+            // content effect; the high word is token payload and must not be used as an identity.
+            new(0x6290, "Simulacrum", "DeliriumNotable7"),
             new(0x685A, "{0}% Delirious", "AtlasIconContentDelirium"),
         };
     }

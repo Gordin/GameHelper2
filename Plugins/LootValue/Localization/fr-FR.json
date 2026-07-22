@@ -1,5 +1,5 @@
 {
-  "plugin.description": "Affiche des etiquettes de valeur de marche sur les objets au sol interessants.",
+  "plugin.description": "Affiche la valeur des objets au sol, dans le coffre et dans l'inventaire.",
   "button.refresh_prices_now": "Actualiser les prix maintenant",
   "currency.chaos": "Chaos",
   "currency.divine": "Divin",

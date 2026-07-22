@@ -1,0 +1,11 @@
+https://github.com/MordWraith/PlayerBuffBar
+
+GameHelper2 player buff overlay for PoE2: up to four independent buff bars (each with own watchlist and position), plus a resource row for power/frenzy/endurance charges and rage. Icons from poe2db.tw (auto-cached), durations/stacks, inactive preview, and a buff-key dump tool for building watchlists. Skill aliases included (e.g. refutation matches runic_fortress).
+
+By MordWraith for community GameHelper2 forks. Read-only overlay — no input automation. Also available via the experimental Gamehelper optional-plugin catalog.
+
+Build from source only: clone into Plugins/PlayerBuffBar, dotnet build GameHelper and the plugin. .NET 10, net10.0-windows, x64.
+
+Feedback / feature requests: this thread. Crashes / install: #help tag plugin.
+
+Community third-party — use at your own risk.

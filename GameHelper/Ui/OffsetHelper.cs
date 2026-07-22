@@ -41,6 +41,9 @@ namespace GameHelper.Ui
         private static SweepResult? lastSweep;
         private static bool autoRefresh;
         private static int autoRefreshFrameCounter;
+        private static int expectedMaxHealth;
+        private static int expectedMaxMana;
+        private static int expectedMaxEnergyShield;
 
         // Static-address re-scan ("Self-test") state, mutated from a background Task.
         private static volatile bool selfTestRunning;
@@ -135,6 +138,7 @@ namespace GameHelper.Ui
                     DrawToolbar();
                     ImGui.Separator();
                     DrawSummary();
+                    DrawRecoveryHints();
                     ImGui.Separator();
 
                     DrawEntityInspector();
@@ -220,6 +224,26 @@ namespace GameHelper.Ui
             ImGui.TextColored(selfTestColor, selfTestSummary);
         }
 
+        private static void DrawRecoveryHints()
+        {
+            if (!ImGui.CollapsingHeader("Recovery hints (optional)"))
+            {
+                return;
+            }
+
+            ImGui.TextWrapped("Enter values visible on your character to give shifted Life fields an exact semantic anchor. " +
+                              "Values are session-only; 0 disables a hint. Run a new sweep after changing them.");
+            ImGui.SetNextItemWidth(140f);
+            ImGui.InputInt("Maximum health##odMaxHealth", ref expectedMaxHealth, 1, 100);
+            expectedMaxHealth = Math.Max(0, expectedMaxHealth);
+            ImGui.SetNextItemWidth(140f);
+            ImGui.InputInt("Total mana before reservation##odMaxMana", ref expectedMaxMana, 1, 100);
+            expectedMaxMana = Math.Max(0, expectedMaxMana);
+            ImGui.SetNextItemWidth(140f);
+            ImGui.InputInt("Maximum energy shield##odMaxEnergyShield", ref expectedMaxEnergyShield, 1, 100);
+            expectedMaxEnergyShield = Math.Max(0, expectedMaxEnergyShield);
+        }
+
         private static void DrawSummary()
         {
             if (lastSweep == null)
@@ -292,6 +316,8 @@ namespace GameHelper.Ui
                 ImGui.TextWrapped(p.Detail);
             }
 
+            DrawRecoveries(p);
+
             for (var i = 0; i < p.Roots.Count; i++)
             {
                 var root = p.Roots[i];
@@ -315,6 +341,68 @@ namespace GameHelper.Ui
             }
 
             ImGui.TreePop();
+        }
+
+        private static void DrawRecoveries(ProbeResult probe)
+        {
+            if (probe.Recoveries.Count == 0)
+            {
+                if (probe.RecoveryAttempted)
+                {
+                    ImGui.TextDisabled("Auto-recovery scanned the nearby aligned offsets, but found no sufficiently strong candidate.");
+                }
+
+                return;
+            }
+
+            ImGui.TextColored(Blue, "Auto-recovery found offset candidates whose semantic checks pass:");
+            foreach (var group in probe.Recoveries.GroupBy(x => x.Shift).OrderBy(x => x.Key))
+            {
+                ImGui.BulletText($"common shift {FormatShift(group.Key)}");
+                foreach (var recovery in group.OrderBy(x => x.ConfiguredOffset))
+                {
+                    ImGui.Indent();
+                    var ambiguity = recovery.IsAmbiguous
+                        ? $" · ambiguous alternatives: {string.Join(", ", recovery.AlternativeOffsets.Select(x => $"0x{x:X}"))}"
+                        : recovery.ConsensusSupport >= 2
+                            ? $" · selected by {recovery.ConsensusSupport}-field shift consensus"
+                        : string.Empty;
+                    ImGui.TextWrapped($"{recovery.FieldName}: 0x{recovery.ConfiguredOffset:X} → 0x{recovery.CandidateOffset:X} " +
+                                      $"({recovery.VerifiedRoots}/{recovery.RootCount} roots, {recovery.EvidencePasses} strong checks){ambiguity}");
+                    ImGui.Unindent();
+                }
+            }
+
+            if (ImGui.SmallButton($"Copy recovery report##odcopyrecovery_{probe.Name}"))
+            {
+                ImGui.SetClipboardText(BuildRecoveryReport(probe));
+            }
+        }
+
+        private static string BuildRecoveryReport(ProbeResult probe)
+        {
+            var lines = new List<string>
+            {
+                $"OffsetHelper auto-recovery candidates for {probe.Name}",
+            };
+            foreach (var recovery in probe.Recoveries.OrderBy(x => x.ConfiguredOffset))
+            {
+                var alternatives = recovery.IsAmbiguous
+                    ? $"; alternatives {string.Join(", ", recovery.AlternativeOffsets.Select(x => $"0x{x:X}"))}"
+                    : recovery.ConsensusSupport >= 2
+                        ? $"; selected by {recovery.ConsensusSupport}-field shift consensus"
+                    : string.Empty;
+                lines.Add($"{recovery.FieldName}: [FieldOffset(0x{recovery.ConfiguredOffset:X})] -> " +
+                          $"[FieldOffset(0x{recovery.CandidateOffset:X})] ({FormatShift(recovery.Shift)}; " +
+                          $"{recovery.VerifiedRoots}/{recovery.RootCount} roots; {recovery.EvidencePasses} strong checks{alternatives})");
+            }
+
+            return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string FormatShift(int shift)
+        {
+            return shift >= 0 ? $"+0x{shift:X}" : $"-0x{-shift:X}";
         }
 
         private static void DrawFieldTable(string id, List<FieldRow> fields)
@@ -1364,7 +1452,12 @@ namespace GameHelper.Ui
         {
             try
             {
-                lastSweep = Eng.RunSweep();
+                lastSweep = Eng.RunSweep(new OffsetRecoveryHints
+                {
+                    MaxHealth = expectedMaxHealth,
+                    MaxMana = expectedMaxMana,
+                    MaxEnergyShield = expectedMaxEnergyShield,
+                });
             }
             catch (Exception ex)
             {

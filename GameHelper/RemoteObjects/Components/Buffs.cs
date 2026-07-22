@@ -47,6 +47,7 @@ namespace GameHelper.RemoteObjects.Components
                         ImGuiHelper.DisplayFloatWithInfinitySupport("Total Time:", kv.Value.TotalTime);
                         ImGuiHelper.DisplayFloatWithInfinitySupport("Time Left:", kv.Value.TimeLeft);
                         ImGui.Text($"Source Entity Id: {kv.Value.SourceEntityId}");
+                        ImGui.Text($"Raw Stage: {kv.Value.RawStage}");
                         ImGui.Text($"Charges: {kv.Value.Charges}");
                         ImGui.Text($"Source FlaskSlot: {kv.Value.FlaskSlot}");
                         ImGui.Text($"Source Effectiveness: {100 + kv.Value.Effectiveness} (raw value: {kv.Value.Effectiveness})");
@@ -134,6 +135,21 @@ namespace GameHelper.RemoteObjects.Components
                     return statusEffectData;
                 });
             }
+        }
+
+        /// <summary>
+        ///     Adds a status effect read from an entity-backed player skill to the player's
+        ///     normal status-effect collection. A real player status effect with the same
+        ///     name wins unless the synthetic effect reports more stacks.
+        /// </summary>
+        /// <param name="effectName">Name used by normal status-effect consumers.</param>
+        /// <param name="statusEffectData">Status-effect data with its stage represented as charges.</param>
+        internal void AddSyntheticStatusEffect(string effectName, StatusEffectStruct statusEffectData)
+        {
+            this.StatusEffects.AddOrUpdate(effectName, statusEffectData, (_, oldValue) =>
+            {
+                return statusEffectData.Charges > oldValue.Charges ? statusEffectData : oldValue;
+            });
         }
 
         private (string, byte) GetNameFromBuffDefination(IntPtr addr)

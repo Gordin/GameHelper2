@@ -1,0 +1,5 @@
+bin/
+obj/
+*.user
+icons/
+_tmp_*.html

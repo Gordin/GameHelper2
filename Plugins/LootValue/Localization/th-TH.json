@@ -1,5 +1,5 @@
 {
-  "plugin.description": "แสดงป้ายมูลค่าตลาดเหนือไอเท็มบนพื้นที่มีราคา",
+  "plugin.description": "แสดงมูลค่าตลาดของไอเท็มบนพื้น ในคลัง และในช่องเก็บของ",
   "button.refresh_prices_now": "รีเฟรชราคาตอนนี้",
   "currency.chaos": "ความวุ่นวาย",
   "currency.divine": "พระเจ้า",

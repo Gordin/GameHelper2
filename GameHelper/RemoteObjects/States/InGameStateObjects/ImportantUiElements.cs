@@ -42,6 +42,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private static readonly int[] InterludePanelChildPath = { 22, 0, 5 };
         private static readonly int[] AtlasPanelChildPath = { 22, 0, 6 };
         private static readonly int[] AtlasSkillsPanelChildPath = { 25, 0 };
+        private static readonly int[] CurrencyExchangePanelChildPath = { 114, 20, 6, 1 };
         private static readonly int[] LeftPanelCoopPath = { 22 };
         private static readonly int[] RightPanelCoopPath = { 23 };
         private static readonly int[] TempleConsoleChildPath = { 64, 0 };
@@ -145,6 +146,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.Atlas = new(IntPtr.Zero, this.rootCache);
             this.AtlasSkillsPanel = new(IntPtr.Zero, this.rootCache);
             this.TempleConsole = new(IntPtr.Zero, this.rootCache);
+            this.CurrencyExchangePanel = new(IntPtr.Zero, this.rootCache);
             this.LeftPanel = new(IntPtr.Zero, this.rootCache);
             this.RightPanel = new(IntPtr.Zero, this.rootCache);
             this.ChatParent = new(IntPtr.Zero, this.rootCache);
@@ -257,6 +259,13 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         public UiElementBase RightPanel { get; }
 
         /// <summary>
+        ///     Gets the Currency Exchange item-list panel.
+        ///     Its visibility reliably indicates that the Currency Exchange screen is open.
+        ///     GameUi -> child 114 -> 20 -> 6 -> 1.
+        /// </summary>
+        public UiElementBase CurrencyExchangePanel { get; }
+
+        /// <summary>
         ///     Gets a value indicating whether any large blocking panel is currently open
         ///     (a left/right side panel, the passive skill tree, or the world-travel map).
         ///     Useful for overlays that should hide world-space drawing while the player is in a menu.
@@ -267,6 +276,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.WorldMapPanel.IsVisible ||
             this.AtlasSkillsPanel.IsVisible ||
             this.TempleConsole.IsVisible ||
+            this.CurrencyExchangePanel.IsVisible ||
             this.SekhemasTrialMapPanel.IsVisible ||
             this.IsPassiveSkillTreeOpen;
 
@@ -432,6 +442,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.Atlas.Address = IntPtr.Zero;
             this.AtlasSkillsPanel.Address = IntPtr.Zero;
             this.TempleConsole.Address = IntPtr.Zero;
+            this.CurrencyExchangePanel.Address = IntPtr.Zero;
             this.LeftPanel.Address = IntPtr.Zero;
             this.RightPanel.Address = IntPtr.Zero;
             this.ChatParent.Address = IntPtr.Zero;
@@ -491,6 +502,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 }
             }
 
+            this.CurrencyExchangePanel.Address = ResolveChildAddress(this.Address, CurrencyExchangePanelChildPath);
             this.UpdateAtlasMapData();
         }
 
