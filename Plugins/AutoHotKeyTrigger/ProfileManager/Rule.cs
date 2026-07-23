@@ -178,7 +178,7 @@ namespace AutoHotKeyTrigger.ProfileManager
             this.isExecuting = true;
             try
             {
-                while (!MiscHelper.KeyDown(this.Key, isRepeat: false))
+                while (!MiscHelper.KeyHoldDown(this.Key, isRepeat: false))
                 {
                     if (!this.Enabled)
                     {
@@ -198,11 +198,11 @@ namespace AutoHotKeyTrigger.ProfileManager
                         break;
                     }
 
-                    MiscHelper.KeyDown(this.Key, isRepeat: true);
+                    MiscHelper.KeyHoldDown(this.Key, isRepeat: true);
                     yield return new Coroutine.Wait(0.02d);
                 }
 
-                while (!MiscHelper.KeyUp(this.Key))
+                while (!MiscHelper.KeyHoldUp(this.Key))
                 {
                     yield return new Coroutine.Wait(0.01d);
                 }

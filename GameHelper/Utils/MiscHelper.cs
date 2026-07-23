@@ -119,12 +119,48 @@ namespace GameHelper.Utils
         private const uint KEYEVENTF_KEYUP = 0x0002;
 
         /// <summary>
-        ///     Sends key down event to the game.
+        ///     Releases the key in the game (Original SendMessage implementation for flasks/tap rules).
+        ///     There is a hard delay between Key releases to make sure game doesn't kick us for too many key-presses.
         /// </summary>
-        /// <param name="key">key to press down.</param>
+        /// <param name="key">key to release.</param>
+        /// <returns>Is the key actually pressed or not.</returns>
+        public static bool KeyUp(VK key)
+        {
+            if (Core.GHSettings.EnableControllerMode)
+            {
+                return false;
+            }
+
+            if (sendingMessage != null && !sendingMessage.IsCompleted)
+            {
+                return false;
+            }
+
+            if (DelayBetweenKeys.ElapsedMilliseconds >= Core.GHSettings.KeyPressTimeout + Rand.Next() % 10)
+            {
+                DelayBetweenKeys.Restart();
+            }
+            else
+            {
+                return false;
+            }
+
+            if (Core.Process.Address != IntPtr.Zero)
+            {
+                sendingMessage = Task.Run(() => SendMessage(Core.Process.Information.MainWindowHandle, 0x101, (int)key, 0));
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        ///     Sends physical OS key-down event + window message for Hold mode (e.g. Snipe / charged skills).
+        /// </summary>
+        /// <param name="key">key to hold down.</param>
         /// <param name="isRepeat">If true, sends an auto-repeat keydown message without rate-limit delay.</param>
-        /// <returns>Is the key down message sent or not.</returns>
-        public static bool KeyDown(VK key, bool isRepeat = false)
+        /// <returns>Is the key hold down message sent or not.</returns>
+        public static bool KeyHoldDown(VK key, bool isRepeat = false)
         {
             if (Core.GHSettings.EnableControllerMode)
             {
@@ -162,13 +198,11 @@ namespace GameHelper.Utils
         }
 
         /// <summary>
-        ///     Releases the key in the game. There is a hard delay of 30ms - 40ms
-        ///     between Key releases to make sure game doesn't kick us for
-        ///     too many key-presses.
+        ///     Releases physical OS key + window message for Hold mode.
         /// </summary>
         /// <param name="key">key to release.</param>
-        /// <returns>Is the key actually pressed or not.</returns>
-        public static bool KeyUp(VK key)
+        /// <returns>Is the key release message sent or not.</returns>
+        public static bool KeyHoldUp(VK key)
         {
             if (Core.GHSettings.EnableControllerMode)
             {
