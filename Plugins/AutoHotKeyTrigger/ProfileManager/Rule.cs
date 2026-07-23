@@ -18,6 +18,7 @@ namespace AutoHotKeyTrigger.ProfileManager
     using ClickableTransparentOverlay.Win32;
     using AutoHotKeyTrigger.ProfileManager.DynamicConditions;
     using AutoHotKeyTrigger.ProfileManager.Templates;
+    using Coroutine;
 
     /// <summary>
     ///     Abstraction for the rule condition list
@@ -29,6 +30,7 @@ namespace AutoHotKeyTrigger.ProfileManager
         private static bool expand = false;
         private ConditionType newConditionType = ConditionType.AILMENT;
         private readonly Stopwatch cooldownStopwatch = Stopwatch.StartNew();
+        private bool isExecuting = false;
 
         [JsonProperty("Conditions", NullValueHandling = NullValueHandling.Ignore)]
         private readonly List<DynamicCondition> conditions = new();
@@ -51,6 +53,18 @@ namespace AutoHotKeyTrigger.ProfileManager
         public VK Key;
 
         /// <summary>
+        ///     Key action mode (Tap or Hold).
+        /// </summary>
+        [JsonProperty]
+        public KeyActionMode ActionMode = KeyActionMode.Tap;
+
+        /// <summary>
+        ///     Duration in seconds to hold key when ActionMode is Hold.
+        /// </summary>
+        [JsonProperty]
+        public float HoldDuration = 0.35f;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="Rule" /> class.
         /// </summary>
         /// <param name="name"></param>
@@ -70,6 +84,8 @@ namespace AutoHotKeyTrigger.ProfileManager
             this.Enabled = false;
             this.Name = $"{other.Name}1";
             this.Key = other.Key;
+            this.ActionMode = other.ActionMode;
+            this.HoldDuration = other.HoldDuration;
             this.conditions = new();
             foreach (var condition in other.conditions)
             {
@@ -118,24 +134,85 @@ namespace AutoHotKeyTrigger.ProfileManager
                 this.Key = tmpKey;
             }
 
+            var tmpActionMode = this.ActionMode;
+            if (ImGuiHelper.EnumComboBox(AhkText.Label("rule.action_mode", "Action Mode", "AhkRuleActionMode"), ref tmpActionMode))
+            {
+                this.ActionMode = tmpActionMode;
+            }
+
+            if (this.ActionMode == KeyActionMode.Hold)
+            {
+                ImGui.DragFloat(AhkText.Label("rule.hold_duration", "Hold Duration (seconds)", "AhkRuleHoldDuration"), ref this.HoldDuration, 0.01f, 0.01f, 10.0f);
+            }
+
             this.DrawCooldownWidget();
             this.DrawAddNewCondition();
             this.DrawExistingConditions();
         }
 
         /// <summary>
-        ///     Checks the rule conditions and presses its key if conditions are satisfied
+        ///     Checks the rule conditions and presses or holds its key if conditions are satisfied
         /// </summary>
         /// <param name="logger"></param>
         public void Execute(Action<string> logger)
         {
-            if (this.Enabled && this.Evaluate())
+            if (this.Enabled && !this.isExecuting && this.Evaluate())
             {
-                if (MiscHelper.KeyUp(this.Key))
+                if (this.ActionMode == KeyActionMode.Tap)
                 {
-                    logger($"{this.Key} is pressed.");
-                    this.cooldownStopwatch.Restart();
+                    if (MiscHelper.KeyUp(this.Key))
+                    {
+                        logger($"{this.Key} is pressed.");
+                        this.cooldownStopwatch.Restart();
+                    }
                 }
+                else if (this.ActionMode == KeyActionMode.Hold)
+                {
+                    CoroutineHandler.Start(this.RunHoldCoroutine(logger));
+                }
+            }
+        }
+
+        private IEnumerator<Coroutine.Wait> RunHoldCoroutine(Action<string> logger)
+        {
+            this.isExecuting = true;
+            try
+            {
+                while (!MiscHelper.KeyDown(this.Key, isRepeat: false))
+                {
+                    if (!this.Enabled)
+                    {
+                        yield break;
+                    }
+
+                    yield return new Coroutine.Wait(0.01d);
+                }
+
+                logger($"{this.Key} is held down for {this.HoldDuration:F2}s...");
+                var holdEndTime = DateTime.UtcNow.AddSeconds(this.HoldDuration);
+
+                while (DateTime.UtcNow < holdEndTime)
+                {
+                    if (!this.Enabled)
+                    {
+                        break;
+                    }
+
+                    MiscHelper.KeyDown(this.Key, isRepeat: true);
+                    yield return new Coroutine.Wait(0.02d);
+                }
+
+                while (!MiscHelper.KeyUp(this.Key))
+                {
+                    yield return new Coroutine.Wait(0.01d);
+                }
+
+                logger($"{this.Key} released after hold.");
+                this.cooldownStopwatch.Restart();
+            }
+            finally
+            {
+                this.isExecuting = false;
             }
         }
 
@@ -269,7 +346,7 @@ namespace AutoHotKeyTrigger.ProfileManager
                     ImGui.SameLine();
                     if (expand && ImGui.SmallButton(AhkText.Label("button.add_component", "Add Component", "AhkAddComponent")))
                     {
-                        this.conditions[i].Add(new Wait(0));
+                        this.conditions[i].Add(new AutoHotKeyTrigger.ProfileManager.Component.Wait(0));
                     }
 
                     ImGui.SameLine();

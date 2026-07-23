@@ -310,5 +310,49 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
 
             return count;
         }
+
+        /// <inheritdoc />
+        public int SkillStage(string skillName)
+        {
+            if (this.state == null || string.IsNullOrEmpty(skillName))
+            {
+                return 0;
+            }
+
+            if (skillName.Equals("sandstorm_swipe", StringComparison.OrdinalIgnoreCase) ||
+                skillName.Equals("spear_sandstorm", StringComparison.OrdinalIgnoreCase))
+            {
+                var playerStage = this.PlayerBuffs["spear_sandstorm"].Charges;
+                if (playerStage > 0)
+                {
+                    return playerStage;
+                }
+
+                var area = this.state.CurrentAreaInstance;
+                var maxStage = 0;
+                foreach (var (_, entity) in area.AwakeEntities)
+                {
+                    if (entity.IsValid &&
+                        entity.Path.Contains("sandstorm_swipe_storm", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (entity.TryGetComponent<Buffs>(out var buffs))
+                        {
+                            if (buffs.StatusEffects.TryGetValue("spear_sandstorm", out var statusEffect))
+                            {
+                                var stage = statusEffect.RawStage >= 15 ? (int)((statusEffect.RawStage - 15) / 3) : 0;
+                                if (stage > maxStage)
+                                {
+                                    maxStage = stage;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return maxStage;
+            }
+
+            return 0;
+        }
     }
 }

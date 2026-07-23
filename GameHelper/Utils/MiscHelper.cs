@@ -1,4 +1,4 @@
-﻿// <copyright file="MiscHelper.cs" company="None">
+// <copyright file="MiscHelper.cs" company="None">
 // Copyright (c) None. All rights reserved.
 // </copyright>
 
@@ -99,6 +99,68 @@ namespace GameHelper.Utils
             return string.Join(' ', Enumerable.Range(0, random.Next(1, 4)).Select(_ => GetWord()));
         }
 
+        private static int GetLParam(VK key, bool isKeyUp, bool isRepeat)
+        {
+            uint scanCode = MapVirtualKey((uint)key, 0);
+            int lParam = 1 | ((int)scanCode << 16);
+            if (isKeyUp)
+            {
+                lParam |= (1 << 30) | (1 << 31);
+            }
+            else if (isRepeat)
+            {
+                lParam |= (1 << 30);
+            }
+
+            return lParam;
+        }
+
+        private const uint KEYEVENTF_KEYDOWN = 0x0000;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+
+        /// <summary>
+        ///     Sends key down event to the game.
+        /// </summary>
+        /// <param name="key">key to press down.</param>
+        /// <param name="isRepeat">If true, sends an auto-repeat keydown message without rate-limit delay.</param>
+        /// <returns>Is the key down message sent or not.</returns>
+        public static bool KeyDown(VK key, bool isRepeat = false)
+        {
+            if (Core.GHSettings.EnableControllerMode)
+            {
+                return false;
+            }
+
+            if (sendingMessage != null && !sendingMessage.IsCompleted)
+            {
+                return false;
+            }
+
+            if (!isRepeat)
+            {
+                if (DelayBetweenKeys.ElapsedMilliseconds >= Core.GHSettings.KeyPressTimeout + Rand.Next() % 10)
+                {
+                    DelayBetweenKeys.Restart();
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            if (Core.Process.Address != IntPtr.Zero)
+            {
+                byte vkByte = (byte)key;
+                byte scanCode = (byte)MapVirtualKey((uint)key, 0);
+                keybd_event(vkByte, scanCode, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+                int lParam = GetLParam(key, isKeyUp: false, isRepeat: isRepeat);
+                sendingMessage = Task.Run(() => SendMessage(Core.Process.Information.MainWindowHandle, 0x100, (int)key, lParam));
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         ///     Releases the key in the game. There is a hard delay of 30ms - 40ms
         ///     between Key releases to make sure game doesn't kick us for
@@ -129,7 +191,11 @@ namespace GameHelper.Utils
 
             if (Core.Process.Address != IntPtr.Zero)
             {
-                sendingMessage = Task.Run(() => SendMessage(Core.Process.Information.MainWindowHandle, 0x101, (int)key, 0));
+                byte vkByte = (byte)key;
+                byte scanCode = (byte)MapVirtualKey((uint)key, 0);
+                keybd_event(vkByte, scanCode, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                int lParam = GetLParam(key, isKeyUp: true, isRepeat: false);
+                sendingMessage = Task.Run(() => SendMessage(Core.Process.Information.MainWindowHandle, 0x101, (int)key, lParam));
                 return true;
             }
 
@@ -184,6 +250,12 @@ namespace GameHelper.Utils
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = false)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
         [DllImport("iphlpapi.dll", SetLastError = true)]
         private static extern uint GetExtendedTcpTable(

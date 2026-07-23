@@ -188,5 +188,12 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
         ///     Gets the value indicating if player is shapeshifted or not.
         /// </summary>
         bool PlayerIsShapeShifted { get; }
+
+        /// <summary>
+        ///     Gets the stage of a skill (e.g. whirling slash).
+        /// </summary>
+        /// <param name="skillName">The skill name to query (e.g., "sandstorm_swipe")</param>
+        /// <returns>The stage of the skill, or 0 if not found/invalid</returns>
+        int SkillStage(string skillName);
     }
 }
