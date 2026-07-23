@@ -779,6 +779,7 @@ namespace Radar
             this.BaseIcons.TryAdd("Rare Monster", new IconPicker(iconPathName, 4, 57, 30, IconSize));
             this.BaseIcons.TryAdd("Unique Monster", new IconPicker(iconPathName, 6, 57, 30, IconSize));
             this.BaseIcons.TryAdd("Pinnacle Boss Not Attackable", new IconPicker(iconPathName, 5, 15, 30, IconSize));
+            this.BaseIcons.TryAdd("Hidden Monster", new IconPicker(iconPathName, 4, 14, 40, IconSize));
 
             this.BaseIcons.TryAdd("Yellow Bestiary Monster", new IconPicker(iconPathName, 6, 2, 35, IconSize));
             this.BaseIcons.TryAdd("Red Bestiary Monster", new IconPicker(iconPathName, 7, 2, 35, IconSize));

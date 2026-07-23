@@ -1068,6 +1068,7 @@ namespace Radar
             var friendlyIcon = baseIcons["Friendly"];
             var deliriumBombIcon = deliriumIcons["Delirium Bomb"];
             var deliriumSpawnerIcon = deliriumIcons["Delirium Spawner"];
+            var hiddenMonsterIcon = baseIcons["Hidden Monster"];
             var normalMonsterIcon = baseIcons["Normal Monster"];
             var magicMonsterIcon = baseIcons["Magic Monster"];
             var rareMonsterIcon = baseIcons["Rare Monster"];
@@ -1227,6 +1228,15 @@ namespace Radar
                         DrawIcon(shrineIcon);
                         break;
                     case EntityTypes.Monster:
+                        if (entityValue.TryGetComponent<Stats>(out var monsterStats) &&
+                            monsterStats.StatsChangedByBuffAndActions.TryGetValue(
+                                GameStats.is_hidden_monster, out var isHiddenMonster) &&
+                            isHiddenMonster == 1)
+                        {
+                            DrawIcon(hiddenMonsterIcon);
+                            break;
+                        }
+
                         switch (entityValue.EntityState)
                         {
                             case EntityStates.None:
@@ -1579,6 +1589,15 @@ namespace Radar
                         break;
 
                     case EntityTypes.Monster:
+                        if (ev.TryGetComponent<Stats>(out var monsterStats) &&
+                            monsterStats.StatsChangedByBuffAndActions.TryGetValue(
+                                GameStats.is_hidden_monster, out var isHiddenMonster) &&
+                            isHiddenMonster == 1)
+                        {
+                            TryAdd(eId, ePos, baseIcons["Hidden Monster"]);
+                            break;
+                        }
+
                         switch (ev.EntityState)
                         {
                             case EntityStates.None:
