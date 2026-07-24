@@ -466,8 +466,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.UpdateWorldMapPanelAddresses();
                 if (this.IsCoopMode())
                 {
-                    this.LeftPanel.Address = ResolveChildAddress(this.Address, LeftPanelCoopPath);
-                    this.RightPanel.Address = ResolveChildAddress(this.Address, RightPanelCoopPath);
+                    this.UpdateCoopPanelAddresses();
                 }
                 else
                 {
@@ -912,6 +911,52 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             }
 
             return false;
+        }
+
+        private void UpdateCoopPanelAddresses()
+        {
+            var reader = Core.Process.Handle;
+            var data = reader.ReadMemory<UiElementBaseOffset>(this.Address);
+            var childCount = data.ChildrensPtr.TotalElements(IntPtr.Size);
+            if (childCount == 0 || data.ChildrensPtr.First == IntPtr.Zero)
+            {
+                this.LeftPanel.Address = IntPtr.Zero;
+                this.RightPanel.Address = IntPtr.Zero;
+                return;
+            }
+
+            IntPtr foundLeft = IntPtr.Zero;
+            IntPtr foundRight = IntPtr.Zero;
+
+            // Scan candidate index window (indices 20 to 25) for adjacent co-op panels
+            int startIdx = Math.Max(0, 20);
+            int endIdx = Math.Min((int)childCount - 2, 25);
+
+            for (int i = startIdx; i <= endIdx; i++)
+            {
+                var leftCandidate = ValidUiElementOrZero(reader.ReadMemory<IntPtr>(data.ChildrensPtr.First + (i * IntPtr.Size)));
+                var rightCandidate = ValidUiElementOrZero(reader.ReadMemory<IntPtr>(data.ChildrensPtr.First + ((i + 1) * IntPtr.Size)));
+
+                if (leftCandidate == IntPtr.Zero || rightCandidate == IntPtr.Zero)
+                {
+                    continue;
+                }
+
+                var leftData = reader.ReadMemory<UiElementBaseOffset>(leftCandidate);
+                var rightData = reader.ReadMemory<UiElementBaseOffset>(rightCandidate);
+
+                // In co-op mode, LeftPanel relative X < RightPanel relative X
+                if (leftData.RelativePosition.X < rightData.RelativePosition.X)
+                {
+                    foundLeft = leftCandidate;
+                    foundRight = rightCandidate;
+                    break;
+                }
+            }
+
+            // Fallback to static paths if candidate scanning doesn't find a matching pair
+            this.LeftPanel.Address = foundLeft != IntPtr.Zero ? foundLeft : ResolveChildAddress(this.Address, LeftPanelCoopPath);
+            this.RightPanel.Address = foundRight != IntPtr.Zero ? foundRight : ResolveChildAddress(this.Address, RightPanelCoopPath);
         }
 
         private static IntPtr ResolveChildAddress(IntPtr rootAddress, int[] childPath)
