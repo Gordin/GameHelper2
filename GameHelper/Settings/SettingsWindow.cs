@@ -29,6 +29,10 @@ namespace GameHelper.Settings
         private static Vector4 color = new(1f, 1f, 0f, 1f);
         private static bool isOverlayRunningLocal = true;
         private static bool isSettingsWindowVisible = true;
+        private const string GeneralPageId = "core:general";
+        private const string PluginManagerPageId = "core:plugins";
+        private static string selectedSettingsPage = PluginManagerPageId;
+        private static string pluginReloadStatus = string.Empty;
 
         private static EntityFilterType efilterType = EntityFilterType.PATH;
         private static string filterText = string.Empty;
@@ -88,66 +92,123 @@ namespace GameHelper.Settings
             ImGui.EndMenuBar();
         }
 
-        private static void DrawTabs()
+        private static void DrawSettingsLayout()
         {
-            if (ImGui.BeginTabBar("settingsTabBar", ImGuiTabBarFlags.AutoSelectNewTabs | ImGuiTabBarFlags.Reorderable))
+            var enabledPlugins = PManager.Plugins.Where(container => container.Metadata.Enable).ToList();
+            EnsureSelectedSettingsPage(enabledPlugins);
+
+            var availableWidth = ImGui.GetContentRegionAvail().X;
+            var sidebarWidth = Math.Clamp(availableWidth * 0.24f, 190f, 280f);
+
+            if (ImGui.BeginChild("SettingsSidebar", new Vector2(sidebarWidth, 0), ImGuiChildFlags.Borders))
             {
-                if (ImGui.BeginTabItem(L.Title("settings.tabs.general", "General", "GeneralTab")))
-                {
-                    if (ImGui.BeginChild("GeneralChildSetting"))
-                    {
-                        DrawCoreSettings();
-                    }
-
-                    ImGui.EndChild();
-                    ImGui.EndTabItem();
-                }
-
-                if (ImGui.BeginTabItem(L.Title("settings.tabs.plugins", "Plugins", "PluginsTab")))
-                {
-                    if (ImGui.BeginChild("PluginsChildSetting"))
-                    {
-                        DrawPluginManager();
-                    }
-
-                    ImGui.EndChild();
-                    ImGui.EndTabItem();
-                }
-
-                DrawPluginSettingsTabs();
-
-                ImGui.EndTabBar();
+                DrawSettingsNavigation(enabledPlugins);
             }
+
+            ImGui.EndChild();
+            ImGui.SameLine();
+
+            if (ImGui.BeginChild("SettingsContent", Vector2.Zero, ImGuiChildFlags.Borders))
+            {
+                DrawSelectedSettingsPage(enabledPlugins);
+            }
+
+            ImGui.EndChild();
         }
 
         /// <summary>
-        ///     Draws the per-plugin settings tabs for every enabled plugin.
+        ///     Draws the left navigation for core settings and enabled plugin settings.
         /// </summary>
-        private static void DrawPluginSettingsTabs()
+        private static void DrawSettingsNavigation(IReadOnlyCollection<PluginContainer> enabledPlugins)
         {
-            foreach (var container in PManager.Plugins)
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
+            ImGui.Text(L.T("settings.navigation.core", "Core"));
+            ImGui.PopStyleColor();
+
+            DrawNavigationItem(GeneralPageId, L.T("settings.tabs.general", "General"));
+            DrawNavigationItem(PluginManagerPageId, L.T("settings.tabs.plugins", "Plugins"));
+
+            ImGui.Separator();
+            ImGui.Spacing();
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
+            ImGui.Text(L.T("settings.navigation.plugin_settings", "Plugin Settings"));
+            ImGui.PopStyleColor();
+
+            if (enabledPlugins.Count == 0)
             {
-                if (!container.Metadata.Enable)
-                {
-                    continue;
-                }
+                ImGui.TextDisabled(L.T("settings.navigation.no_enabled_plugins", "No enabled plugins"));
+                return;
+            }
 
-                ImGui.PushStyleColor(ImGuiCol.Tab, new Vector4(0.16f, 0.20f, 0.30f, 1f));
-                ImGui.PushStyleColor(ImGuiCol.TabHovered, new Vector4(0.28f, 0.38f, 0.55f, 1f));
-                ImGui.PushStyleColor(ImGuiCol.TabSelected, ImGuiTheme.Accent);
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.96f, 1f, 1f));
-
-                if (ImGui.BeginTabItem($"{container.Name}##pluginCfg"))
-                {
-                    ImGuiTheme.BeginPanel($"PluginPanel_{container.Name}");
-                    container.Plugin.DrawSettings();
-                    ImGuiTheme.EndPanel();
-                    ImGui.EndTabItem();
-                }
-
-                ImGui.PopStyleColor(4);
+            foreach (var container in enabledPlugins)
+            {
+                DrawNavigationItem(PluginPageId(container.Name), container.Name);
             }
         }
+
+        private static void DrawNavigationItem(string pageId, string label)
+        {
+            var selected = selectedSettingsPage == pageId;
+            if (selected)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Header, ImGuiTheme.AccentMuted);
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.98f, 0.99f, 1f, 1f));
+            }
+
+            if (ImGui.Selectable($"{label}##nav_{pageId}", selected))
+            {
+                selectedSettingsPage = pageId;
+            }
+
+            if (selected)
+            {
+                ImGui.PopStyleColor(2);
+            }
+        }
+
+        private static void DrawSelectedSettingsPage(IReadOnlyCollection<PluginContainer> enabledPlugins)
+        {
+            if (selectedSettingsPage == GeneralPageId)
+            {
+                DrawCoreSettings();
+                return;
+            }
+
+            if (selectedSettingsPage == PluginManagerPageId)
+            {
+                DrawPluginManager();
+                return;
+            }
+
+            var selectedPlugin = enabledPlugins.FirstOrDefault(container => selectedSettingsPage == PluginPageId(container.Name));
+            if (selectedPlugin != null)
+            {
+                var description = selectedPlugin.Plugin.GetDescription();
+                ImGuiTheme.SectionHeader(
+                    selectedPlugin.Name,
+                    string.IsNullOrWhiteSpace(description) ? null : description);
+                selectedPlugin.Plugin.DrawSettings();
+                return;
+            }
+
+            selectedSettingsPage = PluginManagerPageId;
+            DrawPluginManager();
+        }
+
+        private static void EnsureSelectedSettingsPage(IReadOnlyCollection<PluginContainer> enabledPlugins)
+        {
+            if (selectedSettingsPage == GeneralPageId || selectedSettingsPage == PluginManagerPageId)
+            {
+                return;
+            }
+
+            if (!enabledPlugins.Any(container => selectedSettingsPage == PluginPageId(container.Name)))
+            {
+                selectedSettingsPage = PluginManagerPageId;
+            }
+        }
+
+        private static string PluginPageId(string pluginName) => $"plugin:{pluginName}";
 
         /// <summary>
         ///     Draws the plugin manager table (enable/disable plugins).
@@ -172,6 +233,20 @@ namespace GameHelper.Settings
             if (ImGui.SmallButton(L.Label("settings.plugin.disable_all", "Disable all", "DisableAllPlugins")))
             {
                 SetAllPlugins(false);
+            }
+
+            ImGui.SameLine();
+            if (ImGui.SmallButton(L.Label("settings.plugin.reload_all", "Reload all plugins", "ReloadAllPlugins")))
+            {
+                ReloadAllPlugins();
+            }
+
+            if (!string.IsNullOrEmpty(pluginReloadStatus))
+            {
+                ImGui.SameLine();
+                ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
+                ImGui.Text(pluginReloadStatus);
+                ImGui.PopStyleColor();
             }
 
             ImGui.Spacing();
@@ -253,6 +328,22 @@ namespace GameHelper.Settings
         {
             PManager.SetPluginEnabled(container, enabled);
             CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
+        }
+
+        private static void ReloadAllPlugins()
+        {
+            try
+            {
+                var loadedCount = PManager.ReloadAllPlugins();
+                pluginReloadStatus = L.F("settings.plugin.reload_done", "Reloaded {0} plugins", loadedCount);
+                selectedSettingsPage = PluginManagerPageId;
+                CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
+            }
+            catch (Exception ex)
+            {
+                pluginReloadStatus = L.T("settings.plugin.reload_failed", "Reload failed; check console/log output.");
+                Console.WriteLine($"[SettingsWindow.ReloadAllPlugins] {ex}");
+            }
         }
 
         /// <summary>
@@ -930,7 +1021,7 @@ namespace GameHelper.Settings
                 }
 
                 DrawManuBar();
-                DrawTabs();
+                DrawSettingsLayout();
                 ImGui.End();
             }
         }

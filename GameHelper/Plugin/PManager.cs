@@ -347,6 +347,59 @@ namespace GameHelper.Plugin
             SavePluginMetadata();
         }
 
+        /// <summary>
+        ///     Reloads plugin assemblies from disk and re-enables plugins that are enabled in metadata.
+        /// </summary>
+        internal static int ReloadAllPlugins()
+        {
+            PluginContainer[] oldPlugins;
+            lock (Plugins)
+            {
+                oldPlugins = Plugins.ToArray();
+                Plugins.Clear();
+            }
+
+            foreach (var container in oldPlugins)
+            {
+                try
+                {
+                    DisablePlugin(container);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[PManager.ReloadAllPlugins] {container.Name} threw on disable: {ex}");
+                }
+
+                UnloadPluginAssembly(container);
+            }
+
+            LoadPluginMetadata(LoadPlugins());
+
+            PluginContainer[] newPlugins;
+            lock (Plugins)
+            {
+                newPlugins = Plugins.ToArray();
+            }
+
+            ResolveStartupConflicts(newPlugins);
+
+            foreach (var container in newPlugins)
+            {
+                try
+                {
+                    EnablePluginIfRequired(container);
+                }
+                catch (Exception ex)
+                {
+                    container.Metadata.Enable = false;
+                    Console.WriteLine($"[PManager.ReloadAllPlugins] {container.Name} threw on enable: {ex}");
+                }
+            }
+
+            SavePluginMetadata();
+            return newPlugins.Length;
+        }
+
         private static void DisablePlugin(PluginContainer container)
         {
             if (!container.Metadata.Enable)
@@ -359,6 +412,23 @@ namespace GameHelper.Plugin
             container.Metadata.Enable = false;
             container.Plugin.SaveSettings();
             container.Plugin.OnDisable();
+        }
+
+        private static void UnloadPluginAssembly(PluginContainer container)
+        {
+            var alcRef = new WeakReference(container.Alc);
+            container.Alc.Unload();
+
+            for (var i = 0; i < 10 && alcRef.IsAlive; i++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+
+            if (alcRef.IsAlive)
+            {
+                Console.WriteLine($"[PManager.UnloadPluginAssembly] {container.Name}: ALC still alive after 10 GC cycles.");
+            }
         }
 
         private static void ResolveStartupConflicts(IReadOnlyList<PluginContainer> plugins)
