@@ -30,9 +30,18 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     /// </summary>
     public class AreaInstance : RemoteObjectBase
     {
-        // A normal area is far smaller than this. The cap prevents a shifted TerrainMetadata
-        // offset from turning arbitrary values into multi-gigabyte jagged-array allocations.
-        private const long MaxTerrainGridCells = 25_000_000;
+        // The cap prevents a shifted TerrainMetadata offset from turning arbitrary values into
+        // multi-gigabyte jagged-array allocations. It is NOT a statement about how big a real area
+        // gets: a Trial of the Sekhemas floor holds every room at once and measures 220x294 tiles =
+        // 5060x6762 = 34.2M cells, so the previous 25M rejected it outright and Radar lost the map
+        // and every POI there (the same area an earlier fix had already had to make room for, by
+        // raising the ReadStdVector cap 16MB -> 50MB).
+        //
+        // 100M is the point where the walkable read would fail anyway, which makes the two limits
+        // agree: GridWalkableData packs 2 cells per byte, so 100M cells is exactly the 50MB
+        // ReadStdVector cap. Garbage from a shifted offset is orders of magnitude larger than this
+        // and is still rejected.
+        private const long MaxTerrainGridCells = 100_000_000;
 
         private static readonly EntityBackedBuffDefinition[] EntityBackedPlayerBuffs =
         {
