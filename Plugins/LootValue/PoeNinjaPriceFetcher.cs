@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -116,27 +117,82 @@ namespace LootValue
         private static string cacheFilePath = string.Empty;
         private static DateTime lastFetchTime = DateTime.MinValue;
         private static int configuredSource = SourcePoe2Scout;
+        private static int activeSource = SourcePoe2Scout;
         private static string configuredLeague = "Forbidden Rites";
         private static int configuredRefreshMinutes = 5;
         private static double chaosPerDivine = 12.0;
         private static double chaosPerExalted = 0.1;
+        private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(45);
 
         public static double DivineToExaltedRate { get; private set; } = 80.0;
         public static int LoadedItemCount { get; private set; }
         public static DateTime LastFetchUtc => lastFetchTime;
         public static bool IsFetching => isFetching;
+        public static bool IsUsingFallback => activeSource != configuredSource;
+        public static string ActiveSourceName => SourceName(activeSource);
 
         private static HttpClient CreateHttpClient()
         {
-            var client = new HttpClient { Timeout = TimeSpan.FromSeconds(45) };
+            // Timeout is handled by TryGetStringAsync without awaiting a canceled request task.
+            // That keeps expected endpoint slowness from surfacing as a first-chance
+            // TaskCanceledException in Visual Studio.
+            var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
             client.DefaultRequestHeaders.Add("User-Agent", "LootValue-GameHelper-Plugin");
             return client;
         }
 
+        private static async Task<string?> TryGetStringAsync(string url, ProviderFetchState health)
+        {
+            using var requestCancellation = new CancellationTokenSource();
+            var request = Http.GetStringAsync(url, requestCancellation.Token);
+            var safeRequest = request.ContinueWith(
+                static completedRequest =>
+                {
+                    if (completedRequest.Status == TaskStatus.RanToCompletion)
+                    {
+                        return completedRequest.Result;
+                    }
+
+                    // Observe a network failure without propagating it through an await.
+                    _ = completedRequest.Exception;
+                    return null;
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+            if (await Task.WhenAny(safeRequest, Task.Delay(RequestTimeout)).ConfigureAwait(false) != safeRequest)
+            {
+                requestCancellation.Cancel();
+                health.RecordFailure();
+                return null;
+            }
+
+            var response = await safeRequest.ConfigureAwait(false);
+            if (response == null)
+            {
+                health.RecordFailure();
+            }
+            else
+            {
+                health.RecordSuccess();
+            }
+
+            return response;
+        }
+
         public static void Configure(int priceSource, string league, int refreshIntervalMinutes)
         {
-            configuredSource = priceSource;
-            configuredLeague = string.IsNullOrWhiteSpace(league) ? "Forbidden Rites" : league.Trim();
+            var normalizedSource = priceSource == SourcePoeNinja ? SourcePoeNinja : SourcePoe2Scout;
+            var normalizedLeague = string.IsNullOrWhiteSpace(league) ? "Forbidden Rites" : league.Trim();
+            if (normalizedSource != configuredSource ||
+                !string.Equals(normalizedLeague, configuredLeague, StringComparison.OrdinalIgnoreCase))
+            {
+                activeSource = normalizedSource;
+            }
+
+            configuredSource = normalizedSource;
+            configuredLeague = normalizedLeague;
             configuredRefreshMinutes = Math.Max(1, refreshIntervalMinutes);
         }
 
@@ -539,25 +595,32 @@ namespace LootValue
                 var pathNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 double divChaos = chaosPerDivine;
                 double exChaos = chaosPerExalted;
+                var source = activeSource;
 
-                if (configuredSource == SourcePoe2Scout)
+                var result = await FetchProviderAsync(
+                    source, flat, uniques, pathNames, divChaos, exChaos).ConfigureAwait(false);
+                if (!result.Success)
                 {
-                    var rates = await FetchFromScoutAsync(flat, uniques, pathNames, divChaos, exChaos).ConfigureAwait(false);
-                    divChaos = rates.DivChaos;
-                    exChaos = rates.ExChaos;
+                    var fallbackSource = source == SourcePoe2Scout ? SourcePoeNinja : SourcePoe2Scout;
+                    activeSource = fallbackSource;
+                    Console.WriteLine(
+                        $"[LootValue] {SourceName(source)} price requests failed repeatedly; " +
+                        $"switching automatically to {SourceName(fallbackSource)}.");
 
-                    // Scout unique prices are often too low; merge poe.ninja stash uniques as a floor/ceiling check.
-                    // pathNames is shared so the art->name index is built from BOTH sources (union).
-                    var ninjaStashRates = await FetchNinjaStashOverviewsAsync(flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
-                    divChaos = ninjaStashRates.DivChaos;
-                    exChaos = ninjaStashRates.ExChaos;
+                    flat = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                    uniques = new Dictionary<string, List<UniquePriceListing>>(StringComparer.OrdinalIgnoreCase);
+                    pathNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    result = await FetchProviderAsync(
+                        fallbackSource, flat, uniques, pathNames, divChaos, exChaos).ConfigureAwait(false);
                 }
-                else
+
+                if (!result.Success)
                 {
-                    var rates = await FetchFromNinjaAsync(flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
-                    divChaos = rates.DivChaos;
-                    exChaos = rates.ExChaos;
+                    return;
                 }
+
+                divChaos = result.Rates.DivChaos;
+                exChaos = result.Rates.ExChaos;
 
                 lock (Gate)
                 {
@@ -578,6 +641,60 @@ namespace LootValue
             finally { isFetching = false; }
         }
 
+        private static async Task<ProviderResult> FetchProviderAsync(
+            int source,
+            Dictionary<string, double> flat,
+            Dictionary<string, List<UniquePriceListing>> uniques,
+            Dictionary<string, string> pathNames,
+            double divChaos,
+            double exChaos)
+        {
+            var health = new ProviderFetchState();
+            RatePair rates;
+            if (source == SourcePoe2Scout)
+            {
+                rates = await FetchFromScoutAsync(
+                    flat, uniques, pathNames, divChaos, exChaos, health).ConfigureAwait(false);
+
+                if (!health.FailedRepeatedly && HasUsablePrices(flat, uniques))
+                {
+                    // Scout unique prices are often too low; merge poe.ninja stash uniques as a
+                    // floor/ceiling check. This optional merge does not affect Scout's health.
+                    var mergeHealth = new ProviderFetchState();
+                    rates = await FetchNinjaStashOverviewsAsync(
+                        flat, pathNames, rates.DivChaos, rates.ExChaos, mergeHealth).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                rates = await FetchFromNinjaAsync(
+                    flat, pathNames, divChaos, exChaos, health).ConfigureAwait(false);
+            }
+
+            var success = !health.FailedRepeatedly &&
+                          health.SuccessfulRequests > 0 &&
+                          HasUsablePrices(flat, uniques);
+            return new ProviderResult(rates, success);
+        }
+
+        private static bool HasUsablePrices(
+            Dictionary<string, double> flat,
+            Dictionary<string, List<UniquePriceListing>> uniques) =>
+            flat.Count > 0 || uniques.Values.Any(list => list.Count > 0);
+
+        private readonly struct ProviderResult
+        {
+            public ProviderResult(RatePair rates, bool success)
+            {
+                this.Rates = rates;
+                this.Success = success;
+            }
+
+            public RatePair Rates { get; }
+
+            public bool Success { get; }
+        }
+
         private readonly struct RatePair
         {
             public RatePair(double divChaos, double exChaos)
@@ -595,60 +712,81 @@ namespace LootValue
             Dictionary<string, List<UniquePriceListing>> uniques,
             Dictionary<string, string> pathNames,
             double divChaos,
-            double exChaos)
+            double exChaos,
+            ProviderFetchState health)
         {
             var league = Uri.EscapeDataString(configuredLeague);
-            var rates = await UpdateScoutRatesAsync(league, divChaos, exChaos).ConfigureAwait(false);
+            var rates = await UpdateScoutRatesAsync(league, divChaos, exChaos, health).ConfigureAwait(false);
             divChaos = rates.DivChaos;
             exChaos = rates.ExChaos;
 
+            if (health.FailedRepeatedly)
+            {
+                return rates;
+            }
+
             foreach (var category in ScoutCurrencyCategories)
             {
-                await FetchScoutCurrencyCategoryAsync(league, category, flat, pathNames).ConfigureAwait(false);
+                await FetchScoutCurrencyCategoryAsync(league, category, flat, pathNames, health).ConfigureAwait(false);
+                if (health.FailedRepeatedly) return new RatePair(divChaos, exChaos);
             }
 
             foreach (var category in ScoutUniqueCategories)
             {
-                await FetchScoutUniqueCategoryAsync(league, category, uniques, pathNames).ConfigureAwait(false);
+                await FetchScoutUniqueCategoryAsync(league, category, uniques, pathNames, health).ConfigureAwait(false);
+                if (health.FailedRepeatedly) return new RatePair(divChaos, exChaos);
             }
 
             return new RatePair(divChaos, exChaos);
         }
 
-        private static async Task<RatePair> UpdateScoutRatesAsync(string leagueEscaped, double divChaos, double exChaos)
+        private static async Task<RatePair> UpdateScoutRatesAsync(
+            string leagueEscaped,
+            double divChaos,
+            double exChaos,
+            ProviderFetchState health)
         {
             try
             {
-                var json = await Http.GetStringAsync("https://poe2scout.com/api/poe2/Leagues").ConfigureAwait(false);
-                var token = ParseScoutResponse(json);
-                var leagues = token as JArray;
-                if (leagues == null && token is JObject root)
+                var json = await TryGetStringAsync("https://poe2scout.com/api/poe2/Leagues", health).ConfigureAwait(false);
+                if (json != null)
                 {
-                    leagues = root["value"] as JArray ?? root["Value"] as JArray;
-                }
+                    var token = ParseScoutResponse(json);
+                    var leagues = token as JArray;
+                    if (leagues == null && token is JObject root)
+                    {
+                        leagues = root["value"] as JArray ?? root["Value"] as JArray;
+                    }
 
-                if (leagues == null) return new RatePair(divChaos, exChaos);
+                    if (leagues == null) return new RatePair(divChaos, exChaos);
 
-                foreach (var league in leagues)
-                {
-                    if (!string.Equals(league["Value"]?.ToString(), configuredLeague, StringComparison.OrdinalIgnoreCase))
-                        continue;
+                    foreach (var league in leagues)
+                    {
+                        if (!string.Equals(league["Value"]?.ToString(), configuredLeague, StringComparison.OrdinalIgnoreCase))
+                            continue;
 
-                    var chaosDiv = league["ChaosDivinePrice"]?.Value<double?>() ?? 0;
-                    if (chaosDiv > 0) divChaos = chaosDiv;
+                        var chaosDiv = league["ChaosDivinePrice"]?.Value<double?>() ?? 0;
+                        if (chaosDiv > 0) divChaos = chaosDiv;
 
-                    var divEx = league["DivinePrice"]?.Value<double?>() ?? 0;
-                    if (divEx > 0 && chaosDiv > 0)
-                        exChaos = chaosDiv / divEx;
-                    break;
+                        var divEx = league["DivinePrice"]?.Value<double?>() ?? 0;
+                        if (divEx > 0 && chaosDiv > 0)
+                            exChaos = chaosDiv / divEx;
+                        break;
+                    }
                 }
             }
             catch { }
 
+            if (health.FailedRepeatedly)
+            {
+                return new RatePair(divChaos, exChaos);
+            }
+
             try
             {
                 var url = $"https://poe2scout.com/api/poe2/Leagues/{leagueEscaped}/Currencies/ByCategory?Category=currency&ReferenceCurrency=chaos&PerPage=250&Page=1";
-                var json = await Http.GetStringAsync(url).ConfigureAwait(false);
+                var json = await TryGetStringAsync(url, health).ConfigureAwait(false);
+                if (json == null) return new RatePair(divChaos, exChaos);
                 var items = (ParseScoutResponse(json) as JObject)?["Items"] as JArray;
                 if (items != null)
                 {
@@ -685,7 +823,8 @@ namespace LootValue
             string leagueEscaped,
             string category,
             Dictionary<string, double> flat,
-            Dictionary<string, string> pathNames)
+            Dictionary<string, string> pathNames,
+            ProviderFetchState health)
         {
             var page = 1;
             var pages = 1;
@@ -694,7 +833,8 @@ namespace LootValue
                 try
                 {
                     var url = $"https://poe2scout.com/api/poe2/Leagues/{leagueEscaped}/Currencies/ByCategory?Category={category}&ReferenceCurrency=chaos&PerPage=250&Page={page}";
-                    var json = await Http.GetStringAsync(url).ConfigureAwait(false);
+                    var json = await TryGetStringAsync(url, health).ConfigureAwait(false);
+                    if (json == null) break;
                     if (ParseScoutResponse(json) is not JObject data) break;
                     pages = data["Pages"]?.Value<int?>() ?? 1;
 
@@ -725,7 +865,8 @@ namespace LootValue
             string leagueEscaped,
             string category,
             Dictionary<string, List<UniquePriceListing>> uniques,
-            Dictionary<string, string> pathNames)
+            Dictionary<string, string> pathNames,
+            ProviderFetchState health)
         {
             var page = 1;
             var pages = 1;
@@ -734,7 +875,8 @@ namespace LootValue
                 try
                 {
                     var url = $"https://poe2scout.com/api/poe2/Leagues/{leagueEscaped}/Uniques/ByCategory?Category={category}&ReferenceCurrency=chaos&PerPage=250&Page={page}";
-                    var json = await Http.GetStringAsync(url).ConfigureAwait(false);
+                    var json = await TryGetStringAsync(url, health).ConfigureAwait(false);
+                    if (json == null) break;
                     if (ParseScoutResponse(json) is not JObject data) break;
                     pages = data["Pages"]?.Value<int?>() ?? 1;
                     if (data["Items"] is not JArray items) break;
@@ -765,6 +907,27 @@ namespace LootValue
 
                 page++;
             }
+        }
+
+        private static string SourceName(int source) => source == SourcePoeNinja ? "poe.ninja" : "poe2scout";
+
+        private sealed class ProviderFetchState
+        {
+            private const int FailureThreshold = 2;
+
+            public int SuccessfulRequests { get; private set; }
+
+            public int ConsecutiveFailures { get; private set; }
+
+            public bool FailedRepeatedly => this.ConsecutiveFailures >= FailureThreshold;
+
+            public void RecordSuccess()
+            {
+                this.SuccessfulRequests++;
+                this.ConsecutiveFailures = 0;
+            }
+
+            public void RecordFailure() => this.ConsecutiveFailures++;
         }
 
         private static List<string> ReadScoutModList(JToken? token)
@@ -845,43 +1008,58 @@ namespace LootValue
                 add($"{listing.Name} {listing.BaseType}");
         }
 
-        private static async Task<RatePair> FetchFromNinjaAsync(Dictionary<string, double> flat, Dictionary<string, string> pathNames, double divChaos, double exChaos)
+        private static async Task<RatePair> FetchFromNinjaAsync(
+            Dictionary<string, double> flat,
+            Dictionary<string, string> pathNames,
+            double divChaos,
+            double exChaos,
+            ProviderFetchState health)
         {
             var leagueParam = Uri.EscapeDataString(configuredLeague).Replace("%20", "+");
 
             foreach (var type in NinjaExchangeTypes)
             {
                 var url = $"https://poe.ninja/poe2/api/economy/exchange/current/overview?league={leagueParam}&type={type}";
-                var rates = await FetchNinjaExchangeApi(url, flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
+                var rates = await FetchNinjaExchangeApi(url, flat, pathNames, divChaos, exChaos, health).ConfigureAwait(false);
                 divChaos = rates.DivChaos;
                 exChaos = rates.ExChaos;
+                if (health.FailedRepeatedly) return rates;
             }
 
-            return await FetchNinjaStashOverviewsAsync(flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
+            return await FetchNinjaStashOverviewsAsync(flat, pathNames, divChaos, exChaos, health).ConfigureAwait(false);
         }
 
         private static async Task<RatePair> FetchNinjaStashOverviewsAsync(
             Dictionary<string, double> flat,
             Dictionary<string, string> pathNames,
             double divChaos,
-            double exChaos)
+            double exChaos,
+            ProviderFetchState health)
         {
             var leagueParam = Uri.EscapeDataString(configuredLeague).Replace("%20", "+");
 
             foreach (var type in NinjaStashTypes)
             {
                 var url = $"https://poe.ninja/poe2/api/economy/stash/current/item/overview?league={leagueParam}&type={type}";
-                exChaos = await FetchNinjaStashApi(url, flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
+                exChaos = await FetchNinjaStashApi(url, flat, pathNames, divChaos, exChaos, health).ConfigureAwait(false);
+                if (health.FailedRepeatedly) break;
             }
 
             return new RatePair(divChaos, exChaos);
         }
 
-        private static async Task<RatePair> FetchNinjaExchangeApi(string url, Dictionary<string, double> flat, Dictionary<string, string> pathNames, double divChaos, double exChaos)
+        private static async Task<RatePair> FetchNinjaExchangeApi(
+            string url,
+            Dictionary<string, double> flat,
+            Dictionary<string, string> pathNames,
+            double divChaos,
+            double exChaos,
+            ProviderFetchState health)
         {
             try
             {
-                var response = await Http.GetStringAsync(url).ConfigureAwait(false);
+                var response = await TryGetStringAsync(url, health).ConfigureAwait(false);
+                if (response == null) return new RatePair(divChaos, exChaos);
                 var data = JObject.Parse(response);
 
                 var primaryCurrency = data["core"]?["primary"]?.ToString() ?? "divine";
@@ -934,11 +1112,18 @@ namespace LootValue
             return new RatePair(divChaos, exChaos);
         }
 
-        private static async Task<double> FetchNinjaStashApi(string url, Dictionary<string, double> flat, Dictionary<string, string> pathNames, double divChaos, double exChaos)
+        private static async Task<double> FetchNinjaStashApi(
+            string url,
+            Dictionary<string, double> flat,
+            Dictionary<string, string> pathNames,
+            double divChaos,
+            double exChaos,
+            ProviderFetchState health)
         {
             try
             {
-                var response = await Http.GetStringAsync(url).ConfigureAwait(false);
+                var response = await TryGetStringAsync(url, health).ConfigureAwait(false);
+                if (response == null) return exChaos;
                 var data = JObject.Parse(response);
 
                 var primaryCurrency = data["core"]?["primary"]?.ToString() ?? "exalted";

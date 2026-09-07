@@ -52,5 +52,6 @@
   "settings.text_color": "Text color",
   "settings.vertical_offset": "Vertical offset",
   "status.loaded_items": "{0} items | {1} min ago",
-  "status.loading": "Loading..."
+  "status.loading": "Loading...",
+  "status.automatic_fallback": "Automatic fallback active: {0}"
 }

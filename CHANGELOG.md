@@ -16,6 +16,17 @@ from your own plugins via `Core.*`.
 
 ### Fixed
 
+- **LootValue price-provider failover.** Slow poe2scout and poe.ninja requests
+  now time out without surfacing `TaskCanceledException` first-chance breaks.
+  After two consecutive request failures, LootValue automatically switches to
+  the other provider, preserves its saved preference, and reports the active
+  fallback in settings.
+- **Gemcutting panel detection.** Skill and Support Gemcutting screens now count
+  as large blocking panels using their conditionally visible `[53][3]` and
+  `[54][3]` UI elements.
+- **Radar minimap layer parity.** The minimap now draws the walkable-map
+  outlines, terrain POIs, and POI paths already shown on the large map, with
+  every layer clipped to the minimap bounds.
 - **Radar in the Trial of the Sekhemas.** Legitimate large Trial terrain now
   passes core validation, restoring walkable-map outlines while retaining an
   exact tile-vector shape check against invalid offset data.
