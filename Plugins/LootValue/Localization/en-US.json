@@ -53,5 +53,7 @@
   "settings.vertical_offset": "Vertical offset",
   "status.loaded_items": "{0} items | {1} min ago",
   "status.loading": "Loading...",
+  "status.loading_provider": "Loading from {0}...",
+  "status.switching_provider": "Switching to {0}...",
   "status.automatic_fallback": "Automatic fallback active: {0}"
 }

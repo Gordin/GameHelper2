@@ -113,6 +113,7 @@ namespace LootValue
         private static Dictionary<string, string> pathBasenameToItemName = new(StringComparer.OrdinalIgnoreCase);
 
         private static bool isFetching;
+        private static bool isFailingOver;
         private static string pluginDir = string.Empty;
         private static string cacheFilePath = string.Empty;
         private static DateTime lastFetchTime = DateTime.MinValue;
@@ -122,12 +123,13 @@ namespace LootValue
         private static int configuredRefreshMinutes = 5;
         private static double chaosPerDivine = 12.0;
         private static double chaosPerExalted = 0.1;
-        private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(45);
+        private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
 
         public static double DivineToExaltedRate { get; private set; } = 80.0;
         public static int LoadedItemCount { get; private set; }
         public static DateTime LastFetchUtc => lastFetchTime;
         public static bool IsFetching => isFetching;
+        public static bool IsFailingOver => isFailingOver;
         public static bool IsUsingFallback => activeSource != configuredSource;
         public static string ActiveSourceName => SourceName(activeSource);
 
@@ -165,6 +167,9 @@ namespace LootValue
             {
                 requestCancellation.Cancel();
                 health.RecordFailure();
+                Console.WriteLine(
+                    $"[LootValue] {new Uri(url).Host} request timed out after " +
+                    $"{RequestTimeout.TotalSeconds:0}s ({health.ConsecutiveFailures}/2 consecutive failures).");
                 return null;
             }
 
@@ -172,6 +177,9 @@ namespace LootValue
             if (response == null)
             {
                 health.RecordFailure();
+                Console.WriteLine(
+                    $"[LootValue] {new Uri(url).Host} request failed " +
+                    $"({health.ConsecutiveFailures}/2 consecutive failures).");
             }
             else
             {
@@ -582,6 +590,7 @@ namespace LootValue
         private static void StartFetch()
         {
             if (isFetching) return;
+            isFailingOver = false;
             isFetching = true;
             Task.Run(FetchPricesAsync);
         }
@@ -603,8 +612,9 @@ namespace LootValue
                 {
                     var fallbackSource = source == SourcePoe2Scout ? SourcePoeNinja : SourcePoe2Scout;
                     activeSource = fallbackSource;
+                    isFailingOver = true;
                     Console.WriteLine(
-                        $"[LootValue] {SourceName(source)} price requests failed repeatedly; " +
+                        $"[LootValue] {SourceName(source)} returned no usable prices or failed repeatedly; " +
                         $"switching automatically to {SourceName(fallbackSource)}.");
 
                     flat = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
@@ -638,7 +648,11 @@ namespace LootValue
                 SaveCacheToDisk();
             }
             catch { }
-            finally { isFetching = false; }
+            finally
+            {
+                isFailingOver = false;
+                isFetching = false;
+            }
         }
 
         private static async Task<ProviderResult> FetchProviderAsync(

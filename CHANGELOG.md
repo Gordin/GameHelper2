@@ -20,7 +20,8 @@ from your own plugins via `Core.*`.
   now time out without surfacing `TaskCanceledException` first-chance breaks.
   After two consecutive request failures, LootValue automatically switches to
   the other provider, preserves its saved preference, and reports the active
-  fallback in settings.
+  fallback in settings. Provider requests use a short 10-second deadline so an
+  outage cannot leave the plugin showing `Loading...` for roughly 90 seconds.
 - **Gemcutting panel detection.** Skill and Support Gemcutting screens now count
   as large blocking panels using their conditionally visible `[53][3]` and
   `[54][3]` UI elements.

@@ -277,7 +277,16 @@ namespace LootValue
             ImGui.SameLine();
             if (PoeNinjaPriceFetcher.IsFetching)
             {
-                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.2f, 1f), this.PluginText.T("status.loading", "Loading..."));
+                var status = PoeNinjaPriceFetcher.IsFailingOver
+                    ? this.PluginText.F(
+                        "status.switching_provider",
+                        "Switching to {0}...",
+                        PoeNinjaPriceFetcher.ActiveSourceName)
+                    : this.PluginText.F(
+                        "status.loading_provider",
+                        "Loading from {0}...",
+                        PoeNinjaPriceFetcher.ActiveSourceName);
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.2f, 1f), status);
             }
             else if (PoeNinjaPriceFetcher.LastFetchUtc > DateTime.MinValue)
             {
