@@ -174,6 +174,7 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
                     typeof(GameHelper.RemoteEnums.Animation),
                     typeof(Interface.MonsterRarity),
                     typeof(Interface.MonsterNearbyZones),
+                    typeof(Interface.MonsterInfo),
                     typeof(ClickableTransparentOverlay.Win32.VK)
                 };
 
