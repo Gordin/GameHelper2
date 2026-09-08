@@ -360,8 +360,19 @@ namespace Radar
                                   "Feel free to change the position/size of this window. " +
                                   "Once you are happy with the dimensions, double click this window. " +
                                   "You can bring this window back from the settings menu."));
-                this.Settings.CullWindowPos = ImGui.GetWindowPos();
-                this.Settings.CullWindowSize = ImGui.GetWindowSize();
+                // Do NOT capture the rect of a COLLAPSED window. Everything the plugin draws is clipped
+                // to this rect, and a collapsed ImGui window reports just its title bar (~28px high), so
+                // capturing that hides the walkable map and every POI. It is not a rare accident either:
+                // the gesture that confirms the window is a double click, and a double click on the title
+                // bar is also ImGui's own "collapse" gesture -- so confirming could store {W, 28} and then
+                // immediately set ModifyCullWindow = false, freezing the overlay off with no visible cause
+                // and no obvious way back.
+                if (!ImGui.IsWindowCollapsed())
+                {
+                    this.Settings.CullWindowPos = ImGui.GetWindowPos();
+                    this.Settings.CullWindowSize = ImGui.GetWindowSize();
+                }
+
                 if (ImGui.IsWindowHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
                 {
                     this.Settings.ModifyCullWindow = false;
@@ -447,6 +458,16 @@ namespace Radar
                 var largeMapModifiedZoom = this.Settings.LargeMapScaleMultiplier * largeMap.Zoom * LargeMapScaleBaseline;
                 Helper.DiagonalLength = this.largeMapDiagonalLength;
                 Helper.Scale = largeMapModifiedZoom;
+                // Repair a degenerate rect saved by an earlier build (see the collapse note above): a
+                // window this small can only ever clip the overlay away, and the setting is otherwise
+                // only reachable through the culling window that is itself invisible.
+                if (this.Settings.CullWindowSize.X < 64f || this.Settings.CullWindowSize.Y < 64f)
+                {
+                    this.Settings.CullWindowPos = Vector2.Zero;
+                    this.Settings.CullWindowSize.X = Core.Process.WindowArea.Size.Width;
+                    this.Settings.CullWindowSize.Y = Core.Process.WindowArea.Size.Height;
+                }
+
                 ImGui.SetNextWindowPos(this.Settings.CullWindowPos);
                 ImGui.SetNextWindowSize(this.Settings.CullWindowSize);
                 ImGui.SetNextWindowBgAlpha(0f);
