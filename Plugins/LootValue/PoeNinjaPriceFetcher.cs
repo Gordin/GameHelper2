@@ -54,6 +54,8 @@ namespace LootValue
         public const int SourcePoeNinja = 0;
         public const int SourcePoe2Scout = 1;
 
+        private const string ScoutApiBaseUrl = "https://api.poe2scout.com/poe2";
+
         // Bump whenever the cache shape or how the art->name index is built changes, so caches written
         // by an older plugin version are discarded instead of trusted. (v2: art index now built from
         // both poe.ninja + poe2scout icons.)
@@ -181,12 +183,31 @@ namespace LootValue
                     $"[LootValue] {new Uri(url).Host} request failed " +
                     $"({health.ConsecutiveFailures}/2 consecutive failures).");
             }
+            else if (!LooksLikeJson(response))
+            {
+                health.RecordFailure();
+                Console.WriteLine(
+                    $"[LootValue] {new Uri(url).Host} returned a non-JSON response " +
+                    $"({health.ConsecutiveFailures}/2 consecutive failures).");
+                return null;
+            }
             else
             {
                 health.RecordSuccess();
             }
 
             return response;
+        }
+
+        private static bool LooksLikeJson(string response)
+        {
+            foreach (var character in response)
+            {
+                if (char.IsWhiteSpace(character)) continue;
+                return character is '{' or '[' or '"';
+            }
+
+            return false;
         }
 
         public static void Configure(int priceSource, string league, int refreshIntervalMinutes)
@@ -762,7 +783,7 @@ namespace LootValue
         {
             try
             {
-                var json = await TryGetStringAsync("https://poe2scout.com/api/poe2/Leagues", health).ConfigureAwait(false);
+                var json = await TryGetStringAsync($"{ScoutApiBaseUrl}/Leagues", health).ConfigureAwait(false);
                 if (json != null)
                 {
                     var token = ParseScoutResponse(json);
@@ -798,7 +819,7 @@ namespace LootValue
 
             try
             {
-                var url = $"https://poe2scout.com/api/poe2/Leagues/{leagueEscaped}/Currencies/ByCategory?Category=currency&ReferenceCurrency=chaos&PerPage=250&Page=1";
+                var url = $"{ScoutApiBaseUrl}/Leagues/{leagueEscaped}/Currencies/ByCategory?Category=currency&ReferenceCurrency=chaos&PerPage=250&Page=1";
                 var json = await TryGetStringAsync(url, health).ConfigureAwait(false);
                 if (json == null) return new RatePair(divChaos, exChaos);
                 var items = (ParseScoutResponse(json) as JObject)?["Items"] as JArray;
@@ -846,7 +867,7 @@ namespace LootValue
             {
                 try
                 {
-                    var url = $"https://poe2scout.com/api/poe2/Leagues/{leagueEscaped}/Currencies/ByCategory?Category={category}&ReferenceCurrency=chaos&PerPage=250&Page={page}";
+                    var url = $"{ScoutApiBaseUrl}/Leagues/{leagueEscaped}/Currencies/ByCategory?Category={category}&ReferenceCurrency=chaos&PerPage=250&Page={page}";
                     var json = await TryGetStringAsync(url, health).ConfigureAwait(false);
                     if (json == null) break;
                     if (ParseScoutResponse(json) is not JObject data) break;
@@ -888,7 +909,7 @@ namespace LootValue
             {
                 try
                 {
-                    var url = $"https://poe2scout.com/api/poe2/Leagues/{leagueEscaped}/Uniques/ByCategory?Category={category}&ReferenceCurrency=chaos&PerPage=250&Page={page}";
+                    var url = $"{ScoutApiBaseUrl}/Leagues/{leagueEscaped}/Uniques/ByCategory?Category={category}&ReferenceCurrency=chaos&PerPage=250&Page={page}";
                     var json = await TryGetStringAsync(url, health).ConfigureAwait(false);
                     if (json == null) break;
                     if (ParseScoutResponse(json) is not JObject data) break;
