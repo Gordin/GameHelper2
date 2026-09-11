@@ -130,6 +130,30 @@ A full solution build is required because several projects have Visual Studio/MS
 
 If you build only `GameHelper`, the application may start without the launcher, plugin DLLs, or plugin assets.
 
+## Creating A Release
+
+When asked to "create a new release with version vX.Y.Z", use this procedure:
+
+1. Find the latest semantic-version release tag and review every commit after
+   it with `git log <latest-tag>..HEAD`.
+2. Add a dated `X.Y.Z` section to [`CHANGELOG.md`](CHANGELOG.md) that summarizes
+   those commits.
+3. Update `Version`, `AssemblyVersion`, and `FileVersion` in
+   [`GameHelper/GameHelper.csproj`](GameHelper/GameHelper.csproj). Use `X.Y.Z`
+   for `Version` and `X.Y.Z.0` for the assembly and file versions.
+4. Build the whole solution in Release mode and resolve any compilation errors.
+5. Commit the changelog, project version, and any release-procedure documentation
+   as a release commit named `Bump to X.Y.Z`. Do not include unrelated working-tree
+   changes.
+6. Tag the release commit with `vX.Y.Z`, then force-update the local `latest` tag
+   to point to the same commit.
+7. Run `create_release.bat vX.Y.Z` from the repository root. Confirm that it
+   creates `GameHelper2_vX.Y.Z.zip` and that the archive contains a top-level
+   `GameHelper` folder.
+
+Creating the commit and tags is local only; pushing the commit, tags, or release
+artifact requires a separate explicit request.
+
 ## Runtime Configuration
 
 Runtime settings are generated next to the executable when the program runs:
