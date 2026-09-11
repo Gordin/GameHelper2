@@ -36,8 +36,6 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     public class ImportantUiElements : RemoteObjectBase
     {
         private static readonly int[] WorldMapPanelChildPath = { 22, 0 };
-        private static readonly int[] LargeMapViewportChildPath = { 6, 0 };
-        private static readonly int[] MiniMapViewportChildPath = { 6, 1 };
         private static readonly int[] PassiveSkillTreeNodesChildPath = { 24, 2 };
         private static readonly int[] Act1PanelChildPath = { 22, 0, 0 };
         private static readonly int[] Act2PanelChildPath = { 22, 0, 1 };
@@ -110,6 +108,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private readonly List<PlayerMarker> atlasMarkers = new();
         private int atlasMapCacheFrameCounter = int.MaxValue;
         private int cachedAtlasMapCount = -1;
+        private bool? lastControllerMode;
+        private string mapAddressSource = "Unresolved";
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         private struct AtlasNodeConnectionEdgeOffsets
@@ -338,6 +338,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         {
             this.displayParentsCache();
             base.ToImGui();
+            ImGui.Text($"Controller mode: {Core.GHSettings.EnableControllerMode}");
+            ImGui.Text($"Map address source: {this.mapAddressSource}");
             ImGui.Text($"Passive Skill Tree Panel Visible: {this.passiveskilltreenodes.IsVisible}");
             ImGui.Text($"Total Atlas Maps: {this.AtlasMaps.Count}");
             if (ImGui.TreeNode("Atlas Maps"))
@@ -462,6 +464,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         /// <inheritdoc />
         protected override void CleanUpData()
         {
+            this.rootCache.Clear();
+            this.passiveSkillTreeCache.Clear();
+            this.lastControllerMode = null;
+            this.mapAddressSource = "Unresolved";
             this.passiveskilltreenodes.Address = IntPtr.Zero;
             this.sekhemasTrialMapPanel.Address = IntPtr.Zero;
             this.MiniMap.Address = IntPtr.Zero;
@@ -490,6 +496,14 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         /// <inheritdoc />
         protected override void UpdateData(bool hasAddressChanged)
         {
+            // Switching input mode can replace the UI tree without changing the area.
+            // Clear parents before resolving the new maps so visibility/position use the new tree.
+            if (hasAddressChanged || this.lastControllerMode != Core.GHSettings.EnableControllerMode)
+            {
+                this.CleanUpData();
+                this.lastControllerMode = Core.GHSettings.EnableControllerMode;
+            }
+
             this.UpdateParentsCache();
             var reader = Core.Process.Handle;
             var data1 = reader.ReadMemory<ImportantUiElementsOffsets>(Core.GHSettings.IsTaiwanClient ? this.Address - 0x08 : this.Address);
@@ -537,8 +551,22 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
         private void UpdateMapAddresses()
         {
-            this.LargeMap.Address = ResolveChildAddress(this.Address, LargeMapViewportChildPath);
-            this.MiniMap.Address = ResolveChildAddress(this.Address, MiniMapViewportChildPath);
+            var reader = Core.Process.Handle;
+            if (MapUiResolver.TryResolveFromGameUi(this.Address, Core.GHSettings.EnableControllerMode,
+                    reader.TryReadMemory, reader.TryReadMemory, reader.TryReadMemory,
+                    out var largeMapAddress, out var miniMapAddress))
+            {
+                this.LargeMap.Address = largeMapAddress;
+                this.MiniMap.Address = miniMapAddress;
+                this.mapAddressSource = Core.GHSettings.EnableControllerMode
+                    ? "Controller GameUi[0][1/2]"
+                    : "Keyboard GameUi[6][0/1]";
+                return;
+            }
+
+            this.LargeMap.Address = IntPtr.Zero;
+            this.MiniMap.Address = IntPtr.Zero;
+            this.mapAddressSource = "Unresolved";
         }
 
         private void UpdateWorldMapPanelAddresses()
