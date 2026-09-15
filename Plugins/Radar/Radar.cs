@@ -431,10 +431,7 @@ namespace Radar
 
             if (largeMap.IsVisible && !Core.States.InGameStateObject.GameUi.WorldMapPanel.IsVisible)
             {
-                if (this.largeMapDiagonalLength <= 0)
-                {
-                    this.UpdateLargeMapDetails();
-                }
+                this.UpdateLargeMapDetails();
 
                 var largeMapRealCenter = largeMap.Center + largeMap.Shift + largeMap.DefaultShift;
                 // Calibrated biases baked in so LargeMapXOffset/LargeMapYOffset default to 0.
@@ -464,10 +461,9 @@ namespace Radar
 
             if (miniMap.IsVisible)
             {
-                if (this.miniMapDiagonalLength <= 0)
-                {
-                    this.UpdateMiniMapDetails();
-                }
+                // The controller HUD can resize/recreate its minimap without a window
+                // move or area change. Recompute this cheap scale from the current viewport.
+                this.UpdateMiniMapDetails();
 
                 Helper.DiagonalLength = this.miniMapDiagonalLength;
                 // Calibrated baseline baked in so MiniMapZoomMultiplier = 1.0 produces correct placement.
