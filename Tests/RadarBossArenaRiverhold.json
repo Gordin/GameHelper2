@@ -1,0 +1,9 @@
+{
+  "areaId": "MapRiverhold",
+  "bossPath": "Metadata/Monsters/ReaperBoss/EzomyteReaperBossMAP@80",
+  "bossGridPosition": [2001.5, 861.5],
+  "tiles": {
+    "Metadata/Terrain/Interlude/Part1/P1_4/Chaple_01.tdtx:7-y:12": [[2001, 851]],
+    "Metadata/Terrain/Blank.tdtx:0-y:0": [[0, 0]]
+  }
+}

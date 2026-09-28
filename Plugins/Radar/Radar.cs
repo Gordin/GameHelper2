@@ -19,6 +19,7 @@ namespace Radar
     using GameHelper.RemoteEnums;
     using GameHelper.RemoteEnums.Entity;
     using GameHelper.RemoteObjects.Components;
+    using GameHelper.RemoteObjects.States.InGameStateObjects;
     using GameHelper.Utils;
     using ImGuiNET;
     using Newtonsoft.Json;
@@ -969,6 +970,7 @@ namespace Radar
         {
             var fgDraw = ImGui.GetWindowDrawList();
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            var hasBossMarker = this.trackedNodes.Values.Any(node => node.category == "boss");
 
             foreach (var tgtKV in currentAreaInstance.TgtTilesLocations)
             {
@@ -992,6 +994,11 @@ namespace Radar
                 }
                 else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
                 {
+                    if (hasBossMarker)
+                    {
+                        continue;
+                    }
+
                     if (!this.Settings.BossIcons.TryGetValue("Boss Arena", out var bossIcon))
                     {
                         continue;
@@ -1818,6 +1825,7 @@ namespace Radar
 
             // --- Terrain-tile icon paths (Temple, Runestone, Boss Arena, Stairs) ---
             var tgtLocations = currentAreaInstance.TgtTilesLocations;
+            var hasBossMarker = this.trackedNodes.Values.Any(node => node.category == "boss");
             foreach (var tgtKV in tgtLocations)
             {
                 IconPicker? tileIcon = null;
@@ -1832,6 +1840,11 @@ namespace Radar
                 }
                 else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
                 {
+                    if (hasBossMarker)
+                    {
+                        continue;
+                    }
+
                     this.Settings.BossIcons.TryGetValue("Boss Arena", out tileIcon);
                 }
                 else if (this.Settings.StairsTgts.ContainsKey(tgtKV.Key))
@@ -2139,6 +2152,11 @@ namespace Radar
         /// </summary>
         private static (string category, string iconKey)? ClassifyTrackedPath(string path)
         {
+            if (path == "Metadata/MiscellaneousObjects/BossLeagueContentMarkerMain")
+            {
+                return ("boss", "Boss Arena");
+            }
+
             if (path.Contains("AbyssCrack"))
             {
                 return ("abyss", "Abyss Crack");
@@ -2163,19 +2181,59 @@ namespace Radar
         /// </summary>
         private IconPicker? ResolveTrackedIcon(string category, string iconKey)
         {
-            var dict = category == "strongbox" ? this.Settings.StrongboxIcons : this.Settings.AbyssIcons;
+            var dict = category switch
+            {
+                "boss" => this.Settings.BossIcons,
+                "strongbox" => this.Settings.StrongboxIcons,
+                _ => this.Settings.AbyssIcons,
+            };
             return dict.TryGetValue(iconKey, out var icon) ? icon : null;
+        }
+
+        private static bool TryGetTrackedNode(Entity entity, float[][] heights,
+            out (Vector2 gridPos, float height, string category, string iconKey) node)
+        {
+            node = default;
+            var classified = ClassifyTrackedPath(entity.Path);
+            if (classified == null)
+            {
+                return false;
+            }
+
+            var (category, iconKey) = classified.Value;
+            if (category == "boss")
+            {
+                // The arena marker has Positioned but no Render. Do not require a visible model.
+                if (!entity.TryGetComponent<Positioned>(out var positioned) ||
+                    !positioned.TryGetGridPosition(out var pos) ||
+                    pos.Y < 0 || pos.Y >= heights.Length || pos.X < 0 || pos.X >= heights[pos.Y].Length)
+                {
+                    return false;
+                }
+
+                node = (new Vector2(pos.X, pos.Y), heights[pos.Y][pos.X], category, iconKey);
+                return true;
+            }
+
+            if (!entity.TryGetComponent<Render>(out var render))
+            {
+                return false;
+            }
+
+            node = (new Vector2(render.GridPosition.X, render.GridPosition.Y), render.TerrainHeight, category, iconKey);
+            return true;
         }
 
         /// <summary>
         /// Throttled background scan of the game's SleepingEntities map for tracked static objects
-        /// only (Abyss cracks/pit and specific Strongboxes — never monsters/other, which move).
+        /// only (boss arena markers, Abyss cracks/pit and specific Strongboxes — never moving monsters).
         /// Found nodes are merged into the per-map cache so they're revealed at the larger
         /// sleeping-entity radius and persist once seen.
         /// </summary>
         private void RebuildTrackedNodes()
         {
             var anyEnabled =
+                (this.Settings.BossIcons.TryGetValue("Boss Arena", out var bossIcon) && bossIcon.Draw) ||
                 (this.Settings.AbyssIcons.TryGetValue("Abyss Crack", out var crackIcon) && crackIcon.Draw) ||
                 (this.Settings.AbyssIcons.TryGetValue("Abyss Pit", out var pitIcon) && pitIcon.Draw) ||
                 this.Settings.StrongboxIcons.Values.Any(i => i.Draw);
@@ -2198,29 +2256,36 @@ namespace Radar
             }
 
             var areaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            var areaAddress = areaInstance.Address;
+            var areaHash = areaInstance.AreaHash;
+            var heights = areaInstance.GridHeightData;
             var target = this.trackedNodes;
+            void Track(Entity entity)
+            {
+                if (areaInstance.Address != areaAddress || areaInstance.AreaHash != areaHash ||
+                    !TryGetTrackedNode(entity, heights, out var node))
+                {
+                    return;
+                }
+
+                var k = $"{node.category}|{node.iconKey}|{(int)node.gridPos.X}|{(int)node.gridPos.Y}";
+                target[k] = node;
+            }
+
+            // Also handle markers already inside the network bubble (without requiring Render).
+            foreach (var entity in areaInstance.AwakeEntities.Values)
+            {
+                if (ClassifyTrackedPath(entity.Path)?.category == "boss")
+                {
+                    Track(entity);
+                }
+            }
+
             this.pendingTrackedScanTask = Task.Run(() =>
             {
                 areaInstance.ScanSleepingEntities(
                     p => ClassifyTrackedPath(p) != null,
-                    (key, entity) =>
-                    {
-                        if (!entity.TryGetComponent<Render>(out var r))
-                        {
-                            return;
-                        }
-
-                        var classified = ClassifyTrackedPath(entity.Path);
-                        if (classified == null)
-                        {
-                            return;
-                        }
-
-                        var (category, iconKey) = classified.Value;
-                        var gridPos = new Vector2(r.GridPosition.X, r.GridPosition.Y);
-                        var k = $"{category}|{iconKey}|{(int)gridPos.X}|{(int)gridPos.Y}";
-                        target[k] = (gridPos, r.TerrainHeight, category, iconKey);
-                    });
+                    (key, entity) => Track(entity));
             });
         }
 

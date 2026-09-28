@@ -5,6 +5,9 @@ namespace GameOffsets.Objects.Components
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct PositionedOffsets
     {
+        // Grid coordinates of non-rendered objects (verified against Render, 2026-09-27).
+        public const int GridPositionOffset = 0x444;
+
         [FieldOffset(0x000)] public ComponentHeader Header;
         [FieldOffset(0x1E0)] public byte Reaction;
     }
