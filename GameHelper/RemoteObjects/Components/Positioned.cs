@@ -6,6 +6,7 @@ namespace GameHelper.RemoteObjects.Components
 {
     using System;
     using GameOffsets.Objects.Components;
+    using GameOffsets.Natives;
     using GameOffsets.Objects.States.InGameState;
     using ImGuiNET;
 
@@ -31,6 +32,12 @@ namespace GameHelper.RemoteObjects.Components
         ///     Gets a value indicating whether the entity is friendly or not.
         /// </summary>
         public bool IsFriendly { get; private set; }
+
+        /// <summary>
+        /// Reads the grid position on demand, including objects without a Render component.
+        /// </summary>
+        public bool TryGetGridPosition(out StdTuple2D<int> position) =>
+            Core.Process.Handle.TryReadMemory(this.Address + PositionedOffsets.GridPositionOffset, out position);
 
         /// <summary>
         ///     Converts the <see cref="Positioned" /> class data to ImGui.
