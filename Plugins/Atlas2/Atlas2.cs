@@ -1,4 +1,4 @@
-﻿namespace Atlas2
+namespace Atlas2
 {
     using GameHelper;
     using GameHelper.Plugin;
@@ -160,6 +160,8 @@
             if (ImGui.SmallButton("Clear"))
                 Settings.SearchQuery = string.Empty;
             ImGui.SeparatorText("Show shortest path to");
+            ImGui.Checkbox(PluginText.Label("settings.categories.only_selected", "Show only selected categories", "AtlasOnlySelectedCategories"), ref Settings.ShowOnlySelectedCategories);
+            ImGuiHelper.ToolTip(PluginText.T("settings.categories.only_selected.tooltip", "Show only maps matching checked categories below. Search matches are included when Search is checked. With no categories checked, all map labels are hidden."));
             DrawUnifiedCategories();
 
             ImGui.SliderFloat("Path Thickness", ref Settings.PathLineThickness, 1.0f, 8.0f);
@@ -512,7 +514,8 @@
                     if (!IsPrintableUnicode(mapName))
                         continue;
                     var matchesSearch = !doSearch || searchList.Any(searchTerm => MatchesSearch(nd, mapName, searchTerm));
-                    if (!matchesSearch)
+                    var routeCategory = GetSelectedCategory(nd, mapName, doSearch, matchesSearch);
+                    if (Settings.ShowOnlySelectedCategories ? routeCategory == null : !matchesSearch)
                         continue;
 
                     bool completed = nd.State == AtlasNodeState.CompletedBase;
@@ -526,9 +529,7 @@
                     bool routeTarget = false;
                     uint routeColor = 0;
                     int maxHops = 0;
-                    var routeCategory = Settings.MapGroups.FirstOrDefault(category => category.DrawPath && !completed
-                        && MatchesCategory(category, nd, mapName, doSearch, matchesSearch));
-                    if (routeCategory != null)
+                    if (routeCategory != null && !completed)
                     {
                         routeTarget = true;
                         routeColor = ImGuiHelper.Color(MostColorfulColor(routeCategory.FontColor, routeCategory.BackgroundColor));
@@ -1354,6 +1355,10 @@
             return node.ContentDisplay.Any(content => content.Contains(text, StringComparison.OrdinalIgnoreCase)) ||
                    node.RawContents.Any(content => content.Contains(text, StringComparison.OrdinalIgnoreCase));
         }
+
+        private MapGroupSettings GetSelectedCategory(NodeData node, string mapName, bool searchActive, bool matchesSearch) =>
+            Settings.MapGroups.FirstOrDefault(category => category.DrawPath
+                && MatchesCategory(category, node, mapName, searchActive, matchesSearch));
 
         private static bool MatchesCategory(MapGroupSettings category, NodeData node, string mapName,
             bool searchActive, bool matchesSearch)

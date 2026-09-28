@@ -1,4 +1,4 @@
-﻿using GameHelper.Plugin;
+using GameHelper.Plugin;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -13,6 +13,7 @@ namespace Atlas2
         public bool ControllerMode = false;
 
         public string SearchQuery = string.Empty;
+        public bool ShowOnlySelectedCategories = false;
         public int CategorySettingsVersion = 10;
 
         public bool DrawLinesToTowers = false;
