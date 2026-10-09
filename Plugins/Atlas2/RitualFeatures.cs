@@ -779,7 +779,7 @@ namespace Atlas2
         {
             foreach (var nd in nodeCache)
                 if (nd.GridPosition.Equals(g))
-                    return nd.Drawable ? nd.MapName : $"({g.X},{g.Y})";
+                    return nd.Drawable ? GameHelper.Localization.GameText.Display(nd.MapName) : $"({g.X},{g.Y})";
             return $"({g.X},{g.Y})";
         }
 
@@ -825,7 +825,7 @@ namespace Atlas2
                             continue;   // filter pseudo-entry, not a rollable reward
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
-                        ImGui.TextUnformatted(opt);
+                        ImGui.TextUnformatted(GameHelper.Localization.GameText.Display(opt));
                         ImGui.TableNextColumn();
                         int w = Settings.RitualRewardWeights.TryGetValue(opt, out var cur) ? cur : 0;
                         ImGui.SetNextItemWidth(-1);
@@ -899,7 +899,7 @@ namespace Atlas2
             var gridName = new Dictionary<StdTuple2D<int>, string>(nodeCache.Count);
             foreach (var nd in nodeCache)
             {
-                gridName[nd.GridPosition] = nd.Drawable ? nd.MapName : "???";
+                gridName[nd.GridPosition] = nd.Drawable ? GameHelper.Localization.GameText.Display(nd.MapName) : "???";
                 if (nd.State == AtlasNodeState.CompletedBase
                     || string.Equals(nd.Type, "unique", StringComparison.OrdinalIgnoreCase)
                     || nd.Tags.Contains("tower", StringComparer.OrdinalIgnoreCase)
@@ -1026,8 +1026,8 @@ namespace Atlas2
                     shorts.Add(s);
                     shorts2.Add(s2);
                     if (modSb.Length > 0) modSb.Append("   -   ");
-                    modSb.Append(s);
-                    if (s2 != null) modSb.Append(" + ").Append(s2);
+                    modSb.Append(GameHelper.Localization.GameText.Display(s));
+                    if (s2 != null) modSb.Append(" + ").Append(GameHelper.Localization.GameText.Display(s2));
                 }
 
                 plannerChains.Add(new PlannerChain
@@ -1263,7 +1263,7 @@ namespace Atlas2
                 StringComparer.OrdinalIgnoreCase);
             string preview = selected.Count == 0
                 ? this.L("atlas.planner_filter_hint", "filter by desired rewards (any match shows the path)…")
-                : string.Join(", ", plannerRewardOptions.Where(selected.Contains));
+                : string.Join(", ", plannerRewardOptions.Where(selected.Contains).Select(GameHelper.Localization.GameText.Display));
             ImGui.SetNextItemWidth(MathF.Max(120f, ImGui.GetContentRegionAvail().X - 70f));
             bool filterChanged = false;
             if (ImGui.BeginCombo("##plannerFilter", preview, ImGuiComboFlags.HeightLargest))
@@ -1271,7 +1271,7 @@ namespace Atlas2
                 foreach (var opt in plannerRewardOptions)
                 {
                     bool on = selected.Contains(opt);
-                    if (ImGui.Checkbox(opt, ref on))
+                    if (ImGui.Checkbox(GameHelper.Localization.GameText.Display(opt) + "###reward_" + opt, ref on))
                     {
                         if (on) selected.Add(opt);
                         else selected.Remove(opt);

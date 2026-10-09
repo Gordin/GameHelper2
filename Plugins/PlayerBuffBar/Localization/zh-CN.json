@@ -62,5 +62,6 @@
   "status.dump_failed_state": "导出失败：请先进入地图或城镇。",
   "status.dump_saved": "已导出（{0} 个增益）：Plugins/PlayerBuffBar/player_buff_dump.txt",
   "tab.bar": "条 {0}",
-  "tab.off_suffix": "（关）"
+  "tab.off_suffix": "（关）",
+  "settings.show_totems": "显示图腾"
 }

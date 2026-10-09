@@ -24,5 +24,18 @@
   "settings.whitelist.count": "{0} item(s). Hover an item in-game and press the add key.",
   "button.delete": "X",
   "debug.press_to_add": "Press {0} to add to whitelist",
-  "window.debug": "PickupHelper Debug"
+  "window.debug": "PickupHelper Debug",
+  "ui.mouseoverentity_valid_0": "MouseOverEntity valid: {0}",
+  "ui.hovered_entity_path_0": "Hovered entity path: {0}",
+  "ui.large_panel_open_0": "Large panel open: {0}",
+  "ui.no_ground_item_under_cursor": "No ground item under cursor.",
+  "ui.display_0": "Display: {0}",
+  "ui.internal_0": "Internal: {0}",
+  "ui.path_0": "Path: {0}",
+  "ui.category_0": "Category: {0}",
+  "ui.rarity_0": "Rarity: {0}",
+  "ui.stack_0": "Stack: {0}",
+  "ui.distance_0": "Distance: {0}",
+  "ui.filter_match_0_1": "Filter match: {0}  ({1})",
+  "ui.eligible_now_0": "Eligible now: {0}"
 }

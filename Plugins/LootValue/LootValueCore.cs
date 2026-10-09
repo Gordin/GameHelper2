@@ -1363,7 +1363,7 @@ namespace LootValue
             var valueText = FormatValue(displayValue, displayCurrency);
 
             // valueText is already the stack TOTAL; only uniques get a name prefix.
-            var nameForLabel = includeUniqueName && rarity == Rarity.Unique && this.Settings.RevealUnidentifiedUniques ? $"{itemName} — " : string.Empty;
+            var nameForLabel = includeUniqueName && rarity == Rarity.Unique && this.Settings.RevealUnidentifiedUniques ? $"{GameHelper.Localization.GameText.Display(itemName)} — " : string.Empty;
             label = $"{nameForLabel}{valueText}";
             return true;
         }

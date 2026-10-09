@@ -1,4 +1,4 @@
-﻿namespace PlayerBuffBar
+namespace PlayerBuffBar
 {
     using System;
     using System.Collections.Generic;
@@ -1390,8 +1390,8 @@
             seconds >= 60f ? $"{(int)MathF.Ceiling(seconds / 60f)}m" : $"{MathF.Ceiling(seconds):0}s";
 
         private static string PrettyName(string raw) =>
-            string.Join(' ', raw.Split('_', StringSplitOptions.RemoveEmptyEntries)
-                .Select(w => char.ToUpperInvariant(w[0]) + w[1..]));
+            GameHelper.Localization.GameText.Display(string.Join(' ', raw.Split('_', StringSplitOptions.RemoveEmptyEntries)
+                .Select(w => char.ToUpperInvariant(w[0]) + w[1..])));
 
         private void DrawGeneralSettings()
         {

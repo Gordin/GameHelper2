@@ -37,7 +37,10 @@ namespace GameHelper.RemoteObjects.States
         /// <summary>
         ///     Gets a value indicating whether the game is in loading screen or not.
         /// </summary>
-        internal bool IsLoading { get; private set; }
+        public bool IsLoading { get; private set; }
+
+        /// <summary>Monotonic load revision, including returning to the same area instance.</summary>
+        public long AreaRevision { get; private set; }
 
         /// <summary>
         ///     Converts the <see cref="AreaLoadingState" /> class data to ImGui.
@@ -77,6 +80,7 @@ namespace GameHelper.RemoteObjects.States
 
             if (hasAreaChanged)
             {
+                this.AreaRevision++;
                 CoroutineHandler.InvokeLater(new Wait(0.1d), () => { CoroutineHandler.RaiseEvent(RemoteEvents.AreaChanged); });
             }
         }

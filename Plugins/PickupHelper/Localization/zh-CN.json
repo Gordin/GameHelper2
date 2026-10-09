@@ -24,5 +24,18 @@
   "settings.whitelist.count": "{0} 件物品。在游戏中将光标悬停在物品上并按下添加键。",
   "button.delete": "X",
   "debug.press_to_add": "按 {0} 加入白名单",
-  "window.debug": "PickupHelper 调试"
+  "window.debug": "PickupHelper 调试",
+  "ui.mouseoverentity_valid_0": "光标指向的实体是否有效：{0}",
+  "ui.hovered_entity_path_0": "光标指向的实体路径：{0}",
+  "ui.large_panel_open_0": "大型面板是否开启：{0}",
+  "ui.no_ground_item_under_cursor": "光标下方没有地面物品。",
+  "ui.display_0": "显示名称：{0}",
+  "ui.internal_0": "内部名称：{0}",
+  "ui.path_0": "路径：{0}",
+  "ui.category_0": "分类：{0}",
+  "ui.rarity_0": "稀有度：{0}",
+  "ui.stack_0": "堆叠数量：{0}",
+  "ui.distance_0": "距离：{0}",
+  "ui.filter_match_0_1": "符合筛选：{0}（{1}）",
+  "ui.eligible_now_0": "当前可拾取：{0}"
 }

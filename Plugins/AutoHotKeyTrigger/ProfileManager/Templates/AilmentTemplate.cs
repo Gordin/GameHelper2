@@ -1,4 +1,4 @@
-﻿// <copyright file="AilmentTemplate.cs" company="PlaceholderCompany">
+// <copyright file="AilmentTemplate.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -28,7 +28,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             ImGui.SameLine();
             ImGui.SetNextItemWidth(ImGui.GetFontSize() * 11f);
             ImGuiHelper.IEnumerableComboBox(
-                    "ailment.##AilmentCondition",
+                    AhkText.Label("template.ailment", "ailment.", "AilmentCondition"),
                     JsonDataHelper.StatusEffectGroups.Keys,
                     ref statusEffectGroupKey);
             ImGui.SameLine();

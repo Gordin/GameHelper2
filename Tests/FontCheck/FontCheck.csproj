@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><AllowUnsafeBlocks>true</AllowUnsafeBlocks><PlatformTarget>x64</PlatformTarget></PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ImGui.NET"><HintPath>../../GameHelper/bin/Release/net10.0-windows/win-x64/ImGui.NET.dll</HintPath></Reference>
+    <Reference Include="ClickableTransparentOverlay"><HintPath>../../GameHelper/bin/Release/net10.0-windows/win-x64/ClickableTransparentOverlay.dll</HintPath></Reference>
+    <None Include="../../GameHelper/bin/Release/net10.0-windows/win-x64/cimgui.dll" Link="cimgui.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

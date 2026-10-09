@@ -53,6 +53,7 @@
     <None Include="fonts\unifont.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Localization\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

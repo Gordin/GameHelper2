@@ -183,7 +183,7 @@ namespace PickupHelper
                 foreach (var cat in this.AllCategories())
                 {
                     var enabled = this.Settings.EnabledCategories.Contains(cat);
-                    if (ImGui.Checkbox($"{cat}##cat_{cat}", ref enabled))
+                    if (ImGui.Checkbox($"{GameHelper.Localization.GameText.Display(cat)}##cat_{cat}", ref enabled))
                     {
                         if (enabled)
                         {
@@ -394,31 +394,31 @@ namespace PickupHelper
                 ref this.Settings.ShowDebugWindow))
             {
                 var hovered = Core.States.InGameStateObject.MouseOverEntity;
-                ImGui.Text($"MouseOverEntity valid: {hovered.IsValid}");
+                ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.mouseoverentity_valid_0", "MouseOverEntity valid: {0}", hovered.IsValid));
                 if (hovered.IsValid)
                 {
-                    ImGui.Text($"Hovered entity path: {hovered.Path}");
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.hovered_entity_path_0", "Hovered entity path: {0}", hovered.Path));
                 }
 
-                ImGui.Text($"Large panel open: {Core.States.InGameStateObject.GameUi.IsAnyLargePanelOpen}");
+                ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.large_panel_open_0", "Large panel open: {0}", Core.States.InGameStateObject.GameUi.IsAnyLargePanelOpen));
 
                 ImGui.Separator();
                 if (!haveItem)
                 {
-                    ImGui.Text("No ground item under cursor.");
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").T("ui.no_ground_item_under_cursor", "No ground item under cursor."));
                 }
                 else
                 {
-                    ImGui.Text($"Display: {info.DisplayName}");
-                    ImGui.Text($"Internal: {info.InternalName}");
-                    ImGui.Text($"Path: {info.Path}");
-                    ImGui.Text($"Category: {info.Category}");
-                    ImGui.Text($"Rarity: {info.Rarity}");
-                    ImGui.Text($"Stack: {info.Stack}");
-                    ImGui.Text($"Distance: {info.Distance}");
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.display_0", "Display: {0}", info.DisplayName));
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.internal_0", "Internal: {0}", info.InternalName));
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.path_0", "Path: {0}", info.Path));
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.category_0", "Category: {0}", info.Category));
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.rarity_0", "Rarity: {0}", info.Rarity));
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.stack_0", "Stack: {0}", info.Stack));
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.distance_0", "Distance: {0}", info.Distance));
                     var match = this.ShouldPickup(info, out var reason);
-                    ImGui.Text($"Filter match: {match}  ({reason})");
-                    ImGui.Text($"Eligible now: {this.CanAttemptPickup(haveItem, info)}");
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.filter_match_0_1", "Filter match: {0}  ({1})", match, reason));
+                    ImGui.Text(global::GameHelper.Localization.PluginStrings.For("PickupHelper").F("ui.eligible_now_0", "Eligible now: {0}", this.CanAttemptPickup(haveItem, info)));
                     ImGui.Separator();
                     ImGui.TextDisabled(this.PluginText.F(
                         "debug.press_to_add", "Press {0} to add to whitelist", this.Settings.AddHoveredKey));

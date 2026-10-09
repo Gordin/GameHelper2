@@ -62,6 +62,7 @@ namespace Atlas2
 
         public bool HideCompletedMaps = true;
         public bool HideNotAccessibleMaps = false;
+        public bool HideNormalMapLabels = false;
         public bool ShowAtlasGraph = false;
         public Vector4 AtlasGraphLineColor = new(1f, 1f, 1f, 0.35f);
         public float AtlasGraphOffsetX = -10f;

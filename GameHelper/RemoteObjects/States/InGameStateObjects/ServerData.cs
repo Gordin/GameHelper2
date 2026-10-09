@@ -38,6 +38,12 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
             = new(IntPtr.Zero, "Flask");
 
+        /// <summary>Gets the main backpack. Optional consumers enable reads while needed.</summary>
+        public Inventory BackpackInventory { get; } = new(IntPtr.Zero, "Backpack", 0.2d)
+        {
+            AutomaticUpdatesEnabled = false,
+        };
+
         /// <summary>
         ///     Gets the inventory to debug.
         /// </summary>
@@ -99,6 +105,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             this.ClearCurrentlySelectedInventory();
             this.PlayerInventories.Clear();
             this.FlaskInventory.Address = IntPtr.Zero;
+            this.BackpackInventory.Address = IntPtr.Zero;
         }
 
         /// <inheritdoc />
@@ -108,13 +115,17 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
             if (hasAddressChanged)
             {
                 this.ClearCurrentlySelectedInventory();
+                this.BackpackInventory.Address = IntPtr.Zero;
             }
 
             var reader = Core.Process.Handle;
             var data = reader.ReadMemory<ServerDataOffsets>(this.Address);
             var playerDataArray = reader.ReadStdVector<IntPtr>(data.PlayerServerDataPtr);
             if (playerDataArray.Length == 0)
+            {
+                this.BackpackInventory.Address = IntPtr.Zero;
                 return;
+            }
             var playerData = reader.ReadMemory<ServerDataStructure>(playerDataArray[0]);
             var inventoryData = reader.ReadStdVector<InventoryArrayStruct>(playerData.PlayerInventories);
             this.PlayerInventories.Clear();
@@ -125,11 +136,17 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 this.PlayerInventories[invName] = invAddr;
                 switch (invName)
                 {
+                    case InventoryName.MainInventory1:
+                        this.BackpackInventory.Address = invAddr;
+                        break;
                     case InventoryName.Flask1:
                         this.FlaskInventory.Address = invAddr;
                         break;
                 }
             }
+
+            if (!this.PlayerInventories.ContainsKey(InventoryName.MainInventory1))
+                this.BackpackInventory.Address = IntPtr.Zero;
         }
 
         private void ClearCurrentlySelectedInventory()

@@ -1,4 +1,4 @@
-﻿// <copyright file="StatusEffectTemplate.cs" company="PlaceholderCompany">
+// <copyright file="StatusEffectTemplate.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -65,7 +65,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                 ImGuiHelper.EnumComboBox("##checkType", ref checkType);
                 ImGuiHelper.ToolTip(AhkText.F("template.status_compare.tooltip", "What to compare. {0} ranges from " +
                     $"0 to 100, 0 being buff will expire imminently and 100 meaning " +
-                    $"it was just applied", StatusEffectCheckType.PercentTimeLeft));
+                    $"it was just applied", GameHelper.Localization.GameText.Display(StatusEffectCheckType.PercentTimeLeft.ToString())));
             }
 
             ImGui.PopID();

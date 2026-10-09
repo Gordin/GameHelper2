@@ -50,6 +50,9 @@ namespace PreloadAlert
         /// <summary>
         ///     Gets a value indicating whether the user want to display time since last map spawn.
         /// </summary>
-        public bool TimeSinceLastMapSpawn = true;
+        public bool TimeSinceLastMapSpawn = false;
+
+        /// <summary>Tracks the one-time change to an opt-in preload timer.</summary>
+        public int? TimerDefaultsVersion;
     }
 }

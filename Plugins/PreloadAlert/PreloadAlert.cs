@@ -1,4 +1,4 @@
-﻿// <copyright file="PreloadAlert.cs" company="PlaceholderCompany">
+// <copyright file="PreloadAlert.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -67,6 +67,15 @@ namespace PreloadAlert
                 this.Settings = JsonConvert.DeserializeObject<PreloadSettings>(content) ?? new PreloadSettings();
             }
 
+            // Apply the new default to old configs once, then preserve later
+            // choices to enable the timer. Save only settings before rules load.
+            if (this.Settings.TimerDefaultsVersion.GetValueOrDefault() < 1)
+            {
+                this.Settings.TimeSinceLastMapSpawn = false;
+                this.Settings.TimerDefaultsVersion = 1;
+                this.SaveWindowSettings();
+            }
+
             this.preloads.Load(this.PreloadFileName);
             this.onPreloadUpdated = CoroutineHandler.Start(this.OnPreloadsUpdated());
         }
@@ -77,13 +86,18 @@ namespace PreloadAlert
         /// </summary>
         public override void SaveSettings()
         {
+            this.SaveWindowSettings();
+            this.preloads.Save(this.PreloadFileName);
+        }
+
+        private void SaveWindowSettings()
+        {
             var lockStatus = this.Settings.Locked;
             this.Settings.Locked = true;
             Directory.CreateDirectory(Path.GetDirectoryName(this.SettingPathname) ?? string.Empty);
             var settingsData = JsonConvert.SerializeObject(this.Settings, Formatting.Indented);
             File.WriteAllText(this.SettingPathname, settingsData);
             this.Settings.Locked = lockStatus;
-            this.preloads.Save(this.PreloadFileName);
         }
 
         /// <summary>
@@ -109,7 +123,8 @@ namespace PreloadAlert
                 return;
             }
 
-            if (this.Settings.HideWindowWhenEmpty && this.preloadFoundList.Count == 0)
+            if (this.preloadFoundList.Count == 0 &&
+                (this.Settings.HideWindowWhenEmpty || (this.Settings.Locked && !this.Settings.TimeSinceLastMapSpawn)))
             {
                 return;
             }
@@ -185,7 +200,7 @@ namespace PreloadAlert
                 {
                     for (var i = 0; i < this.preloadFoundList.Count; i++)
                     {
-                        ImGui.TextColored(this.preloadFoundList[i].Color, this.preloadFoundList[i].DisplayName);
+                        ImGui.TextColored(this.preloadFoundList[i].Color, GameHelper.Localization.GameText.Display(this.preloadFoundList[i].DisplayName));
                     }
                 }
             }
@@ -206,6 +221,7 @@ namespace PreloadAlert
                 ImGui.Checkbox(this.PluginText.Label("settings.hide_when_empty", "Hide when no preload found", "PreloadAlertHideWhenEmpty"), ref this.Settings.HideWindowWhenEmpty);
                 ImGui.Checkbox(this.PluginText.Label("settings.hide_in_town_hideout", "Hide when in town or hideout", "PreloadAlertHideInTownHideout"), ref this.Settings.HideWhenInTownOrHideout);
                 ImGui.Checkbox(this.PluginText.Label("settings.show_time_since_last_map", "Show time since last map opened", "PreloadAlertShowTimeSinceLastMap"), ref this.Settings.TimeSinceLastMapSpawn);
+                ImGuiHelper.ToolTip(this.PluginText.T("settings.show_time_since_last_map.tooltip", "Seconds since the last area preload update. This is not active map time and is off by default."));
             }
         }
 

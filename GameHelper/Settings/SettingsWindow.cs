@@ -1,4 +1,4 @@
-﻿// <copyright file="SettingsWindow.cs" company="None">
+// <copyright file="SettingsWindow.cs" company="None">
 // Copyright (c) None. All rights reserved.
 // </copyright>
 
@@ -7,6 +7,7 @@ namespace GameHelper.Settings
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.IO;
     using System.Numerics;
     using ClickableTransparentOverlay;
     using ClickableTransparentOverlay.Win32;
@@ -27,11 +28,10 @@ namespace GameHelper.Settings
     internal static class SettingsWindow
     {
         private static Vector4 color = new(1f, 1f, 0f, 1f);
-        private static bool isOverlayRunningLocal = true;
         private static bool isSettingsWindowVisible = true;
-        private const string GeneralPageId = "core:general";
-        private const string PluginManagerPageId = "core:plugins";
-        private static string selectedSettingsPage = PluginManagerPageId;
+        private static readonly PlayerSettingsShell Shell = new(L.T);
+        private static IntPtr settingsBackdrop;
+        private static bool backdropAttempted;
         private static string pluginReloadStatus = string.Empty;
 
         private static EntityFilterType efilterType = EntityFilterType.PATH;
@@ -65,194 +65,66 @@ namespace GameHelper.Settings
                 UiRenderPriority.CoreWindows));
         }
 
-        private static void DrawManuBar()
-        {
-            if (!ImGui.BeginMenuBar())
-            {
-                return;
-            }
-
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
-            ImGui.Text($"GameHelper {Core.GetVersion()}");
-            ImGui.PopStyleColor();
-            ImGui.SameLine();
-            ImGui.TextDisabled("|");
-            ImGui.SameLine();
-            ImGui.TextDisabled(L.F("settings.menu.hide_show", "Hide/show menu: {0}", Core.GHSettings.MainMenuHotKey));
-
-#if DEBUG
-            ImGui.SameLine();
-            ImGui.Checkbox(L.Label("settings.debug.imgui_demo", "ImGui Demo", "ImGuiDemo"), ref showImGuiDemo);
-            if (showImGuiDemo)
-            {
-                ImGui.ShowDemoWindow(ref showImGuiDemo);
-            }
-#endif
-
-            ImGui.EndMenuBar();
-        }
-
         private static void DrawSettingsLayout()
         {
-            var enabledPlugins = PManager.Plugins.Where(container => container.Metadata.Enable).ToList();
-            EnsureSelectedSettingsPage(enabledPlugins);
-
-            var availableWidth = ImGui.GetContentRegionAvail().X;
-            var sidebarWidth = Math.Clamp(availableWidth * 0.24f, 190f, 280f);
-
-            if (ImGui.BeginChild("SettingsSidebar", new Vector2(sidebarWidth, 0), ImGuiChildFlags.Borders))
+            if (!backdropAttempted)
             {
-                DrawSettingsNavigation(enabledPlugins);
+                backdropAttempted = true;
+                var path = Path.Combine(AppContext.BaseDirectory, "Assets", "settings-landscape.png");
+                try
+                {
+                    if (File.Exists(path)) Core.Overlay.AddOrGetImagePointer(path, false, out settingsBackdrop, out _, out _);
+                }
+                catch (Exception ex) { Console.WriteLine($"[Settings background] {ex.Message}"); }
             }
 
-            ImGui.EndChild();
-            ImGui.SameLine();
-
-            if (ImGui.BeginChild("SettingsContent", Vector2.Zero, ImGuiChildFlags.Borders))
-            {
-                DrawSelectedSettingsPage(enabledPlugins);
-            }
-
-            ImGui.EndChild();
+            var entries = PManager.Plugins.Select(p => new PlayerSettingsShell.PluginEntry(
+                p.Name, GameHelper.Localization.GameText.Display(p.Name), p.Plugin.GetDescription(), p.Metadata.Enable)).ToList();
+            var status = Core.States.GameCurrentState == GameStateTypes.GameNotLoaded
+                ? L.T("settings.shell.waiting", "Waiting for game")
+                : L.T("settings.shell.connected", "Game connected");
+            Shell.Draw(entries, settingsBackdrop, Core.GetVersion().ToString(), status, Core.GHSettings.MainMenuHotKey.ToString(),
+                DrawCorePage,
+                name => PManager.Plugins.FirstOrDefault(p => p.Name == name)?.Plugin.DrawSettings(),
+                (name, enabled) =>
+                {
+                    var plugin = PManager.Plugins.FirstOrDefault(p => p.Name == name);
+                    if (plugin != null) SetPluginEnabled(plugin, enabled);
+                },
+                HideSettingsWindow,
+                () =>
+                {
+                    CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
+                    Core.GHSettings.IsOverlayRunning = false;
+                });
         }
 
-        /// <summary>
-        ///     Draws the left navigation for core settings and enabled plugin settings.
-        /// </summary>
-        private static void DrawSettingsNavigation(IReadOnlyCollection<PluginContainer> enabledPlugins)
+        private static void DrawCorePage(string page)
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
-            ImGui.Text(L.T("settings.navigation.core", "Core"));
-            ImGui.PopStyleColor();
-
-            DrawNavigationItem(GeneralPageId, L.T("settings.tabs.general", "General"));
-            DrawNavigationItem(PluginManagerPageId, L.T("settings.tabs.plugins", "Plugins"));
-
-            ImGui.Separator();
-            ImGui.Spacing();
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
-            ImGui.Text(L.T("settings.navigation.plugin_settings", "Plugin Settings"));
-            ImGui.PopStyleColor();
-
-            if (enabledPlugins.Count == 0)
+            switch (page)
             {
-                ImGui.TextDisabled(L.T("settings.navigation.no_enabled_plugins", "No enabled plugins"));
-                return;
+                case "general": DrawCoreSettings(); break;
+                case "display":
+                    ImGuiTheme.SectionHeader(L.T("settings.shell.display", "Display & fonts"));
+                    ChangeFontWidget();
+                    DrawNearbyWidget();
+                    break;
+                case "advanced":
+                    ImGuiTheme.SectionHeader(L.T("settings.shell.advanced", "Advanced tools"));
+                    DrawToolsConfig();
+                    DrawMiscConfig();
+                    ImGuiTheme.SectionHeader(L.T("settings.filters.title", "Filters & Tracking"),
+                        L.T("settings.filters.subtitle", "Advanced entity filters. Change zone or restart after edits."));
+                    DrawPoiWidget(); DrawMonstersToIgnore(); DrawNPCWidget(); DrawMiscObjWidget();
+                    DrawReloadPluginWidget();
+#if DEBUG
+                    ImGui.Checkbox(L.Label("settings.debug.imgui_demo", "ImGui Demo", "ImGuiDemo"), ref showImGuiDemo);
+                    if (showImGuiDemo) ImGui.ShowDemoWindow(ref showImGuiDemo);
+#endif
+                    break;
+                case "about": DrawAbout(); break;
+                default: DrawPluginManager(); break;
             }
-
-            foreach (var container in enabledPlugins)
-            {
-                DrawNavigationItem(PluginPageId(container.Name), container.Name);
-            }
-        }
-
-        private static void DrawNavigationItem(string pageId, string label)
-        {
-            var selected = selectedSettingsPage == pageId;
-            if (selected)
-            {
-                ImGui.PushStyleColor(ImGuiCol.Header, ImGuiTheme.AccentMuted);
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.98f, 0.99f, 1f, 1f));
-            }
-
-            if (ImGui.Selectable($"{label}##nav_{pageId}", selected))
-            {
-                selectedSettingsPage = pageId;
-            }
-
-            if (selected)
-            {
-                ImGui.PopStyleColor(2);
-            }
-        }
-
-        private static void DrawSelectedSettingsPage(IReadOnlyCollection<PluginContainer> enabledPlugins)
-        {
-            if (selectedSettingsPage == GeneralPageId)
-            {
-                DrawCoreSettings();
-                return;
-            }
-
-            if (selectedSettingsPage == PluginManagerPageId)
-            {
-                DrawPluginManager();
-                return;
-            }
-
-            var selectedPlugin = enabledPlugins.FirstOrDefault(
-                container => selectedSettingsPage == PluginPageId(container.Name));
-            if (selectedPlugin != null)
-            {
-                var description = selectedPlugin.Plugin.GetDescription();
-                ImGuiTheme.SectionHeader(
-                    selectedPlugin.Name,
-                    string.IsNullOrWhiteSpace(description) ? null : description);
-                selectedPlugin.Plugin.DrawSettings();
-                return;
-            }
-
-            selectedSettingsPage = PluginManagerPageId;
-            DrawPluginManager();
-        }
-
-        private static void EnsureSelectedSettingsPage(IReadOnlyCollection<PluginContainer> enabledPlugins)
-        {
-            if (selectedSettingsPage == GeneralPageId || selectedSettingsPage == PluginManagerPageId)
-            {
-                return;
-            }
-
-            if (!enabledPlugins.Any(container => selectedSettingsPage == PluginPageId(container.Name)))
-            {
-                selectedSettingsPage = PluginManagerPageId;
-            }
-        }
-
-        private static string PluginPageId(string pluginName) => $"plugin:{pluginName}";
-
-        private static bool DrawTitleBarHideButton()
-        {
-            var style = ImGui.GetStyle();
-            var windowPosition = ImGui.GetWindowPos();
-            var windowSize = ImGui.GetWindowSize();
-            var titleBarHeight = ImGui.GetFrameHeight();
-            var buttonSize = ImGui.GetFontSize();
-            var buttonTop = windowPosition.Y + ((titleBarHeight - buttonSize) / 2f);
-
-            // ImGui places its close button against the right frame padding. Reserve that
-            // slot and put the hide button immediately to its left.
-            var closeButtonRight = windowPosition.X + windowSize.X - style.FramePadding.X;
-            var buttonMax = new Vector2(
-                closeButtonRight - buttonSize - style.ItemInnerSpacing.X,
-                buttonTop + buttonSize);
-            var buttonMin = new Vector2(buttonMax.X - buttonSize, buttonTop);
-            var hovered = ImGui.IsMouseHoveringRect(buttonMin, buttonMax, false);
-            // The foreground list is submitted after ImGui's native title-bar geometry,
-            // ensuring the custom glyph cannot be clipped or painted over by the window.
-            var drawList = ImGui.GetForegroundDrawList();
-
-            if (hovered)
-            {
-                drawList.AddRectFilled(
-                    buttonMin,
-                    buttonMax,
-                    ImGui.GetColorU32(ImGuiCol.ButtonHovered),
-                    style.FrameRounding);
-                ImGui.SetTooltip(L.F(
-                    "settings.window.hide",
-                    "Hide settings window ({0})",
-                    Core.GHSettings.MainMenuHotKey));
-            }
-
-            var lineY = buttonMin.Y + (buttonSize * 0.7f);
-            drawList.AddLine(
-                new Vector2(buttonMin.X + (buttonSize * 0.2f), lineY),
-                new Vector2(buttonMax.X - (buttonSize * 0.2f), lineY),
-                ImGui.GetColorU32(ImGuiCol.Text),
-                2f);
-
-            return hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         }
 
         private static void HideSettingsWindow()
@@ -272,7 +144,7 @@ namespace GameHelper.Settings
                 L.T("settings.plugin.title", "Plugin Management"),
                 L.T(
                     "settings.plugin.subtitle",
-                    "Enable or disable plugins. Enabled plugins get their own settings page. Changes are saved automatically."));
+                    "Enable or disable plugins. Open their settings from the gameplay categories or search. Changes are saved automatically."));
 
             var enabledCount = PManager.Plugins.Count(p => p.Metadata.Enable);
             ImGui.TextDisabled(L.F("settings.plugin.active_count", "Active: {0} / {1}", enabledCount, PManager.Plugins.Count));
@@ -324,7 +196,7 @@ namespace GameHelper.Settings
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
                 ImGui.AlignTextToFramePadding();
-                ImGui.Text(container.Name);
+                ImGui.Text(GameHelper.Localization.GameText.Display(container.Name));
 
                 ImGui.TableNextColumn();
                 ImGui.AlignTextToFramePadding();
@@ -335,7 +207,7 @@ namespace GameHelper.Settings
                 }
                 else
                 {
-                    ImGui.TextUnformatted(description);
+                    ImGui.TextWrapped(description);
                     if (ImGui.IsItemHovered())
                     {
                         ImGui.SetTooltip(description);
@@ -389,7 +261,7 @@ namespace GameHelper.Settings
             {
                 var loadedCount = PManager.ReloadAllPlugins();
                 pluginReloadStatus = L.F("settings.plugin.reload_done", "Reloaded {0} plugins", loadedCount);
-                selectedSettingsPage = PluginManagerPageId;
+                Shell.Page = "plugins";
                 CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
             }
             catch (Exception ex)
@@ -415,31 +287,21 @@ namespace GameHelper.Settings
             ImGui.Text(L.T("settings.status.current_game_state", "Current Game State:"));
             ImGui.SameLine();
             ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Accent);
-            ImGui.Text($"{Core.States.GameCurrentState}");
+            ImGui.Text(GameHelper.Localization.GameText.Display(Core.States.GameCurrentState.ToString()));
             ImGui.PopStyleColor();
             ImGui.InputText(L.Label("settings.status.party_leader_name", "Party Leader Name", "PartyLeaderName"), ref Core.GHSettings.LeaderName, 200);
 
             ImGuiTheme.SectionHeader(L.T("settings.language.title", "Language"));
             DrawUiLanguageWidget();
 
-            ImGuiTheme.SectionHeader(L.T("settings.controls.title", "Controls & Display"));
+            ImGuiTheme.SectionHeader(L.T("settings.shell.general", "General & shortcuts"));
             DrawInputConfigWidget();
-            DrawNearbyWidget();
-            DrawToolsConfig();
+            ImGui.Checkbox(L.Label("settings.misc.hide_overlay_on_start", "Hide overlay settings upon start", "HideSettingWindowOnStart"), ref Core.GHSettings.HideSettingWindowOnStart);
+            ImGui.Checkbox(L.Label("settings.misc.close_when_game_exit", "Close GameHelper when Game Exit", "CloseWhenGameExit"), ref Core.GHSettings.CloseWhenGameExit);
+        }
 
-            ImGuiTheme.SectionHeader(
-                L.T("settings.filters.title", "Filters & Tracking"),
-                L.T("settings.filters.subtitle", "Advanced entity filters. Change zone or restart after edits."));
-            DrawPoiWidget();
-            DrawMonstersToIgnore();
-            DrawNPCWidget();
-            DrawMiscObjWidget();
-
-            ImGuiTheme.SectionHeader(L.T("settings.advanced.title", "Advanced"));
-            DrawMiscConfig();
-            ChangeFontWidget();
-            DrawReloadPluginWidget();
-
+        private static void DrawAbout()
+        {
             ImGuiTheme.SectionHeader(L.T("settings.about.title", "About"));
             ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
             ImGui.TextColored(color, L.T("settings.about.scam", "This is free software, if you purchased a copy you have been scammed"));
@@ -484,7 +346,7 @@ namespace GameHelper.Settings
             ImGuiHelper.ToolTip(
                 L.T(
                     "settings.language.tooltip",
-                    "Controls GameHelper's main overlay text. Font glyph range is configured separately below."));
+                    "Controls GameHelper's main overlay text. Configure fonts in Display & fonts."));
         }
 
         private static void DrawNearbyWidget()
@@ -872,8 +734,6 @@ namespace GameHelper.Settings
 
                 ImGui.Checkbox(L.Label("settings.misc.disable_entity_processing", "Disable entity processing when in town or hideout", "DisableEntityProcessingInTownOrHideout"),
                     ref Core.GHSettings.DisableEntityProcessingInTownOrHideout);
-                ImGui.Checkbox(L.Label("settings.misc.hide_overlay_on_start", "Hide overlay settings upon start", "HideSettingWindowOnStart"), ref Core.GHSettings.HideSettingWindowOnStart);
-                ImGui.Checkbox(L.Label("settings.misc.close_when_game_exit", "Close GameHelper when Game Exit", "CloseWhenGameExit"), ref Core.GHSettings.CloseWhenGameExit);
                 if (ImGui.Checkbox(L.Label("settings.misc.vsync", "V-Sync", "VSync"), ref Core.Overlay.VSync))
                 {
                     Core.GHSettings.Vsync = Core.Overlay.VSync;
@@ -989,34 +849,6 @@ namespace GameHelper.Settings
         }
 
         /// <summary>
-        ///     Draws the closing confirmation popup on ImGui.
-        /// </summary>
-        private static void DrawConfirmationPopup()
-        {
-            ImGui.SetNextWindowPos(new Vector2(Core.Overlay.Size.Width / 3f, Core.Overlay.Size.Height / 3f));
-            if (ImGui.BeginPopup("GameHelperCloseConfirmation"))
-            {
-                ImGui.Text(L.T("settings.confirm.quit", "Do you want to quit the GameHelper overlay?"));
-                ImGui.Separator();
-                if (ImGui.Button(L.Label("settings.confirm.yes", "Yes", "ConfirmQuitYes"), new Vector2(ImGui.GetContentRegionAvail().X / 2f, ImGui.GetTextLineHeight() * 2)))
-                {
-                    Core.GHSettings.IsOverlayRunning = false;
-                    ImGui.CloseCurrentPopup();
-                    isOverlayRunningLocal = true;
-                }
-
-                ImGui.SameLine();
-                if (ImGui.Button(L.Label("settings.confirm.no", "No", "ConfirmQuitNo"), new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight() * 2)))
-                {
-                    ImGui.CloseCurrentPopup();
-                    isOverlayRunningLocal = true;
-                }
-
-                ImGui.EndPopup();
-            }
-        }
-
-        /// <summary>
         ///     Hides the overlay on startup.
         /// </summary>
         private static void HideOnStartCheck()
@@ -1055,37 +887,11 @@ namespace GameHelper.Settings
                     continue;
                 }
 
-                ImGui.SetNextWindowSizeConstraints(new Vector2(800, 600), Vector2.One * float.MaxValue);
-                var isMainMenuExpanded = ImGui.Begin(
-                    $"{L.F("settings.window.title", "Game Overlay Settings [ {0} ]", Core.GetVersion())}###GameOverlaySettings",
-                    ref isOverlayRunningLocal,
-                    ImGuiWindowFlags.MenuBar);
-
-                if (DrawTitleBarHideButton())
-                {
-                    HideSettingsWindow();
-                    ImGui.End();
-                    continue;
-                }
-
-                if (!isOverlayRunningLocal)
-                {
-                    ImGui.OpenPopup("GameHelperCloseConfirmation");
-                }
-
-                DrawConfirmationPopup();
-                if (!Core.GHSettings.IsOverlayRunning)
-                {
-                    CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
-                }
-
-                if (!isMainMenuExpanded)
-                {
-                    ImGui.End();
-                    continue;
-                }
-
-                DrawManuBar();
+                var workSize = ImGui.GetMainViewport().WorkSize;
+                var maximum = Vector2.Max(new Vector2(640, 480), workSize - new Vector2(24));
+                ImGui.SetNextWindowSize(Vector2.Min(new Vector2(1160, 820), maximum), ImGuiCond.FirstUseEver);
+                ImGui.SetNextWindowSizeConstraints(Vector2.Min(new Vector2(980, 680), maximum), maximum);
+                ImGui.Begin("GameHelper###GameOverlaySettingsV2", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
                 DrawSettingsLayout();
                 ImGui.End();
             }

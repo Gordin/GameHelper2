@@ -1,4 +1,4 @@
-﻿namespace Atlas2
+namespace Atlas2
 {
     using GameHelper;
     using GameHelper.Plugin;
@@ -154,41 +154,44 @@
         public override void DrawSettings()
         {
             #region SettingsUI
-            ImGui.SeparatorText("Search Maps");
-            ImGui.InputTextWithHint("Search Map", "You can search multiple maps at once using a comma separator ','", ref Settings.SearchQuery, 256);
+            ImGui.SeparatorText(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.search_maps", "Search Maps"));
+            ImGui.InputTextWithHint(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.search_map", "Search Map", "Search Map"), global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.you_can_search_multiple_maps_at_once_using_a_comma_separator", "You can search multiple maps at once using a comma separator ','"), ref Settings.SearchQuery, 256);
             ImGui.SameLine();
-            if (ImGui.SmallButton("Clear"))
+            if (ImGui.SmallButton(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.clear", "Clear", "Clear")))
                 Settings.SearchQuery = string.Empty;
-            ImGui.SeparatorText("Show shortest path to");
+            ImGui.SeparatorText(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.show_shortest_path_to", "Show shortest path to"));
             DrawUnifiedCategories();
 
-            ImGui.SliderFloat("Path Thickness", ref Settings.PathLineThickness, 1.0f, 8.0f);
+            ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.path_thickness", "Path Thickness", "Path Thickness"), ref Settings.PathLineThickness, 1.0f, 8.0f);
 
-            ImGui.SeparatorText("Atlas Settings");
-            ImGui.Checkbox("Hide Completed Maps", ref Settings.HideCompletedMaps);
-            ImGui.Checkbox("Hide Not Accessible Maps", ref Settings.HideNotAccessibleMaps);
-            ImGui.Checkbox("Show Map Counts", ref Settings.ShowMapCounts);
-            ImGuiHelper.ToolTip("Draw connected-node and badge counts under each map label on the Atlas.");
-            ImGui.Checkbox("Show Content", ref Settings.ShowContent);
-            ImGuiHelper.ToolTip("Draw the node's content under each map label, using the known names.");
+            ImGui.SeparatorText(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.atlas_settings", "Atlas Settings"));
+            ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.hide_completed_maps", "Hide Completed Maps", "Hide Completed Maps"), ref Settings.HideCompletedMaps);
+            ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.hide_not_accessible_maps", "Hide Not Accessible Maps", "Hide Not Accessible Maps"), ref Settings.HideNotAccessibleMaps);
+            if (ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.hide_normal_map_labels", "Hide ordinary map labels", "HideNormalMapLabels"), ref Settings.HideNormalMapLabels))
+                SaveSettings();
+            ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.hide_normal_map_labels.tooltip", "Hide labels and extra markers on ordinary maps. Keep special encounters, unique/tagged maps, selected categories and search/route targets. Native nodes and route connections stay visible."));
+            ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.show_map_counts", "Show Map Counts", "Show Map Counts"), ref Settings.ShowMapCounts);
+            ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.draw_connected_node_and_badge_counts_under_each_map_label_on_the_atlas", "Draw connected-node and badge counts under each map label on the Atlas."));
+            ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.show_content", "Show Content", "Show Content"), ref Settings.ShowContent);
+            ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.draw_the_node_s_content_under_each_map_label_using_the_known_names", "Draw the node's content under each map label, using the known names."));
             ImGui.SameLine();
-            ImGui.Checkbox("Show Node Index (debug/RE)", ref Settings.ShowNodeIndex);
+            ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.show_node_index_debug_re", "Show Node Index (debug/RE)", "Show Node Index (debug/RE)"), ref Settings.ShowNodeIndex);
             if (Settings.ShowContent)
             {
                 ImGui.Indent();
-                ImGui.Checkbox("Show Content Icons", ref Settings.ShowContentIcons);
+                ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.show_content_icons", "Show Content Icons", "Show Content Icons"), ref Settings.ShowContentIcons);
                 if (Settings.ShowContentIcons)
-                    ImGui.SliderFloat("Content Icon Size", ref Settings.ContentIconSize, 16f, 64f);
-                ImGui.Checkbox("Debug Content", ref Settings.ShowContentDebug);
-                ImGuiHelper.ToolTip("Also show unmapped content as its raw 0x value (for identifying new content).");
+                    ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.content_icon_size", "Content Icon Size", "Content Icon Size"), ref Settings.ContentIconSize, 16f, 64f);
+                ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.debug_content", "Debug Content", "Debug Content"), ref Settings.ShowContentDebug);
+                ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.also_show_unmapped_content_as_its_raw_0x_value_for_identifying_new_content", "Also show unmapped content as its raw 0x value (for identifying new content)."));
                 ImGui.Unindent();
             }
-            ImGui.Checkbox("Show Biome Border", ref Settings.ShowBiomeBorder);
+            ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.show_biome_border", "Show Biome Border", "Show Biome Border"), ref Settings.ShowBiomeBorder);
             if (Settings.ShowBiomeBorder)
-                if (ImGui.TreeNode("Biome Settings"))
+                if (ImGui.TreeNode(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.biome_settings", "Biome Settings", "Biome Settings")))
                 {
                     ImGui.SetNextItemWidth(180);
-                    ImGui.SliderFloat("Biome Border Thickness", ref Settings.BiomeBorderThickness, 1.0f, 6.0f);
+                    ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.biome_border_thickness", "Biome Border Thickness", "Biome Border Thickness"), ref Settings.BiomeBorderThickness, 1.0f, 6.0f);
 
                     if (ImGui.BeginTable("split", 3))
                     {
@@ -222,7 +225,7 @@
 
                             var label = string.IsNullOrWhiteSpace(info.Label) ? $"Biome {id}" : info.Label;
                             ImGui.SameLine();
-                            ImGui.Text(label);
+                            ImGui.Text(GameHelper.Localization.GameText.Display(label));
                         }
                         ImGui.EndTable();
                     }
@@ -230,54 +233,54 @@
                     ImGui.TreePop();
                 }
 
-            ImGui.Checkbox("Show Atlas Graph", ref Settings.ShowAtlasGraph);
+            ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.show_atlas_graph", "Show Atlas Graph", "Show Atlas Graph"), ref Settings.ShowAtlasGraph);
             if (Settings.ShowAtlasGraph)
             {
                 ImGui.SameLine();
                 ColorSwatch("##AtlasGraphLineColor", ref Settings.AtlasGraphLineColor);
-                ImGui.SliderFloat("Graph X-Offset", ref Settings.AtlasGraphOffsetX, -200f, 200f);
-                ImGui.SliderFloat("Graph Y-Offset", ref Settings.AtlasGraphOffsetY, -200f, 200f);
+                ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.graph_x_offset", "Graph X-Offset", "Graph X-Offset"), ref Settings.AtlasGraphOffsetX, -200f, 200f);
+                ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.graph_y_offset", "Graph Y-Offset", "Graph Y-Offset"), ref Settings.AtlasGraphOffsetY, -200f, 200f);
             }
 
-            if (ImGui.TreeNode("Uncharted Waters"))
+            if (ImGui.TreeNode(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.uncharted_waters", "Uncharted Waters", "Uncharted Waters")))
             {
-                ImGui.Checkbox("Highlight hovered ship leylines", ref Settings.ShowUnchartedLeylines);
-                ImGuiHelper.ToolTip("Highlights the atlas nodes and connections revealed by the hovered Uncharted Waters ship.");
+                ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.highlight_hovered_ship_leylines", "Highlight hovered ship leylines", "Highlight hovered ship leylines"), ref Settings.ShowUnchartedLeylines);
+                ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.highlights_the_atlas_nodes_and_connections_revealed_by_the_hovered_uncharted_waters_ship", "Highlights the atlas nodes and connections revealed by the hovered Uncharted Waters ship."));
                 if (Settings.ShowUnchartedLeylines)
                 {
-                    ImGui.ColorEdit4("Leyline Color", ref Settings.UnchartedLeylineColor);
-                    ImGui.SliderFloat("Leyline Thickness", ref Settings.UnchartedLeylineThickness, 1f, 12f);
+                    ImGui.ColorEdit4(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.leyline_color", "Leyline Color", "Leyline Color"), ref Settings.UnchartedLeylineColor);
+                    ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.leyline_thickness", "Leyline Thickness", "Leyline Thickness"), ref Settings.UnchartedLeylineThickness, 1f, 12f);
                 }
 
-                ImGui.Checkbox("Show ships in fog", ref Settings.ShowShipsInFog);
-                ImGuiHelper.ToolTip("Marks Uncharted Waters ships that the game is not currently rendering.");
+                ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.show_ships_in_fog", "Show ships in fog", "Show ships in fog"), ref Settings.ShowShipsInFog);
+                ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.marks_uncharted_waters_ships_that_the_game_is_not_currently_rendering", "Marks Uncharted Waters ships that the game is not currently rendering."));
                 if (Settings.ShowShipsInFog)
-                    ImGui.SliderFloat("Ship Icon Size", ref Settings.ShipIconSize, 16f, 96f);
+                    ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.ship_icon_size", "Ship Icon Size", "Ship Icon Size"), ref Settings.ShipIconSize, 16f, 96f);
                 ImGui.TreePop();
             }
 
-            if (ImGui.TreeNode("Ritual Atlas Line"))
+            if (ImGui.TreeNode(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.ritual_atlas_line", "Ritual Atlas Line", "Ritual Atlas Line")))
             {
-                ImGui.Checkbox("Predict Ritual mods", ref Settings.ShowRitualPrediction);
-                ImGuiHelper.ToolTip("Predicts the deterministic Rite modifiers for eligible Ritual-line routes.");
-                ImGui.Checkbox("Head of the King planner", ref Settings.ShowRitualPlanner);
-                ImGuiHelper.ToolTip("Lists and highlights Ritual routes and their predicted rewards while line mode is active.");
+                ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.predict_ritual_mods", "Predict Ritual mods", "Predict Ritual mods"), ref Settings.ShowRitualPrediction);
+                ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.predicts_the_deterministic_rite_modifiers_for_eligible_ritual_line_routes", "Predicts the deterministic Rite modifiers for eligible Ritual-line routes."));
+                ImGui.Checkbox(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.head_of_the_king_planner", "Head of the King planner", "Head of the King planner"), ref Settings.ShowRitualPlanner);
+                ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.lists_and_highlights_ritual_routes_and_their_predicted_rewards_while_line_mode_is_active", "Lists and highlights Ritual routes and their predicted rewards while line mode is active."));
                 if (Settings.ShowRitualPlanner)
                     DrawRewardWeightsTable();
                 ImGui.TreePop();
             }
 
-            ImGui.SeparatorText("Layout Settings");
+            ImGui.SeparatorText(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.layout_settings", "Layout Settings"));
             var nudge = Settings.AnchorNudge;
             if (ImGui.SliderFloat2("Layout Nudge (px)", ref nudge, -60f, 60f))
                 Settings.AnchorNudge = nudge;
-            ImGui.SliderFloat("Scale Multiplier", ref Settings.ScaleMultiplier, 0.5f, 3.0f);
+            ImGui.SliderFloat(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.scale_multiplier", "Scale Multiplier", "Scale Multiplier"), ref Settings.ScaleMultiplier, 0.5f, 3.0f);
 
-            if (false && ImGui.TreeNode("Legacy Map Groups"))
+            if (false && ImGui.TreeNode(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.legacy_map_groups", "Legacy Map Groups", "Legacy Map Groups")))
             {
-                ImGui.InputTextWithHint("##MapGroupName", "group name", ref Settings.GroupNameInput, 256);
+                ImGui.InputTextWithHint("##MapGroupName", global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.group_name", "group name"), ref Settings.GroupNameInput, 256);
                 ImGui.SameLine();
-                if (ImGui.Button("Add new map group"))
+                if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.add_new_map_group", "Add new map group", "Add new map group")))
                 {
                     Settings.MapGroups.Add(new MapGroupSettings(Settings.GroupNameInput, Settings.DefaultBackgroundColor, Settings.DefaultFontColor));
                     Settings.GroupNameInput = string.Empty;
@@ -286,7 +289,7 @@
                 for (int i = 0; i < Settings.MapGroups.Count; i++)
                 {
                     var mapGroup = Settings.MapGroups[i];
-                    if (ImGui.TreeNode($"{mapGroup.Name}##MapGroup{i}"))
+                    if (ImGui.TreeNode($"{GameHelper.Localization.GameText.Display(mapGroup.Name)}##MapGroup{i}"))
                     {
                         float buttonSize = ImGui.GetFrameHeight();
                         if (TriangleButton($"##Up{i}", buttonSize, new Vector4(1, 1, 1, 1), true))
@@ -299,51 +302,51 @@
                             MoveMapGroup(i, 1);
                         }
                         ImGui.SameLine();
-                        if (ImGui.Button($"Rename Group##{i}"))
+                        if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").FormatTitle("ui.rename_group", "Rename Group##{0}", i)))
                         {
                             NewGroupName = mapGroup.Name;
-                            ImGui.OpenPopup($"RenamePopup##{i}");
+                            ImGui.OpenPopup(global::GameHelper.Localization.PluginStrings.For("Atlas2").FormatTitle("ui.renamepopup", "RenamePopup##{0}", i));
                         }
                         ImGui.SameLine();
-                        if (ImGui.Button($"Delete Group##{i}"))
+                        if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").FormatTitle("ui.delete_group", "Delete Group##{0}", i)))
                         {
                             DeleteMapGroup(i);
                         }
                         ImGui.SameLine();
                         ColorSwatch($"##MapGroupBackgroundColor{i}", ref mapGroup.BackgroundColor);
                         ImGui.SameLine();
-                        ImGui.Text("Background Color");
+                        ImGui.Text(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.background_color", "Background Color"));
                         ImGui.SameLine();
                         ColorSwatch($"##MapGroupFontColor{i}", ref mapGroup.FontColor);
-                        ImGui.SameLine(); ImGui.Text("Font Color");
+                        ImGui.SameLine(); ImGui.Text(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.font_color", "Font Color"));
 
                         for (int j = 0; j < mapGroup.Maps.Count; j++)
                         {
                             var mapName = mapGroup.Maps[j];
-                            if (ImGui.InputTextWithHint($"##MapName{i}-{j}", "map name", ref mapName, 256))
+                            if (ImGui.InputTextWithHint($"##MapName{i}-{j}", global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.map_name", "map name"), ref mapName, 256))
                                 mapGroup.Maps[j] = mapName;
 
                             ImGui.SameLine();
-                            if (ImGui.Button($"Delete##MapNameDelete{i}-{j}"))
+                            if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").FormatTitle("ui.delete", "Delete##MapNameDelete{0}-{1}", i, j)))
                             {
                                 mapGroup.Maps.RemoveAt(j);
                                 break;
                             }
                         }
 
-                        if (ImGui.Button($"Add new map##AddNewMap{i}"))
+                        if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").FormatTitle("ui.add_new_map", "Add new map##AddNewMap{0}", i)))
                             mapGroup.Maps.Add(string.Empty);
 
-                        if (ImGui.BeginPopupModal($"RenamePopup##{i}", ImGuiWindowFlags.AlwaysAutoResize))
+                        if (ImGui.BeginPopupModal(global::GameHelper.Localization.PluginStrings.For("Atlas2").FormatTitle("ui.renamepopup", "RenamePopup##{0}", i), ImGuiWindowFlags.AlwaysAutoResize))
                         {
-                            ImGui.InputText("New Name", ref NewGroupName, 256);
-                            if (ImGui.Button("OK"))
+                            ImGui.InputText(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.new_name", "New Name", "New Name"), ref NewGroupName, 256);
+                            if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.ok", "OK", "OK")))
                             {
                                 mapGroup.Name = NewGroupName;
                                 ImGui.CloseCurrentPopup();
                             }
                             ImGui.SameLine();
-                            if (ImGui.Button("Cancel"))
+                            if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.cancel", "Cancel", "Cancel")))
                             {
                                 ImGui.CloseCurrentPopup();
                             }
@@ -542,11 +545,21 @@
                     if (Settings.HideNotAccessibleMaps && notAccessible && !routeTarget)
                         continue;
 
+                    var group = Settings.MapGroups.FirstOrDefault(g => MatchesCategory(g, nd, mapName, doSearch, matchesSearch));
+                    // Keep all nodes in the routing graph above. Only plain overlay
+                    // labels are filtered; special/unknown content and explicitly
+                    // selected categories/search targets remain visible.
+                    if (Settings.HideNormalMapLabels && !routeTarget && !(doSearch && matchesSearch) && group == null &&
+                        string.Equals(nd.Type, "normal", StringComparison.OrdinalIgnoreCase) &&
+                        nd.Tags.Count == 0 && nd.BadgeCount == 0 && nd.ContentDisplayAll.Count == 0)
+                        continue;
+
                     var nodeUi = atlasUi[nd.Index];
                     if (nodeUi == null)
                         continue;
 
-                    var textSize = ImGui.CalcTextSize(mapName);
+                    var displayMapName = GameHelper.Localization.GameText.Display(mapName);
+                    var textSize = ImGui.CalcTextSize(displayMapName);
                     var nodeCenter = nodeUi.Position + nodeUi.Size * 0.5f;
                     Vector2 drawPosition = nodeCenter - textSize * 0.5f + Settings.AnchorNudge;
 
@@ -593,8 +606,6 @@
                     if (!screenBounds.IntersectsWith(new RectangleF(bgPos.X, bgPos.Y, bgSize.X, bgSize.Y)))
                         continue;
 
-                    var group = Settings.MapGroups.FirstOrDefault(g => MatchesCategory(g, nd, mapName, doSearch, matchesSearch));
-
                     var backgroundColor = group?.BackgroundColor ?? Settings.DefaultBackgroundColor;
                     var fontColor = group?.FontColor ?? Settings.DefaultFontColor;
                     if (completed)
@@ -638,7 +649,7 @@
                     }
 
                     drawList.AddRectFilled(bgPos, bgPos + bgSize, ImGuiHelper.Color(backgroundColor), rounding);
-                    drawList.AddText(drawPosition, ImGuiHelper.Color(fontColor), mapName);
+                    drawList.AddText(drawPosition, ImGuiHelper.Color(fontColor), displayMapName);
 
                     if (Settings.ShowNodeIndex)
                     {
@@ -664,7 +675,7 @@
 
                     if (Settings.ShowMapCounts)
                     {
-                        var countText = $"Links: {nd.ConnectedGridPositions.Count}  Badges: {nd.BadgeCount}";
+                        var countText = this.PluginText.F("atlas.links_badges", "Links: {0}  Badges: {1}", nd.ConnectedGridPositions.Count, nd.BadgeCount);
                         var countTextSize = ImGui.CalcTextSize(countText);
                         var countPos = new Vector2(labelCenterX - countTextSize.X * 0.5f, nextRowTopY);
                         drawList.AddText(countPos, ImGuiHelper.Color(fontColor), countText);
@@ -682,7 +693,7 @@
                                 DrawContentIcons(drawList, nd.ContentIcons, labelCenterX, drawPosition.Y, uiScale);
                             foreach (var content in contentList)
                             {
-                                DrawContentLine(drawList, content, labelCenterX, ref nextRowTopY, rowGap, fontColor);
+                                DrawContentLine(drawList, GameHelper.Localization.GameText.Display(content), labelCenterX, ref nextRowTopY, rowGap, fontColor);
                             }
                         }
                     }
@@ -726,9 +737,10 @@
                     {
                         if (!allCenters.TryGetValue(prediction.Key, out var center))
                             continue;
-                        var size = ImGui.CalcTextSize(prediction.Value);
+                        var localizedPrediction = GameHelper.Localization.GameText.Lines(prediction.Value);
+                        var size = ImGui.CalcTextSize(localizedPrediction);
                         drawList.AddText(center - new Vector2(size.X * 0.5f, size.Y + 18f * uiScale),
-                            ImGuiHelper.Color(new Vector4(0.25f, 1f, 0.35f, 1f)), prediction.Value);
+                            ImGuiHelper.Color(new Vector4(0.25f, 1f, 0.35f, 1f)), localizedPrediction);
                     }
                 }
 
@@ -1358,7 +1370,8 @@
         private static bool MatchesCategory(MapGroupSettings category, NodeData node, string mapName,
             bool searchActive, bool matchesSearch)
         {
-            if (category.Maps.Any(map => NormalizeName(map).Equals(mapName, StringComparison.OrdinalIgnoreCase)))
+            if (category.Maps.Any(map => NormalizeName(map).Equals(mapName, StringComparison.OrdinalIgnoreCase) ||
+                    NormalizeName(map).Equals(GameHelper.Localization.GameText.Display(mapName), StringComparison.OrdinalIgnoreCase)))
                 return true;
 
             bool Enabled(string label) => category.BuiltInTargets.TryGetValue(label, out var enabled) && enabled;
@@ -1398,7 +1411,9 @@
 
         private static bool MatchesSearch(NodeData node, string mapName, string searchTerm)
         {
-            return mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            return GameHelper.Localization.GameText.Display(mapName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   node.ContentDisplay.Any(c => GameHelper.Localization.GameText.Display(c).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                   mapName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                    HasAtlasContent(node, searchTerm);
         }
 
@@ -1503,9 +1518,9 @@
             ImGui.SameLine();
             ImGui.SetNextItemWidth(80);
             ImGui.SliderInt($"##{label}Hops", ref maxHops, 1, 200);
-            ImGuiHelper.ToolTip("Maximum path length in maps to clear.");
+            ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.maximum_path_length_in_maps_to_clear", "Maximum path length in maps to clear."));
             ImGui.SameLine();
-            ImGui.Text(label);
+            ImGui.Text(GameHelper.Localization.GameText.Display(label));
         }
 
         private void DrawUnifiedCategories()
@@ -1517,48 +1532,48 @@
                 ImGui.Checkbox("##route", ref category.DrawPath);
                 ImGui.SameLine();
                 ColorSwatch("##pathText", ref category.FontColor);
-                ImGuiHelper.ToolTip("Node-text color. The path automatically uses the more colorful of the text and background colors.");
+                ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.node_text_color_the_path_automatically_uses_the_more_colorful_of_the_text_and_background_colors", "Node-text color. The path automatically uses the more colorful of the text and background colors."));
                 ImGui.SameLine();
                 ColorSwatch("##background", ref category.BackgroundColor);
-                ImGuiHelper.ToolTip("Node background color. The path automatically uses the more colorful of the text and background colors.");
+                ImGuiHelper.ToolTip(global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.node_background_color_the_path_automatically_uses_the_more_colorful_of_the_text_and_background_co", "Node background color. The path automatically uses the more colorful of the text and background colors."));
                 ImGui.SameLine();
                 ImGui.SetNextItemWidth(75);
                 ImGui.SliderInt("##hops", ref category.MaxHops, 1, 200);
                 ImGui.SameLine();
-                bool open = ImGui.TreeNode($"{category.Name}##category");
+                bool open = ImGui.TreeNode($"{GameHelper.Localization.GameText.Display(category.Name)}##category");
                 if (open)
                 {
                     ImGui.Indent(16f);
-                    if (ImGui.SmallButton("Up") && i > 0) MoveMapGroup(i, -1);
+                    if (ImGui.SmallButton(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.up", "Up", "Up")) && i > 0) MoveMapGroup(i, -1);
                     ImGui.SameLine();
-                    if (ImGui.SmallButton("Down") && i + 1 < Settings.MapGroups.Count) MoveMapGroup(i, 1);
+                    if (ImGui.SmallButton(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.down", "Down", "Down")) && i + 1 < Settings.MapGroups.Count) MoveMapGroup(i, 1);
                     if (string.IsNullOrEmpty(category.BuiltInKey))
                     {
                         ImGui.SetNextItemWidth(260);
-                        ImGui.InputText("Category name", ref category.Name, 256);
+                        ImGui.InputText(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.category_name", "Category name", "Category name"), ref category.Name, 256);
                     }
 
                     var targetNames = category.BuiltInTargets.Keys.ToList();
                     foreach (var target in targetNames)
                     {
                         bool enabled = category.BuiltInTargets[target];
-                        if (ImGui.Checkbox($"{target}##fixed", ref enabled)) category.BuiltInTargets[target] = enabled;
+                        if (ImGui.Checkbox($"{GameHelper.Localization.GameText.Display(target)}###fixed_{target}", ref enabled)) category.BuiltInTargets[target] = enabled;
                     }
 
                     for (int j = 0; j < category.Maps.Count; j++)
                     {
                         var map = category.Maps[j];
                         ImGui.SetNextItemWidth(260);
-                        if (ImGui.InputTextWithHint($"##map{j}", "map name", ref map, 256)) category.Maps[j] = map;
+                        if (ImGui.InputTextWithHint($"##map{j}", global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.map_name", "map name"), ref map, 256)) category.Maps[j] = map;
                         ImGui.SameLine();
-                        if (ImGui.SmallButton($"Remove##map{j}")) { category.Maps.RemoveAt(j); break; }
+                        if (ImGui.SmallButton(global::GameHelper.Localization.PluginStrings.For("Atlas2").FormatTitle("ui.remove", "Remove##map{0}", j))) { category.Maps.RemoveAt(j); break; }
                     }
-                    if (ImGui.SmallButton("Add map")) category.Maps.Add(string.Empty);
+                    if (ImGui.SmallButton(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.add_map", "Add map", "Add map"))) category.Maps.Add(string.Empty);
 
                     if (string.IsNullOrEmpty(category.BuiltInKey))
                     {
                         ImGui.SameLine();
-                        if (ImGui.SmallButton("Delete category"))
+                        if (ImGui.SmallButton(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.delete_category", "Delete category", "Delete category")))
                         {
                             Settings.MapGroups.RemoveAt(i);
                             ImGui.Unindent(16f);
@@ -1573,9 +1588,9 @@
                 ImGui.PopID();
             }
 
-            ImGui.InputTextWithHint("##newCategory", "new category name", ref Settings.GroupNameInput, 256);
+            ImGui.InputTextWithHint("##newCategory", global::GameHelper.Localization.PluginStrings.For("Atlas2").T("ui.new_category_name", "new category name"), ref Settings.GroupNameInput, 256);
             ImGui.SameLine();
-            if (ImGui.Button("Add category") && !string.IsNullOrWhiteSpace(Settings.GroupNameInput))
+            if (ImGui.Button(global::GameHelper.Localization.PluginStrings.For("Atlas2").Title("ui.add_category", "Add category", "Add category")) && !string.IsNullOrWhiteSpace(Settings.GroupNameInput))
             {
                 Settings.MapGroups.Add(new MapGroupSettings(Settings.GroupNameInput.Trim(), Settings.DefaultBackgroundColor, Settings.DefaultFontColor));
                 Settings.GroupNameInput = string.Empty;

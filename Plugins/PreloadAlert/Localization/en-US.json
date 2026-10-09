@@ -32,6 +32,7 @@
   "settings.lock_window": "Lock/Unlock preload window",
   "settings.lock_window.tooltip": "You can also lock it by double clicking the preload window. However, you can only unlock it from here.",
   "settings.show_time_since_last_map": "Show time since last map opened",
+  "settings.show_time_since_last_map.tooltip": "Seconds since the last area preload update. This is not active map time and is off by default.",
   "window.background_color": "Background Color",
   "window.dummy_preload": "Dummy Preload {0}",
   "window.edit_background_color": "Edit Background Color: ",

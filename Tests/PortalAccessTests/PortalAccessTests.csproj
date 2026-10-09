@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Plugins/PortalAccess/PatchLedger.cs" Link="PatchLedger.cs" />
+    <Compile Include="../../Plugins/PortalAccess/PortalMemory.cs" Link="PortalMemory.cs" />
+    <Compile Include="../../Plugins/PortalAccess/PortalScanner.cs" Link="PortalScanner.cs" />
+    <Compile Include="../../Plugins/PortalAccess/ScanBudget.cs" Link="ScanBudget.cs" />
+    <Compile Include="../../Plugins/PortalAccess/PortalFlagReader.cs" Link="PortalFlagReader.cs" />
+    <Compile Include="../../Plugins/PortalAccess/PortalRecoveryLayout.cs" Link="PortalRecoveryLayout.cs" />
+    <Compile Include="../../Plugins/PortalAccess/PortalAreaFence.cs" Link="PortalAreaFence.cs" />
+    <Reference Include="GameOffsets"><HintPath>../../GameHelper/bin/Release/net10.0-windows/win-x64/GameOffsets.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>
