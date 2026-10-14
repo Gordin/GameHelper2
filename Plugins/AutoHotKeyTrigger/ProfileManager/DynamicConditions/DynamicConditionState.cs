@@ -194,6 +194,22 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
             this.nearbyMonsterInfo.Value.GetUndamageableMonsterCountInRange(rarity, maxDistance);
 
         /// <summary>
+        ///     Enumerates nearby alive monsters, wrapped in queryable <see cref="MonsterInfo"/>
+        ///     objects. Use this to inspect per-monster state such as buffs and distance to cursor.
+        /// </summary>
+        /// <returns>An enumerable of nearby monsters.</returns>
+        public IEnumerable<MonsterInfo> Monsters() =>
+            this.nearbyMonsterInfo.Value.GetMonsters();
+
+        /// <summary>
+        ///     Enumerates nearby alive friendly monsters, wrapped in queryable <see cref="MonsterInfo"/>
+        ///     objects. Use this to inspect per-monster state such as buffs and distance to cursor.
+        /// </summary>
+        /// <returns>An enumerable of nearby friendly monsters.</returns>
+        public IEnumerable<MonsterInfo> FriendlyMonsters =>
+            this.nearbyMonsterInfo.Value.GetFriendlyMonsters();
+
+        /// <summary>
         ///     Counts nearby monsters of the given rarity that are currently damageable
         ///     (i.e. NOT in an invulnerability phase) within an explicit distance.
         /// </summary>

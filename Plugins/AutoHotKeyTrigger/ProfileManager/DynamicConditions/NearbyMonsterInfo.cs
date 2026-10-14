@@ -193,6 +193,48 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         public int GetCorpseCountInRange(MonsterRarity rarity, int maxDistance) =>
             this.CountInRange(rarity, maxDistance, e => !IsAliveMonster(e));
 
+        /// <summary>
+        ///     Enumerates nearby alive monsters, wrapped in queryable <see cref="MonsterInfo"/>
+        ///     objects so rules can inspect per-monster state (buffs, distance to cursor, etc.).
+        /// </summary>
+        public IEnumerable<MonsterInfo> GetMonsters()
+        {
+            foreach (var entity in this.state.CurrentAreaInstance.AwakeEntities.Values)
+            {
+                if (entity.EntityType != EntityTypes.Monster ||
+                    entity.EntityState == EntityStates.PinnacleBossHidden ||
+                    entity.EntityState == EntityStates.MonsterFriendly ||
+                    IsCurrentlyUndamageable(entity) ||
+                    !IsAliveMonster(entity))
+                {
+                    continue;
+                }
+
+                yield return new MonsterInfo(entity);
+            }
+        }
+
+        /// <summary>
+        ///     Enumerates nearby alive friendly monsters, wrapped in queryable <see cref="MonsterInfo"/>
+        ///     objects so rules can inspect per-monster state (buffs, distance to cursor, etc.).
+        /// </summary>
+        public IEnumerable<MonsterInfo> GetFriendlyMonsters()
+        {
+            foreach (var entity in this.state.CurrentAreaInstance.AwakeEntities.Values)
+            {
+                if (entity.EntityType != EntityTypes.Monster ||
+                    entity.EntityState == EntityStates.PinnacleBossHidden ||
+                    entity.EntityState != EntityStates.MonsterFriendly ||
+                    IsCurrentlyUndamageable(entity) ||
+                    !IsAliveMonster(entity))
+                {
+                    continue;
+                }
+
+                yield return new MonsterInfo(entity);
+            }
+        }
+
         private int CountInRange(MonsterRarity rarity, int maxDistance, Func<Entity, bool> include)
         {
             var area = this.state.CurrentAreaInstance;
