@@ -4,6 +4,7 @@
       "type":"normal",
       "group":"map",
       "tags":[
+         "tower"
       ]
    },
    "MapAridPlains":{
@@ -75,6 +76,7 @@
       "type":"normal",
       "group":"map",
       "tags":[
+         "tower"
       ]
    },
    "MapBurialBog":{
@@ -379,6 +381,7 @@
       "type":"normal",
       "group":"map",
       "tags":[
+         "tower"
       ]
    },
    "MapMezzanine":{
@@ -767,6 +770,7 @@
       "type":"normal",
       "group":"map",
       "tags":[
+         "tower"
       ]
    },
    "MapSwarm":{

@@ -242,6 +242,22 @@ namespace GameHelper.Ui
             result.Probes.Add(VerifyProbe("AreaInstanceOffsets", typeof(AreaInstanceOffsets), RootOne(area.Address), string.Empty, false, hints));
             result.Probes.Add(VerifyProbe("UiElementBaseOffset", typeof(UiElementBaseOffset), GatherUiRoots(), "Self", false, hints));
 
+            var reader = Core.Process.Handle;
+            if (reader.TryReadMemory<WorldDataOffset>(state.CurrentWorldInstance.Address, out var world))
+            {
+                result.Probes.Add(VerifyProbe("WorldAreaDetailsStruct", typeof(WorldAreaDetailsStruct),
+                    RootOne(world.WorldAreaDetailsPtr), string.Empty, false, hints));
+            }
+
+            result.Probes.Add(VerifyProbe("ServerDataOffsets", typeof(ServerDataOffsets),
+                RootOne(area.ServerDataObject.Address), string.Empty, false, hints));
+            var atlasRoots = GatherAtlasRoots();
+            result.Probes.Add(VerifyProbe("AtlasNodeOffsets", typeof(AtlasNodeOffsets),
+                atlasRoots, string.Empty, false, hints));
+            result.Probes.Add(VerifyProbe("AtlasNodeDataOffsets", typeof(AtlasNodeDataOffsets),
+                atlasRoots.Select(r => new Root(r.Label, r.Address + AtlasNodeOffsets.DataOffset, r.Owner)).ToList(),
+                string.Empty, false, hints));
+
             result.Recount();
             return result;
         }
@@ -475,6 +491,36 @@ namespace GameHelper.Ui
         private static List<Root> RootOne(IntPtr addr)
         {
             return addr == IntPtr.Zero ? new List<Root>() : new List<Root> { new("root", addr, addr) };
+        }
+
+        private static List<Root> GatherAtlasRoots()
+        {
+            var roots = new List<Root>();
+            var atlas = Core.States.InGameStateObject.GameUi.Atlas;
+            if (atlas.Address == IntPtr.Zero)
+            {
+                return roots;
+            }
+
+            // Gather independently of parsed AtlasMaps: a broken data offset must not hide roots.
+            var count = Math.Min(atlas.TotalChildrens, 4096);
+            for (var i = 0; i < count && roots.Count < MaxRootsPerType; i++)
+            {
+                var node = atlas[i];
+                if (node == null || node.Address == IntPtr.Zero ||
+                    !Core.Process.Handle.TryReadMemory<uint>(node.Address + 0x168, out var flags))
+                {
+                    continue;
+                }
+
+                var fingerprint = flags & ~0x800u;
+                if (fingerprint == (0x542EF3u & ~0x800u) || fingerprint == (0x442EF3u & ~0x800u))
+                {
+                    roots.Add(new Root($"Atlas[{i}]", node.Address, node.Address));
+                }
+            }
+
+            return roots;
         }
 
         private static List<Root> GatherUiRoots()
@@ -894,6 +940,10 @@ namespace GameHelper.Ui
             {
                 rows.Add(VectorRow(field.Name, bytes, offset));
             }
+            else if (fieldType == typeof(AtlasBadgeRange))
+            {
+                rows.Add(BadgeRangeRow(field.Name, bytes, offset));
+            }
             else if (fieldType == typeof(StdMap))
             {
                 rows.Add(MapRow(field.Name, bytes, offset));
@@ -978,7 +1028,8 @@ namespace GameHelper.Ui
             // Vectors and the owner/self back-pointer always carry a hard invariant. A generic
             // pointer only counts once it has positively resolved (readable / in-module); an
             // ambiguous "weak" pointer is not treated as breakage.
-            return f.Kind is FieldKind.Vector or FieldKind.Map or FieldKind.OwnerPtr or FieldKind.EntityPointer ||
+            return (f.Kind is FieldKind.Vector or FieldKind.Map or FieldKind.OwnerPtr or FieldKind.EntityPointer &&
+                    f.Status is FieldStatus.Pass or FieldStatus.Fail) ||
                    (f.Kind == FieldKind.Vital && f.Status is FieldStatus.Pass or FieldStatus.Fail) ||
                    (f.Kind == FieldKind.Pointer && f.Status == FieldStatus.Pass);
         }
@@ -1046,6 +1097,10 @@ namespace GameHelper.Ui
                 {
                     rows.Add(VectorRow(name, buf, abs));
                 }
+                else if (ft == typeof(AtlasBadgeRange))
+                {
+                    rows.Add(BadgeRangeRow(name, buf, abs));
+                }
                 else if (ft == typeof(StdMap))
                 {
                     rows.Add(MapRow(name, buf, abs));
@@ -1110,6 +1165,34 @@ namespace GameHelper.Ui
             var last = BitConverter.ToInt64(buf, abs + 8);
             var end = BitConverter.ToInt64(buf, abs + 16);
 
+            // These layouts have known element widths. Empty storage cannot prove an offset.
+            var stride = name switch
+            {
+                nameof(AreaInstanceOffsets.ContentTags) => 4,
+                nameof(AreaInstanceOffsets.MapMods) => 8,
+                nameof(AtlasNodeOffsets.ContentVector) => 8, // stat id/value pairs
+                _ => 0,
+            };
+            if (stride != 0)
+            {
+                var empty = first == last && last <= end &&
+                    ((first == 0 && end == 0) || (IsValidPtr(first) && IsValidPtr(end)));
+                if (empty)
+                {
+                    return new FieldRow(abs, name, FieldKind.Vector, "empty", FieldStatus.Weak,
+                        "empty vector; no element evidence");
+                }
+
+                var valid = IsValidPtr(first) && IsValidPtr(last) && IsValidPtr(end) &&
+                    first < last && last <= end && (last - first) % stride == 0 &&
+                    (end - first) % stride == 0 && TestRead(first) &&
+                    Core.Process.Handle.TryReadMemory<byte>(new IntPtr(last - 1), out _);
+                return new FieldRow(abs, name, FieldKind.Vector,
+                    $"first={Hex(first)} last={Hex(last)} end={Hex(end)}",
+                    valid ? FieldStatus.Pass : FieldStatus.Fail,
+                    valid ? $"readable {stride}-byte element range" : "typed vector shape violated");
+            }
+
             if (first == 0 && last == 0 && end == 0)
             {
                 return new FieldRow(abs, name, FieldKind.Vector, "empty", FieldStatus.Pass, "empty");
@@ -1125,6 +1208,24 @@ namespace GameHelper.Ui
             // A vector's byte offset is a hard invariant, so when it breaks we can point at where
             // a well-formed vector actually sits — the offset probably just shifted this patch.
             return new FieldRow(abs, name, FieldKind.Vector, $"first=0x{first:X} last=0x{last:X} end=0x{end:X}", FieldStatus.Fail, "vector shape violated" + ScanForVector(buf, abs));
+        }
+
+        private static FieldRow BadgeRangeRow(string name, byte[] buf, int abs)
+        {
+            var begin = BitConverter.ToInt64(buf, abs);
+            var end = BitConverter.ToInt64(buf, abs + 8);
+            if (begin == end && (begin == 0 || IsValidPtr(begin)))
+            {
+                return new FieldRow(abs, name, FieldKind.Vector, "empty", FieldStatus.Weak,
+                    "empty range; no badge evidence");
+            }
+
+            var valid = IsValidPtr(begin) && IsValidPtr(end) && end > begin &&
+                end - begin <= 4096 && TestRead(begin) &&
+                Core.Process.Handle.TryReadMemory<byte>(new IntPtr(end - 1), out _);
+            return new FieldRow(abs, name, FieldKind.Vector, $"{Hex(begin)}..{Hex(end)}",
+                valid ? FieldStatus.Pass : FieldStatus.Fail,
+                valid ? "readable badge byte range" : "badge range violated");
         }
 
         private static FieldRow MapRow(string name, byte[] buf, int abs)

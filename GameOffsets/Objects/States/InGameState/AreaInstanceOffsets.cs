@@ -7,13 +7,15 @@ namespace GameOffsets.Objects.States.InGameState
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct AreaInstanceOffsets
     {
-        [FieldOffset(0x0BC)] public byte CurrentAreaLevel;
-        [FieldOffset(0x114)] public uint CurrentAreaHash;
+        [FieldOffset(0x100)] public StdVector ContentTags; // int32 tags
+        [FieldOffset(0x158)] public StdVector MapMods; // int32 stat id/value pairs
+        [FieldOffset(0x0C4)] public byte CurrentAreaLevel;
+        [FieldOffset(0x11C)] public uint CurrentAreaHash;
         // Env which are activated. Keys can be found in Environments.dat file.
-        [FieldOffset(0x4C0)] public StdVector Environments; // EnvironmentStruct
-        [FieldOffset(0x5B0)] public LocalPlayerStruct PlayerInfo;
-        [FieldOffset(0x6F0)] public EntityListStruct Entities;
-        [FieldOffset(0x8D0)] public TerrainStruct TerrainMetadata;
+        [FieldOffset(0x4C8)] public StdVector Environments; // EnvironmentStruct
+        [FieldOffset(0x5B8)] public LocalPlayerStruct PlayerInfo;
+        [FieldOffset(0x718)] public EntityListStruct Entities;
+        [FieldOffset(0x8F8)] public TerrainStruct TerrainMetadata;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

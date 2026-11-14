@@ -14,9 +14,8 @@ namespace GameOffsets.Objects
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct FilesPointerStructure
     {
-        public IntPtr Useless0;
+        public IntPtr PathHash;
         public IntPtr FilesPointer;
-        public IntPtr Useless1;
     }
 
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
@@ -26,8 +25,7 @@ namespace GameOffsets.Objects
 
         //[FieldOffset(0x28)] public int FileType;
         //[FieldOffset(0x30)] public IntPtr UnknownPtr;
-        //[FieldOffset(0x38)] public IntPtr UnknownConstant;
-        [FieldOffset(0x40)] public int AreaChangeCount;
+        [FieldOffset(0x38)] public int AreaChangeCount;
 
         // This saves a hell lot of memory but for debugging purposes
         // Feel free to set it to 0.

@@ -137,6 +137,10 @@
                 Settings.RitualRewardWeightsVersion = 3;
             }
 
+            // Preserve the configured reward preference when splitting out the verified two-orb label.
+            if (Settings.RitualRewardWeights.TryGetValue("Perfect Orbs of Augmentation", out var augmentationWeight))
+                Settings.RitualRewardWeights.TryAdd("Perfect Orbs of Augmentation x2", augmentationWeight);
+
             LoadBiomeMap();
             LoadContentMap();
         }
