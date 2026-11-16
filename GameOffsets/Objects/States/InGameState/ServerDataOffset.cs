@@ -7,12 +7,15 @@ namespace GameOffsets.Objects.States.InGameState
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct ServerDataOffsets
     {
+        // Layout not consumed yet; keep the recovered location without guessing its type.
+        public const int AreaMarkersOffset = 0x21C8;
         [FieldOffset(0x48)] public StdVector PlayerServerDataPtr;
     }
     
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct ServerDataStructure
     {
+        public const int WornMtxSlotsOffset = 0x7B50;
         [FieldOffset(0x320)] public StdVector PlayerInventories; // InventoryArrayStruct
     }
 

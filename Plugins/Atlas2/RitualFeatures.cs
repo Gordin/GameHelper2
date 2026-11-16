@@ -27,17 +27,18 @@ namespace Atlas2
         // current numeric offsets.
         private const uint IsVisibleMask = 0x800;
 
-        // A selected line node has bit 20 set in the UiElement flags. The child pointer at +0x3B8
+        // A selected line node has bit 20 set in the UiElement flags. The child pointer at +0x3F8
         // leads to a text element whose std::wstring at +0x490 already contains the game's
         // localized Rite-mod lines.
-        private const int RitualModsChildOffset = 0x3B8;
+        private const int RitualModsChildOffset = 0x3F8;
         private const int TextElementTextOffset = 0x490;
 
         // Ritual state lives on the atlas node-list container: line mode is page mode 6, line id
         // is TinyMT seed word 0, and the two vectors contain clicked-but-pending and committed
         // atlas grid coordinates respectively.
         private const int PanelLineModeOffset = 0x61F;
-        private const int PanelLineIdOffset = 0x624;
+        // Current client: ritualLineToggleNode loads this into the reward-roll seed argument.
+        private const int PanelLineIdOffset = 0x628;
         private const int PanelPendingVecOffset = 0x630;
         private const int PanelCommittedVecOffset = 0x648;
 
@@ -375,7 +376,7 @@ namespace Atlas2
         }
 
         // Read the panel's active atlas stats (id -> value, value!=0 only). Chain from
-        // ritualLineToggleNode: panel+X -> +0x1b0 -> +0x3a20 -> vector [+0x408 begin, +0x410 end],
+        // ritualLineToggleNode: panel+X -> +0x1b0 -> +0x3aa0 -> vector [+0x408 begin, +0x410 end],
         // stride 0x28 (10 int32): stat id @ +0x00, value @ +0x08. Gates the reservoir pool and gives
         // the line length (5 + map_ritual_rite_additional_maps, runtime stat id 0x670d).
         // The first hop is a UiElement field shifted from 0x320 to 0x308 in 0.5.5. Probe both
@@ -393,6 +394,13 @@ namespace Atlas2
             return new Dictionary<int, int>();
         }
 
+        // Atlas passives change reward eligibility and second-mod chance without changing the line seed.
+        private static void AppendRitualStatsSignature(StringBuilder signature, Dictionary<int, int> stats)
+        {
+            foreach (var stat in stats.OrderBy(entry => entry.Key))
+                signature.Append('/').Append(stat.Key).Append('=').Append(stat.Value);
+        }
+
         private static Dictionary<int, int> ReadRitualStatsAt(IntPtr panel, int baseOffset)
         {
             var stats = new Dictionary<int, int>();
@@ -400,7 +408,7 @@ namespace Atlas2
             if (o1 == IntPtr.Zero) return stats;
             var o2 = Read<IntPtr>(IntPtr.Add(o1, 0x1b0));
             if (o2 == IntPtr.Zero) return stats;
-            var holder = Read<IntPtr>(IntPtr.Add(o2, 0x3a20));
+            var holder = Read<IntPtr>(IntPtr.Add(o2, 0x3aa0));
             if (holder == IntPtr.Zero) return stats;
             var begin = Read<IntPtr>(IntPtr.Add(holder, 0x408));
             var end = Read<IntPtr>(IntPtr.Add(holder, 0x410));
@@ -507,8 +515,8 @@ namespace Atlas2
         // While drawing the ritual line the game shows a header with how many maps can still
         // be picked (the first pick — the start node — consumes one). Authoritative live value,
         // so it overrides the computed 5 + additional-maps stat when readable.
-        // GameUi → [22] → [2] → [0], leaf fp 0x502EE1, wstring at +0x490 (0.5.5).
-        private static readonly int[] RitualPickCounterPath = { 22, 2, 0 };
+        // GameUi → [21] → [2] → [0], leaf fp 0x502EE1, wstring at +0x490 (0.5.5).
+        private static readonly int[] RitualPickCounterPath = { 21, 2, 0 };
         private const uint RitualPickCounterFp = 0x502EE1;
 
         // Reads the counter as the first integer in the label text (locale-independent).
@@ -593,10 +601,18 @@ namespace Atlas2
                 return EmptyRitualPredictions;
 
             uint lineId = Read<uint>(IntPtr.Add(panel, PanelLineIdOffset));
+            var stats = ReadRitualStats(panel);
+            if (stats.Count == 0)
+            {
+                ritualPredSig = null;
+                ritualPredCache = EmptyRitualPredictions;
+                return EmptyRitualPredictions;
+            }
 
             // Signature — reuse the cached chain unless the line changed.
             var sb = new StringBuilder();
             sb.Append(lineId);
+            AppendRitualStatsSignature(sb, stats);
             foreach (var g in committed) sb.Append(';').Append(g.X).Append(',').Append(g.Y);
             var sig = sb.ToString();
             if (sig == ritualPredSig && ritualPredCache != null)
@@ -604,7 +620,6 @@ namespace Atlas2
 
             var result = new Dictionary<StdTuple2D<int>, string>();
             var candTable = ReadCandidateTable(panel, committed[committed.Count - 1]);
-            var stats = ReadRitualStats(panel);
 
             var pool = new List<RitualRow>(ritualPool.Count);
             foreach (var row in ritualPool)
@@ -615,11 +630,9 @@ namespace Atlas2
                     pool.Add(row);
             }
 
-            int addlMaps = stats.TryGetValue(StatAdditionalMaps, out var am) ? am
-                         : stats.TryGetValue(StatAdditionalMaps + 1, out var am2) ? am2 : 0;
+            int addlMaps = stats.GetValueOrDefault(StatAdditionalMaps);
             int lineLen = RitualBaseLineLength + Math.Max(0, addlMaps);
-            int secondChance = stats.TryGetValue(StatSecondModChance, out var sc) ? sc
-                             : stats.TryGetValue(StatSecondModChance + 1, out var sc2) ? sc2 : 0;
+            int secondChance = stats.GetValueOrDefault(StatSecondModChance);
             // The in-game "Select N maps" header is the authoritative remaining-picks count
             // (assumed to decrement as nodes commit — the roll log records it for verification);
             // when readable it overrides the stat-derived length.
@@ -933,17 +946,23 @@ namespace Atlas2
             uint lineId = Read<uint>(IntPtr.Add(panel, PanelLineIdOffset));
 
             var stats = ReadRitualStats(panel);
-            int addl = stats.TryGetValue(StatAdditionalMaps, out var am) ? am
-                     : stats.TryGetValue(StatAdditionalMaps + 1, out var am2) ? am2 : 0;
+            if (stats.Count == 0)
+            {
+                plannerChains.Clear();
+                plannerSig = null;
+                return;
+            }
+
+            int addl = stats.GetValueOrDefault(StatAdditionalMaps);
             int lineLen = RitualBaseLineLength + Math.Max(0, addl);
             if (TryReadRitualPickCounter(out var picksLeft))
                 lineLen = committedReal + picksLeft;
             int maxDepth = Math.Max(0, lineLen - prefixCount);
-            int secondChance = stats.TryGetValue(StatSecondModChance, out var sc) ? sc
-                             : stats.TryGetValue(StatSecondModChance + 1, out var sc2) ? sc2 : 0;
+            int secondChance = stats.GetValueOrDefault(StatSecondModChance);
 
             var sigSb = new StringBuilder();
             sigSb.Append(lineId).Append('#').Append(maxDepth);
+            AppendRitualStatsSignature(sigSb, stats);
             foreach (var g in committed)
                 sigSb.Append(';').Append(g.X).Append(',').Append(g.Y);
             foreach (var g in roots)

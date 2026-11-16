@@ -63,7 +63,7 @@
             // </HowToFindIt>
             new(
                 "AreaChangeCounter",
-                "FF 05 ^ ?? ?? ?? ?? 4D 8B 06"
+                "FF 05 ^ ?? ?? ?? ?? 49 8B 16 44 0F B6 8A"
             ),
 
             // <HowToFindIt>

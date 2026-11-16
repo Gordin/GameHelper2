@@ -124,7 +124,7 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
 
         /// <summary>
         ///     Gets the raw per-node content tokens (class-1 content: the StdVector&lt;u32&gt; living
-        ///     on the Atlas node UiElement at element+0x350). Populated only for visible/rendered nodes.
+        ///     on the Atlas node UiElement at element+0x360). Populated only for visible/rendered nodes.
         ///     Resolution of a token to a content name is left to consumers.
         /// </summary>
         public IReadOnlyList<uint> ContentTokens { get; }

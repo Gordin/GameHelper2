@@ -6,6 +6,27 @@ Path of Exile 2; "0.5.x" references are the game patch the build targets.
 Sections marked **For plugin devs** describe newly exposed APIs you can read
 from your own plugins via `Core.*`.
 
+## [2.9.0] - 2026-11-14
+
+### Changed
+
+- **Path of Exile 2 0.5.5g support.** Updated the area-change signature and
+  area-instance, world-area, and Atlas node layouts for the current patch.
+- **OffsetHelper coverage.** Added Atlas node probes and typed vector checks
+  for area content tags, map modifiers, and Atlas content and badges.
+
+### Fixed
+
+- **Loaded area files.** Updated loading-state fields, file entry size, and
+  area-change counters used by CurrentAreaLoadedFiles.
+- **Atlas discovery.** Corrected the world-map child path so Atlas2 can find
+  the Atlas panel and populate its node cache.
+- **Atlas2 ritual rewards.** Corrected the ritual seed and Atlas-stat pointer,
+  refreshed predictions when stats change, and suppressed predictions when
+  stat reads fail. Corrected the two-Perfect-Augmentation reward label.
+- **Atlas2 ritual routes.** Added missing tower classifications for Mesa,
+  Bluff, Alpine Ridge, and Sinking Spire so they cannot appear in ritual routes.
+
 ## [2.8.0] - 2026-09-15
 
 ### Added

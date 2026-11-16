@@ -35,16 +35,16 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     /// </summary>
     public class ImportantUiElements : RemoteObjectBase
     {
-        private static readonly int[] WorldMapPanelChildPath = { 22, 0 };
+        private static readonly int[] WorldMapPanelChildPath = { 21, 0 };
         private static readonly int[] LargeMapViewportChildPath = { 6, 0 };
         private static readonly int[] MiniMapViewportChildPath = { 6, 1 };
         private static readonly int[] PassiveSkillTreeNodesChildPath = { 24, 2 };
-        private static readonly int[] Act1PanelChildPath = { 22, 0, 0 };
-        private static readonly int[] Act2PanelChildPath = { 22, 0, 1 };
-        private static readonly int[] Act3PanelChildPath = { 22, 0, 2 };
-        private static readonly int[] Act4PanelChildPath = { 22, 0, 3 };
-        private static readonly int[] InterludePanelChildPath = { 22, 0, 5 };
-        private static readonly int[] AtlasPanelChildPath = { 22, 0, 6 };
+        private static readonly int[] Act1PanelChildPath = { 21, 0, 0 };
+        private static readonly int[] Act2PanelChildPath = { 21, 0, 1 };
+        private static readonly int[] Act3PanelChildPath = { 21, 0, 2 };
+        private static readonly int[] Act4PanelChildPath = { 21, 0, 3 };
+        private static readonly int[] InterludePanelChildPath = { 21, 0, 5 };
+        private static readonly int[] AtlasPanelChildPath = { 21, 0, 6 };
         private static readonly int[] AtlasSkillsPanelChildPath = { 25, 0 };
         private static readonly int[] CurrencyExchangePanelChildPath = { 114, 20, 6, 1 };
         private static readonly int[] GemcuttingPanelChildPath = { 53, 3 };
@@ -53,12 +53,11 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private static readonly int[] RightPanelCoopPath = { 23 };
         private static readonly int[] TempleConsoleChildPath = { 64, 0 };
         private const int AtlasMapCacheRefreshFrames = 20;
-        private const int AtlasNodeBiomeIdOffset = 0x2BE;
-        private const int AtlasNodeStatusByteOffset = 0x2BF;
-        // 0.5.5: the EndgameMaps row moved -0x10. The old +0x2A0 now points at the
-        // node's atlas-passive row, producing generated-looking ids or an empty name.
+        private const int AtlasNodeBiomeIdOffset = 0x2CE;
+        private const int AtlasNodeStatusByteOffset = 0x2CF;
+        // Map data stays at +0x290; the new WorldAreas reference occupies +0x2A0.
         private const int AtlasNodeMapDataOffset = 0x290;
-        private const int AtlasNodeGridPositionOffset = 0x310;
+        private const int AtlasNodeGridPositionOffset = 0x320;
 
         // Atlas layout notes and offsets in this block are adapted from yokkenUA's Atlas plugin
         // reverse engineering (dfb52db through afecda4), based on live-memory inspection and
@@ -67,17 +66,17 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         private const int AtlasNodeConnectionsVectorOffset = 0x590;
         private const int AtlasNodeContentNameOffset = 0x278;
 
-        // +0x350 is the separate vector<u32> content-token store. It contains alternating
+        // +0x360 is the separate vector<u32> content-token store. It contains alternating
         // {stat-row id, value} entries; expose them in the legacy packed form expected by
         // AtlasMapNode (value*64 in the high word, stat id in the low word).
-        private const int AtlasNodeContentVecOffset = 0x350;
+        private const int AtlasNodeContentVecOffset = 0x360;
 
-        // Unlike culled UI badge children, +0x368/+0x370 is a persistent sorted vector<u8> of
+        // Unlike culled UI badge children, +0x378/+0x380 is a persistent sorted vector<u8> of
         // EndgameMapContent row indices. AtlasMapNodeWidget's constructor fills it from server
         // chunk cell-state, so it survives fog, off-screen culling, and sea nodes. The public id
-        // is row + 100. This vector does not contain the +0x350 token content.
-        private const int AtlasNodeBadgeVecBeginOffset = 0x368;
-        private const int AtlasNodeBadgeVecEndOffset = 0x370;
+        // is row + 100. This vector does not contain the +0x360 token content.
+        private const int AtlasNodeBadgeVecBeginOffset = 0x378;
+        private const int AtlasNodeBadgeVecEndOffset = 0x380;
         private const int AtlasNodeBadgeRowToContentId = 100;
         private const int AtlasNodeBadgeContentIdOffset = 0x170;
         private const byte AtlasNodeAccessibleBit = 0x01;
@@ -688,23 +687,11 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
                 return null;
             }
 
-            // The atlas child list can momentarily contain non-map-node children (or be read mid-
-            // mutation), in which case this pointer chain dereferences garbage. Use TryReadMemory so
-            // those expected, recoverable failures don't flood the log (and stall the app) — bail and
-            // skip the node instead. A real map node reads cleanly through the whole chain.
             var reader = Core.Process.Handle;
-            if (!reader.TryReadMemory<IntPtr>(nodeAddr + 0x10, out var nodeDataStorage) || nodeDataStorage == IntPtr.Zero)
-            {
-                return null;
-            }
+            var nodeData = nodeAddr + AtlasNodeOffsets.DataOffset;
 
-            if (!reader.TryReadMemory<IntPtr>(nodeDataStorage + 0x20, out var nodeData) || nodeData == IntPtr.Zero)
-            {
-                return null;
-            }
-
-            // +0x310 is the atlas-wide coordinate used by the panel's connection edges. The
-            // superficially similar pair at +0x320 is only local to the node's generated region.
+            // +0x320 is the atlas-wide coordinate used by the panel's connection edges. The
+            // superficially similar pair at +0x330 is only local to the node's generated region.
             if (!reader.TryReadMemory<StdTuple2D<int>>(nodeAddr + AtlasNodeGridPositionOffset, out var gridPosition) ||
                 !reader.TryReadMemory<byte>(nodeData + AtlasNodeBiomeIdOffset, out var biomeId) ||
                 !reader.TryReadMemory<byte>(nodeData + AtlasNodeStatusByteOffset, out var status))
