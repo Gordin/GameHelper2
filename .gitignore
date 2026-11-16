@@ -9,11 +9,13 @@
 **/obj/
 
 configs/
+Plugins/*/config/
+Tests/artifacts/
 docs/
 
 Plugins/AmanamuVoidAlert
 Plugins/AuraTracker
-Plugins/LootTracker
+Plugins/LootTracker/config/
 Plugins/RitualHelper
 Plugins/SekhemaHelper
 Plugins/StashUtility

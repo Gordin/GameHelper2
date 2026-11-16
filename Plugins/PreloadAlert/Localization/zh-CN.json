@@ -32,6 +32,7 @@
   "settings.lock_window": "锁定/解锁预载窗口",
   "settings.lock_window.tooltip": "也可以双击预载窗口进行锁定。但只能从这里解锁。",
   "settings.show_time_since_last_map": "显示距上次打开地图的时间",
+  "settings.show_time_since_last_map.tooltip": "显示距离上次区域预加载更新的秒数，不是有效刷图时长。默认关闭。",
   "window.background_color": "背景颜色",
   "window.dummy_preload": "示例预载 {0}",
   "window.edit_background_color": "编辑背景颜色：",

@@ -1,0 +1,12 @@
+{
+  "settings.enable_overlay": "顯示祭祀精靈範圍圓圈",
+  "settings.hide_unfocused_or_paused": "遊戲位於背景或暫停時隱藏",
+  "settings.inside_color": "位於範圍內的顏色",
+  "settings.offset_x": "圓心水平偏移",
+  "settings.offset_y": "圓心垂直偏移",
+  "settings.offset_z": "高度偏移",
+  "settings.outside_color": "位於範圍外的顏色",
+  "settings.radius": "圓圈半徑（公尺）",
+  "settings.thickness": "圓圈線寬",
+  "plugin.description": "在啟用中的祭祀精靈周圍繪製範圍圓圈；角色進入有效範圍時變更顏色。"
+}

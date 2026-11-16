@@ -1,4 +1,4 @@
-﻿// <copyright file="ImGuiHelper.cs" company="None">
+// <copyright file="ImGuiHelper.cs" company="None">
 // Copyright (c) None. All rights reserved.
 // </copyright>
 
@@ -236,7 +236,7 @@ namespace GameHelper.Utils
         {
             var ret = false;
             var enumValues = Enum.GetValues<T>();
-            if (ImGui.BeginCombo(displayText, $"{current}"))
+            if (ImGui.BeginCombo(displayText, GameHelper.Localization.GameText.Display($"{current}")))
             {
                 foreach (var item in enumValues)
                 {
@@ -246,7 +246,7 @@ namespace GameHelper.Utils
                         ImGui.SetScrollHereY();
                     }
 
-                    if (ImGui.Selectable($"{Convert.ToInt32(item)}:{item}", selected))
+                    if (ImGui.Selectable($"{Convert.ToInt32(item)}:{GameHelper.Localization.GameText.Display($"{item}")}###enum_{item}", selected))
                     {
                         current = item;
                         ret = true;
@@ -270,7 +270,7 @@ namespace GameHelper.Utils
         public static bool IEnumerableComboBox<T>(string displayText, IEnumerable<T> items, ref T current)
         {
             var ret = false;
-            if (ImGui.BeginCombo(displayText, $"{current}"))
+            if (ImGui.BeginCombo(displayText, GameHelper.Localization.GameText.Display($"{current}")))
             {
                 var counter = 0;
                 foreach (var item in items)
@@ -281,7 +281,7 @@ namespace GameHelper.Utils
                         ImGui.SetScrollHereY();
                     }
 
-                    if (ImGui.Selectable($"{counter}:{item}", selected))
+                    if (ImGui.Selectable($"{counter}:{GameHelper.Localization.GameText.Display($"{item}")}###item_{counter}_{item}", selected))
                     {
                         current = item;
                         ret = true;

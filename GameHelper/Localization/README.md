@@ -5,8 +5,9 @@ The main overlay UI uses keyed JSON resources loaded by `OverlayLocalization`.
 ## Files
 
 - `en-US.json` is the English baseline and fallback.
-- `zh-CN.json` contains Simplified Chinese translations.
+- `zh-CN.json` contains a complete Simplified Chinese UI catalog.
 - `zh-Hant.json` contains Traditional Chinese translations for the international client.
+- New keys should be added to both Chinese catalogs; game identifiers and saved filter keys stay in English.
 - Other UI language files may contain partial translations;
   missing keys fall back to `en-US.json`.
 - The supported UI language files are `en-US`, `fr-FR`, `de-DE`,

@@ -1,4 +1,4 @@
-﻿// <copyright file="AutoHotKeyTriggerCore.cs" company="PlaceholderCompany">
+// <copyright file="AutoHotKeyTriggerCore.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -236,25 +236,25 @@ namespace AutoHotKeyTrigger
             {
                 // this is actually disabled in <see cref="MiscHelper.KeyUp"/> function.
                 // follow is done just to provide debug msg to end users.
-                this.debugMessage = "Controller mode enabled. this plugin doesn't support controllers";
+                this.debugMessage = this.PluginText.T("status.controller", "Controller mode enabled. this plugin doesn't support controllers");
                 return;
             }
 
             if (string.IsNullOrEmpty(this.Settings.CurrentProfile))
             {
-                this.debugMessage = "No Profile Selected.";
+                this.debugMessage = this.PluginText.T("status.no_profile", "No Profile Selected.");
                 return;
             }
 
             if (!this.Settings.Profiles.ContainsKey(this.Settings.CurrentProfile))
             {
-                this.debugMessage = $"{this.Settings.CurrentProfile} not found.";
+                this.debugMessage = this.PluginText.F("status.missing_profile", "{0} not found.", this.Settings.CurrentProfile);
                 return;
             }
 
             if (Core.States.InGameStateObject.GameUi.ChatParent.IsChatActive)
             {
-                this.debugMessage = "Chat window is active, so can not drink flasks or trigger skills.";
+                this.debugMessage = this.PluginText.T("status.chat", "Chat window is active, so can not drink flasks or trigger skills.");
                 return;
             }
 
@@ -434,26 +434,26 @@ namespace AutoHotKeyTrigger
             var cgs = Core.States.GameCurrentState;
             if (cgs != GameStateTypes.InGameState)
             {
-                this.debugMessage = $"Current game state isn't InGameState, it's {cgs}.";
+                this.debugMessage = this.PluginText.F("status.game_state", "Current game state isn't InGameState, it's {0}.", GameHelper.Localization.GameText.Display(cgs.ToString()));
                 return false;
             }
 
             if (!Core.Process.Foreground)
             {
-                this.debugMessage = "Game is minimized.";
+                this.debugMessage = this.PluginText.T("status.unfocused", "Game is minimized.");
                 return false;
             }
 
             var areaDetails = Core.States.InGameStateObject.CurrentWorldInstance.AreaDetails;
             if (areaDetails.IsTown)
             {
-                this.debugMessage = "Player is in town.";
+                this.debugMessage = this.PluginText.T("status.town", "Player is in town.");
                 return false;
             }
 
             if (!this.Settings.ShouldRunInHideout && areaDetails.IsHideout)
             {
-                this.debugMessage = "Player is in hideout & hideout execution is turned off.";
+                this.debugMessage = this.PluginText.T("status.hideout", "Player is in hideout & hideout execution is turned off.");
                 return false;
             }
 
@@ -461,13 +461,13 @@ namespace AutoHotKeyTrigger
             {
                 if (lifeComp.Health.Current <= 0)
                 {
-                    this.debugMessage = "Player is dead.";
+                    this.debugMessage = this.PluginText.T("status.dead", "Player is dead.");
                     return false;
                 }
             }
             else
             {
-                this.debugMessage = "Can not find player Life component.";
+                this.debugMessage = this.PluginText.T("status.life", "Can not find player Life component.");
                 return false;
             }
 
@@ -475,19 +475,19 @@ namespace AutoHotKeyTrigger
             {
                 if (buffComp.StatusEffects.ContainsKey("grace_period"))
                 {
-                    this.debugMessage = "Player has Grace Period.";
+                    this.debugMessage = this.PluginText.T("status.grace", "Player has Grace Period.");
                     return false;
                 }
             }
             else
             {
-                this.debugMessage = "Can not find player PlayerBuffs component.";
+                this.debugMessage = this.PluginText.T("status.buffs", "Can not find player PlayerBuffs component.");
                 return false;
             }
 
             if (!Core.States.InGameStateObject.CurrentAreaInstance.Player.TryGetComponent<Actor>(out var _))
             {
-                this.debugMessage = "Can not find player Actor component.";
+                this.debugMessage = this.PluginText.T("status.actor", "Can not find player Actor component.");
                 return false;
             }
 

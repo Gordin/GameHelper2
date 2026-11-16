@@ -1,0 +1,12 @@
+{
+  "plugin.description": "在启用中的祭祀精灵周围绘制范围圆圈；角色进入有效范围时变更颜色。",
+  "settings.enable_overlay": "显示祭祀精灵范围圆圈",
+  "settings.hide_unfocused_or_paused": "游戏位于背景或暂停时隐藏",
+  "settings.inside_color": "位于范围内的颜色",
+  "settings.offset_x": "圆心水平偏移",
+  "settings.offset_y": "圆心垂直偏移",
+  "settings.offset_z": "高度偏移",
+  "settings.outside_color": "位于范围外的颜色",
+  "settings.radius": "圆圈半径（公尺）",
+  "settings.thickness": "圆圈线宽"
+}

@@ -93,7 +93,21 @@
   "template.with": "带有",
   "template.within_range": "范围内",
   "warning.autoquit_true": "你为 AutoQuit 设置的当前条件正在返回 true。\n这意味着你离开城镇/藏身处后会立即自动登出。\n请更新 AutoQuit 条件，或禁用它，或修正角色状态。",
-  "warning.flask_rules": "再次提醒，所有用于指定药剂的配置/规则，至少应在使用条件中包含 FLASK_EFFECT 和合适数量的 FLASK_CHARGES。若规则缺少这两个条件，Auto Hotkey Trigger 很可能会反覆使用药剂，可能因向服务器发送过多动作而被踢下线或封禁。你已经收到警告，请理性创建配置/规则。",
+  "warning.flask_rules": "再次提醒，所有用于指定药剂的配置/规则，至少应在使用条件中包含 FLASK_EFFECT 和合适数量的 FLASK_CHARGES。若规则缺少这两个条件，Auto Hotkey Trigger 很可能会反复使用药剂，可能因向服务器发送过多动作而被踢下线或封禁。你已经收到警告，请理性创建配置/规则。",
   "warning.settings_file": "不要信任来自未亲自验证来源的 Auto Hokey Trigger Settings.txt 文件。它们可能包含恶意内容并危及你的电脑。错误配置规则的配置也可能导致你被服务器踢下线，或因重复执行过多动作而账号被封禁。",
-  "window.debug": "AHK 调试窗口"
+  "window.debug": "AHK 调试窗口",
+  "status.controller": "已启用控制器模式，此插件不支持控制器",
+  "status.no_profile": "尚未选择配置文件",
+  "status.chat": "聊天窗口已开启，暂停使用药剂与技能",
+  "status.unfocused": "游戏当前不在前景",
+  "status.town": "角色位于城镇",
+  "status.hideout": "角色位于藏身处，且未启用在藏身处执行",
+  "status.dead": "角色已死亡",
+  "status.life": "无法读取角色的生命元件",
+  "status.buffs": "无法读取角色的增益状态元件",
+  "status.actor": "无法读取角色的动作元件",
+  "status.grace": "角色正处于进场保护期间",
+  "status.missing_profile": "找不到配置文件：{0}",
+  "status.game_state": "当前游戏状态：{0}（非游戏中）",
+  "template.ailment": "异常状态"
 }

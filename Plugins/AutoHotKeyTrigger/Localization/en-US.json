@@ -95,5 +95,19 @@
   "warning.autoquit_true": "The current condition you have put for AutoQuit is yielding true.\nThis mean you will automatically logout as soon as you leave town/hideout.\nPlease update your AutoQuit condition and/or disable it and/or fix your exile state.",
   "warning.flask_rules": "Again, all profiles/rules created to use a specified flask(s) should have at a minimum the FLASK_EFFECT and an appropriate number of FLASK_CHARGES defined as part of the use condition of a given profile rule. Failing to to include these two conditions as part of a rule will likely result in Auto Hotkey Trigger spamming the flask(s), resulting in a possible kick or ban from the game servers because of sending to many actions to the server. You have been warrned, use common sense when creating profiles/rulse with this tool.",
   "warning.settings_file": "Do not trust Settings.txt files for Auto Hokey Trigger from sources you have not personally verified. They may contain malicious content that can compromise your computer. Using profiles with incorrectly configured rules may also lead to you being kicked from the server, or your account being banned as a result of preforming to many actions repeatedly.",
-  "window.debug": "AHK Debug Window"
+  "window.debug": "AHK Debug Window",
+  "status.controller": "Controller mode enabled. this plugin doesn't support controllers",
+  "status.no_profile": "No Profile Selected.",
+  "status.chat": "Chat window is active, so can not drink flasks or trigger skills.",
+  "status.unfocused": "Game is minimized.",
+  "status.town": "Player is in town.",
+  "status.hideout": "Player is in hideout & hideout execution is turned off.",
+  "status.dead": "Player is dead.",
+  "status.life": "Can not find player Life component.",
+  "status.buffs": "Can not find player PlayerBuffs component.",
+  "status.actor": "Can not find player Actor component.",
+  "status.grace": "Player has Grace Period.",
+  "status.missing_profile": "{0} not found.",
+  "status.game_state": "Current game state isn't InGameState, it's {0}.",
+  "template.ailment": "ailment."
 }

@@ -72,6 +72,10 @@ namespace GameHelper.Localization
         public string Title(string key, string fallback, string id) =>
             $"{this.T(key, fallback)}###{id}";
 
+        /// <summary>Formats a localized control while preserving its original, language-independent ID.</summary>
+        public string FormatTitle(string key, string fallback, params object[] args) =>
+            $"{this.F(key, fallback, args)}###{string.Format(CultureInfo.CurrentCulture, fallback, args)}";
+
         private bool TryGet(OverlayLanguage language, string key, out string value)
         {
             var resources = this.GetResources(language);

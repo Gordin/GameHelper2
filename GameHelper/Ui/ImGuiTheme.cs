@@ -12,9 +12,9 @@ namespace GameHelper.Ui
     /// </summary>
     internal static class ImGuiTheme
     {
-        internal static readonly Vector4 Accent = new(0.36f, 0.55f, 0.94f, 1f);
-        internal static readonly Vector4 AccentMuted = new(0.28f, 0.42f, 0.72f, 1f);
-        internal static readonly Vector4 TextMuted = new(0.65f, 0.68f, 0.75f, 1f);
+        internal static readonly Vector4 Accent = new(1.00f, 0.85f, 0.04f, 1f);
+        internal static readonly Vector4 AccentMuted = new(0.59f, 0.66f, 0.58f, 1f);
+        internal static readonly Vector4 TextMuted = new(0.72f, 0.78f, 0.84f, 1f);
         internal static readonly Vector4 Success = new(0.35f, 0.78f, 0.45f, 1f);
         internal static readonly Vector4 Danger = new(0.85f, 0.35f, 0.35f, 1f);
         internal static readonly Vector4 SectionBg = new(0.14f, 0.15f, 0.19f, 1f);
@@ -23,28 +23,28 @@ namespace GameHelper.Ui
         {
             ImGui.StyleColorsDark();
             var style = ImGui.GetStyle();
-            style.WindowRounding = 6f;
-            style.ChildRounding = 5f;
-            style.FrameRounding = 4f;
-            style.PopupRounding = 5f;
-            style.ScrollbarRounding = 5f;
-            style.GrabRounding = 4f;
+            style.WindowRounding = 22f;
+            style.ChildRounding = 16f;
+            style.FrameRounding = 9f;
+            style.PopupRounding = 16f;
+            style.ScrollbarRounding = 9f;
+            style.GrabRounding = 9f;
             style.TabRounding = 4f;
-            style.WindowPadding = new Vector2(14f, 12f);
+            style.WindowPadding = new Vector2(18f, 16f);
             style.FramePadding = new Vector2(8f, 5f);
             style.ItemSpacing = new Vector2(10f, 7f);
             style.ItemInnerSpacing = new Vector2(8f, 5f);
-            style.ScrollbarSize = 14f;
+            style.ScrollbarSize = 10f;
             style.IndentSpacing = 18f;
 
             var colors = style.Colors;
             colors[(int)ImGuiCol.Text] = new Vector4(0.92f, 0.93f, 0.96f, 1f);
             colors[(int)ImGuiCol.TextDisabled] = TextMuted;
-            colors[(int)ImGuiCol.WindowBg] = new Vector4(0.10f, 0.11f, 0.14f, 0.97f);
+            colors[(int)ImGuiCol.WindowBg] = new Vector4(0.12f, 0.18f, 0.24f, 0.97f);
             colors[(int)ImGuiCol.ChildBg] = new Vector4(0.12f, 0.13f, 0.17f, 1f);
             colors[(int)ImGuiCol.PopupBg] = new Vector4(0.11f, 0.12f, 0.16f, 0.98f);
-            colors[(int)ImGuiCol.Border] = new Vector4(0.22f, 0.24f, 0.30f, 0.55f);
-            colors[(int)ImGuiCol.FrameBg] = new Vector4(0.16f, 0.17f, 0.22f, 1f);
+            colors[(int)ImGuiCol.Border] = new Vector4(0.65f, 0.76f, 0.84f, 0.25f);
+            colors[(int)ImGuiCol.FrameBg] = new Vector4(0.10f, 0.14f, 0.19f, 1f);
             colors[(int)ImGuiCol.FrameBgHovered] = new Vector4(0.20f, 0.22f, 0.28f, 1f);
             colors[(int)ImGuiCol.FrameBgActive] = new Vector4(0.24f, 0.26f, 0.33f, 1f);
             colors[(int)ImGuiCol.TitleBg] = new Vector4(0.09f, 0.10f, 0.13f, 1f);
@@ -57,7 +57,7 @@ namespace GameHelper.Ui
             colors[(int)ImGuiCol.CheckMark] = Accent;
             colors[(int)ImGuiCol.SliderGrab] = AccentMuted;
             colors[(int)ImGuiCol.SliderGrabActive] = Accent;
-            colors[(int)ImGuiCol.Button] = new Vector4(0.20f, 0.22f, 0.30f, 1f);
+            colors[(int)ImGuiCol.Button] = new Vector4(0.25f, 0.33f, 0.41f, 1f);
             colors[(int)ImGuiCol.ButtonHovered] = new Vector4(0.26f, 0.30f, 0.40f, 1f);
             colors[(int)ImGuiCol.ButtonActive] = AccentMuted;
             colors[(int)ImGuiCol.Header] = new Vector4(0.18f, 0.20f, 0.28f, 1f);

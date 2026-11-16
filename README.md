@@ -4,6 +4,28 @@ GameHelper2 is a Windows x64 .NET overlay application with a plugin-based archit
 
 This guide is written for users who want to build and run the project from Visual Studio without using command-line tools.
 
+## Localized settings and additional plugins
+
+The settings window groups plugins by player activity, supports searching names and descriptions,
+and keeps disabled and third-party plugins reachable. Press F12 to open it. Simplified and
+Traditional Chinese cover the current core and built-plugin UI catalogs, including Atlas2's
+67 Ritual modifier descriptions. Display translations preserve game identifiers and stored rules;
+this is not a complete translation database for every equipment modifier.
+
+- **LootTracker** records active area time and observed positive changes in backpack currency,
+  with a compact HUD, session history and CSV exports. Values use LootValue's current cache.
+  See [tracking behavior and limitations](Plugins/LootTracker/README.md).
+- **Atlas2** offers "Hide ordinary map labels" under Atlas Settings, preserving special
+  encounters, selected categories and search/route targets while retaining the route graph.
+- **PreloadAlert**'s timer is off by default, including a one-time update of old settings.
+  Empty locked windows stay hidden when the timer is off; preload alerts remain available.
+- **PortalAccess** offers opt-in recovery restricted to two fields in a verified client layout.
+  Each write checks portal identity and native area/loading state; unknown layouts stay read-only.
+  Visual restoration and server re-entry await user testing. See [details](Plugins/PortalAccess/README.md).
+
+Chinese guides: [简体中文](README.zh-CN.local.md) · [繁體中文](README.zh-Hant.local.md).
+Reproducible offline checks and rendering tools are documented in [Tests/README.md](Tests/README.md).
+
 ## Required Tools
 
 Install these items before opening the project:

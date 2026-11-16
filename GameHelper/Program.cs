@@ -19,6 +19,9 @@ namespace GameHelper
         /// </summary>
         private static async Task Main()
         {
+            // Keep all relative plugin, config, log and ImGui paths beside the executable
+            // even when launched from another program with a different working directory.
+            Directory.SetCurrentDirectory(AppContext.BaseDirectory);
             AppDomain.CurrentDomain.UnhandledException += (sender, exceptionArgs) =>
             {
                 var errorText = "Program exited with message:\n " + exceptionArgs.ExceptionObject;

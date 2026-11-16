@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Plugins\LootTracker\TrackingLedger.cs" Link="TrackingLedger.cs" />
+    <Compile Include="..\..\Plugins\LootTracker\SessionStore.cs" Link="SessionStore.cs" />
+    <Compile Include="..\..\Plugins\LootTracker\CurrencyPriceBook.cs" Link="CurrencyPriceBook.cs" />
+  </ItemGroup>
+</Project>

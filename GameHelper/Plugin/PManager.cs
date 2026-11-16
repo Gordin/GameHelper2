@@ -427,6 +427,24 @@ namespace GameHelper.Plugin
             return newPlugins.Length;
         }
 
+        private static bool shutDown;
+
+        /// <summary>Finish enabled plugins before Core closes its process handle.</summary>
+        internal static void Shutdown()
+        {
+            if (shutDown) return;
+            shutDown = true;
+            disableRendering = true;
+            PluginContainer[] snapshot;
+            lock (Plugins) { snapshot = Plugins.Where(p => p.Metadata.Enable).ToArray(); }
+            foreach (var container in snapshot)
+            {
+                try { SaveAndDisablePlugin(container); }
+                catch (Exception ex) { Console.WriteLine($"[PManager.Shutdown] {container.Name}: {ex}"); }
+            }
+            // Preserve enabled metadata so the next launch uses the user's configuration.
+        }
+
         private static void DisablePlugin(PluginContainer container)
         {
             if (!container.Metadata.Enable)

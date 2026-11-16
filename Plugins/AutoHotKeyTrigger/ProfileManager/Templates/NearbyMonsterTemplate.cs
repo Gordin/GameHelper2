@@ -1,4 +1,4 @@
-﻿// <copyright file="NearbyMonsterTemplate.cs" company="PlaceholderCompany">
+// <copyright file="NearbyMonsterTemplate.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -53,12 +53,12 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                 ImGui.Text(AhkText.T("template.near_them_of", "near them of"));
                 ImGui.SameLine();
                 ImGui.SetNextItemWidth(ImGui.GetFontSize() * 10);
-                if (ImGui.BeginCombo(AhkText.Label("template.rarity", "rarity", "nearby_monster_template"), $"{selectedRarity}"))
+                if (ImGui.BeginCombo(AhkText.Label("template.rarity", "rarity", "nearby_monster_template"), GameHelper.Localization.GameText.Flags($"{selectedRarity}")))
                 {
                     foreach (var rarity in Enum.GetValues<MonsterRarity>())
                     {
                         var IsSelected = selectedRarity.HasFlag(rarity);
-                        if (ImGui.Checkbox($"{rarity}", ref IsSelected))
+                        if (ImGui.Checkbox(GameHelper.Localization.GameText.Display($"{rarity}") + "###rarity_" + rarity, ref IsSelected))
                         {
                             if (IsSelected)
                             {

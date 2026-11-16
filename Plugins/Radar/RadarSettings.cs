@@ -632,7 +632,7 @@ namespace Radar
                 {
                     ImGui.Checkbox($"##show{headingText}{icon.Key}", ref icon.Value.Show);
                     ImGui.SameLine();
-                    ImGui.Text(icon.Key);
+                    ImGui.Text(GameHelper.Localization.GameText.Display(icon.Key));
                     ImGui.NextColumn();
                     icon.Value.ShowSettingWidget(text);
                     ImGui.NextColumn();

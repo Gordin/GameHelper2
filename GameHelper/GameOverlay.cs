@@ -6,6 +6,8 @@ namespace GameHelper
 {
     using System;
     using System.Collections.Generic;
+    using System.Runtime.InteropServices;
+    using System.Threading;
     using System.Threading.Tasks;
     using ClickableTransparentOverlay;
     using Coroutine;
@@ -19,6 +21,10 @@ namespace GameHelper
     /// <inheritdoc />
     public sealed class GameOverlay : Overlay
     {
+        private bool disposed;
+        private uint windowThreadId;
+        private int closeRequested;
+        private bool closingWindow;
         /// <summary>
         ///     Initializes a new instance of the <see cref="GameOverlay" /> class.
         /// </summary>
@@ -53,35 +59,71 @@ namespace GameHelper
             await base.Run();
         }
 
+        /// <summary>Destroy the HWND on its owner thread before .NET tears that thread down.</summary>
+        public override void Close()
+        {
+            Interlocked.Exchange(ref this.closeRequested, 1);
+            if (this.windowThreadId != 0 && GetCurrentThreadId() == this.windowThreadId)
+                this.CloseWindowOnOwnerThread();
+            else if (this.windowThreadId == 0)
+                base.Close();
+        }
+
+        private void CloseWindowOnOwnerThread()
+        {
+            // DestroyWindow synchronously sends WM_DESTROY, which calls Close again.
+            if (this.closingWindow) return;
+            this.closingWindow = true;
+            try { this.window?.Dispose(); }
+            finally { base.Close(); }
+        }
+
         /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (this.disposed) return;
+            this.disposed = true;
+            try
             {
-                Core.Dispose();
+                // Overlay.Dispose joins the render thread. Plugin caches and process
+                // state must not be cleared while that thread is still using them.
+                if (disposing) this.Close();
+                base.Dispose(disposing);
             }
-
-            base.Dispose(disposing);
+            finally
+            {
+                if (disposing) Core.Dispose();
+                GC.KeepAlive(this);
+            }
         }
 
         /// <inheritdoc />
         protected override Task PostInitialized()
         {
+            this.windowThreadId = GetWindowThreadProcessId(this.window.Handle, out _);
             Ui.ImGuiTheme.Apply();
 
             UniversalFont.ApplyFromSettings();
 
             PManager.InitializePlugins();
+            if (Volatile.Read(ref this.closeRequested) != 0) this.CloseWindowOnOwnerThread();
             return Task.CompletedTask;
         }
 
         /// <inheritdoc />
         protected override void Render()
         {
+            if (Volatile.Read(ref this.closeRequested) != 0)
+            {
+                this.CloseWindowOnOwnerThread();
+                return;
+            }
             PerformanceProfiler.StartFrame();
 
             try { CoroutineHandler.Tick(ImGui.GetIO().DeltaTime); }
             catch (Exception ex) { Console.WriteLine($"[GameOverlay.Render.Tick] {ex}"); }
+
+            if (Volatile.Read(ref this.closeRequested) != 0) return;
 
             try { CoroutineHandler.RaiseEvent(GameHelperEvents.PerFrameDataUpdate); }
             catch (Exception ex) { Console.WriteLine($"[GameOverlay.Render.PerFrameDataUpdate] {ex}"); }
@@ -113,5 +155,11 @@ namespace GameHelper
                         System.Drawing.Size.Empty);
             }
         }
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
     }
 }

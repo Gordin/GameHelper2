@@ -9,6 +9,8 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
+    using GameHelper.RemoteObjects.Components;
+    using GameOffsets.Objects.Components;
     using Coroutine;
     using GameOffsets.Natives;
     using GameOffsets.Objects.States.InGameState;
@@ -26,15 +28,18 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         ///     in case an item holds 2 slots or there is no item in the slot respectively.
         /// </summary>
         private IntPtr[] itemsToInventorySlotMapping = Array.Empty<IntPtr>();
+        private readonly double updateInterval = 0.02d;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="Inventory" /> class.
         /// </summary>
         /// <param name="address">address of the remote memory object.</param>
         /// <param name="name">name of the inventory for displaying purposes.</param>
-        internal Inventory(IntPtr address, string name)
+        /// <param name="updateInterval">Background refresh interval in seconds.</param>
+        internal Inventory(IntPtr address, string name, double updateInterval = 0.02d)
             : base(address)
         {
+            this.updateInterval = updateInterval;
             Core.CoroutinesRegistrar.Add(CoroutineHandler.Start(
                 this.OnTimeTick(), $"[Inventory] Update {name}", int.MaxValue - 4));
         }
@@ -54,6 +59,72 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         /// </summary>
         public ConcurrentDictionary<IntPtr, Item> Items { get; } =
             new();
+
+        /// <summary>Allows optional consumers to suspend background inventory reads.</summary>
+        public bool AutomaticUpdatesEnabled { get; set; } = true;
+
+        /// <summary>A copied currency stack; metadata remains the stable identity.</summary>
+        public sealed record CurrencyStackSnapshot(string Metadata, string Name, int Count);
+
+        /// <summary>
+        /// Copies currency counts only when the live slots, item pointers and stack counts remain
+        /// consistent throughout the read. A failed/incomplete read is never an empty backpack.
+        /// </summary>
+        public bool TryGetCurrencySnapshot(out IReadOnlyList<CurrencyStackSnapshot> snapshot)
+        {
+            snapshot = Array.Empty<CurrencyStackSnapshot>();
+            var inventoryAddress = this.Address;
+            if (!this.AutomaticUpdatesEnabled || inventoryAddress == IntPtr.Zero) return false;
+            var reader = Core.Process.Handle;
+            try
+            {
+                if (!reader.TryReadMemory<InventoryStruct>(inventoryAddress, out var before) ||
+                    before.TotalBoxes.X <= 0 || before.TotalBoxes.Y <= 0 ||
+                    before.TotalBoxes.X > 100 || before.TotalBoxes.Y > 100) return false;
+                var slots = reader.ReadStdVector<IntPtr>(before.ItemList);
+                if (slots.Length != before.TotalBoxes.X * before.TotalBoxes.Y ||
+                    !slots.SequenceEqual(this.itemsToInventorySlotMapping)) return false;
+
+                var result = new List<CurrencyStackSnapshot>();
+                var observedStacks = new List<(IntPtr Address, IntPtr Owner, int Count)>();
+                foreach (var slot in slots.Where(p => p != IntPtr.Zero).Distinct())
+                {
+                    if (!reader.TryReadMemory<InventoryItemStruct>(slot, out var invItem) ||
+                        !this.Items.TryGetValue(slot, out var item) || !item.IsValid ||
+                        invItem.Item == IntPtr.Zero || item.Address != invItem.Item ||
+                        string.IsNullOrEmpty(item.Path)) return false;
+                    if (!item.Path.StartsWith("Metadata/Items/Currency/", StringComparison.Ordinal)) continue;
+                    if (!item.TryGetComponent<Stack>(out var stack) ||
+                        !reader.TryReadMemory<StackOffsets>(stack.Address, out var stackData) ||
+                        stackData.Header.EntityPtr != item.Address || stackData.Count <= 0 ||
+                        stackData.Count > 1000000) return false;
+                    var name = item.TryGetComponent<Base>(out var itemBase) &&
+                               !string.IsNullOrWhiteSpace(itemBase.BaseItemName)
+                        ? itemBase.BaseItemName : item.Path;
+                    result.Add(new CurrencyStackSnapshot(item.Path, name, stackData.Count));
+                    observedStacks.Add((stack.Address, item.Address, stackData.Count));
+                }
+
+                if (this.Address != inventoryAddress ||
+                    !reader.TryReadMemory<InventoryStruct>(inventoryAddress, out var after) ||
+                    before.ServerRequestCounter != after.ServerRequestCounter ||
+                    before.TotalBoxes.X != after.TotalBoxes.X || before.TotalBoxes.Y != after.TotalBoxes.Y ||
+                    !slots.SequenceEqual(reader.ReadStdVector<IntPtr>(after.ItemList))) return false;
+                foreach (var observed in observedStacks)
+                {
+                    if (!reader.TryReadMemory<StackOffsets>(observed.Address, out var check) ||
+                        check.Header.EntityPtr != observed.Owner || check.Count != observed.Count) return false;
+                }
+
+                snapshot = result;
+                return true;
+            }
+            catch
+            {
+                // Transitions and partial remote reads invalidate this sample rather than its baseline.
+                return false;
+            }
+        }
 
         /// <summary>
         ///     Gets the item at the specific slot in the inventory.
@@ -203,10 +274,10 @@ namespace GameHelper.RemoteObjects.States.InGameStateObjects
         {
             while (true)
             {
-                yield return new Wait(0.02d);
+                yield return new Wait(this.updateInterval);
                 try
                 {
-                    if (this.Address != IntPtr.Zero)
+                    if (this.AutomaticUpdatesEnabled && this.Address != IntPtr.Zero)
                     {
                         this.UpdateData(false);
                     }
