@@ -201,7 +201,8 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         {
             foreach (var entity in this.state.CurrentAreaInstance.AwakeEntities.Values)
             {
-                if (entity.EntityType != EntityTypes.Monster ||
+                if (!entity.IsValid ||
+                    entity.EntityType != EntityTypes.Monster ||
                     entity.EntityState == EntityStates.PinnacleBossHidden ||
                     entity.EntityState == EntityStates.MonsterFriendly ||
                     IsCurrentlyUndamageable(entity) ||
@@ -222,7 +223,8 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions
         {
             foreach (var entity in this.state.CurrentAreaInstance.AwakeEntities.Values)
             {
-                if (entity.EntityType != EntityTypes.Monster ||
+                if (!entity.IsValid ||
+                    entity.EntityType != EntityTypes.Monster ||
                     entity.EntityState == EntityStates.PinnacleBossHidden ||
                     entity.EntityState != EntityStates.MonsterFriendly ||
                     IsCurrentlyUndamageable(entity) ||

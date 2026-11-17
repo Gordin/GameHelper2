@@ -4,6 +4,7 @@
 
 namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
 {
+    using System;
     using System.Collections.Concurrent;
     using System.Numerics;
     using GameHelper;
@@ -41,7 +42,8 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
 
         /// <summary>
         ///     Gets the on-screen distance (in pixels) from this monster to the mouse cursor.
-        ///     Returns <see cref="float.PositiveInfinity" /> if the monster has no render position.
+        ///     Returns <see cref="float.PositiveInfinity" /> if the monster has no render position,
+        ///     world data is unavailable, or its projected position is not finite.
         /// </summary>
         public float DistanceToCursor
         {
@@ -53,7 +55,17 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
                 }
 
                 var world = Core.States.InGameStateObject.CurrentWorldInstance;
+                if (world.Address == IntPtr.Zero)
+                {
+                    return float.PositiveInfinity;
+                }
+
                 var screenPos = world.WorldToScreen(render.WorldPosition);
+                if (!float.IsFinite(screenPos.X) || !float.IsFinite(screenPos.Y))
+                {
+                    return float.PositiveInfinity;
+                }
+
                 return Vector2.Distance(screenPos, ImGui.GetMousePos());
             }
         }
