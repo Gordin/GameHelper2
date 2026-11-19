@@ -17,5 +17,6 @@
   "Metadata/Terrain/Maps/Mesa/Tiles/PeakArena_01.tdtx:6-y:6": "Boss",
   "Metadata/Terrain/Desert/Oasis/Features/OasisArena01.tdtx:7-y:13": "Boss",
   "Metadata/Terrain/Woods/WideRiver/CcSM_01.tdtx:2-y:0": "Boss",
-  "Metadata/Terrain/Maps/Necropolis/Tiles/Boss_ArenaFloor.tdtx:2-y:1": "Boss"
+  "Metadata/Terrain/Maps/Necropolis/Tiles/Boss_ArenaFloor.tdtx:2-y:1": "Boss",
+  "Metadata/Terrain/Interlude/Part1/P1_4/Chaple_01.tdtx:7-y:12": "Boss"
 }
