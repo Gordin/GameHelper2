@@ -1,0 +1,4 @@
+{
+  "settings.categories.only_selected": "Show only selected categories",
+  "settings.categories.only_selected.tooltip": "Show only maps matching checked categories below. Search matches are included when Search is checked. With no categories checked, all map labels are hidden."
+}
